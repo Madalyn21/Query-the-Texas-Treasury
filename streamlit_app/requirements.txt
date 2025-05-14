@@ -46,7 +46,6 @@ requests~=2.32.3
 sympy~=1.13.3
 idna~=3.10
 tenacity~=9.0.0
-contourpy~=1.1.1
 fonttools~=4.54.1
 pyparsing~=3.1.4
 click~=8.1.8
