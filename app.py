@@ -377,8 +377,8 @@ def main():
                         st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("Graphs and visualizations will appear here.")
-                st.markdown("---")
-                
+st.markdown("---")
+
                 # Continue with visualizations as before...
                 if 'PAYMENT_DATE' in df.columns:
                     df['PAYMENT_DATE'] = pd.to_datetime(df['PAYMENT_DATE'], errors='coerce')
@@ -541,7 +541,7 @@ def main():
             st.markdown("### Texas Department of Government Efficiency")
             st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
     except Exception as e:
-        st.markdown("---")
+st.markdown("---")
         st.markdown("### Texas Department of Government Efficiency")
         st.error(f"Error loading logo: {str(e)}")
 
