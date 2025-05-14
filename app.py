@@ -84,22 +84,22 @@ def get_filtered_data(filters):
     if filters.get('fiscal_year'):
         df = df[df['FISCAL_YEAR'] == filters['fiscal_year']]
     if filters.get('date_start'):
-        df = df[df['DATE'] >= filters['date_start']]
+        df = df[df['DATE'] >= pd.to_datetime(filters['date_start'])]
     if filters.get('date_end'):
-        df = df[df['DATE'] <= filters['date_end']]
+        df = df[df['DATE'] <= pd.to_datetime(filters['date_end'])]
     if filters.get('min_price'):
         df = df[df['PRICE'] >= filters['min_price']]
     if filters.get('max_price'):
         df = df[df['PRICE'] <= filters['max_price']]
     return df.to_dict('records')
 
-def df_to_zip(df):
-    csv_bytes = df.to_csv(index=False).encode('utf-8')
+def df_to_zip(df: pd.DataFrame) -> bytes:
+    """Return a ZIP-in-memory containing the dataframe as CSV."""
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr('data.csv', csv_bytes)
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("results.csv", df.to_csv(index=False))
     buffer.seek(0)
-    return buffer.getvalue()
+    return buffer.read()
 
 
 def draw_network_plotly(df, filter_method="none"):
@@ -362,19 +362,39 @@ def main():
                 # Display the dataframe
                 st.dataframe(df)
                 
-                # Download button
-                zip_file = df_to_zip(df)
+                # Download CSV button
                 st.download_button(
-                    label="Download Results",
-                    data=zip_file,
-                    file_name="queried_data.zip",
-                    mime="application/zip"
+                    "Download CSV",
+                    data=df_to_zip(df),
+                    file_name="treasury_results.zip",
+                    mime="application/zip",
+                    use_container_width=True,
                 )
                 
                 # Placeholder for graphs and visualizations
                 st.markdown("---")
                 st.header("Visualizations & Graphs")
-                st.info("Graphs and visualizations will appear here.")
+                if not df.empty:
+                    st.subheader("Create a Graph")
+                    graph_type = st.selectbox("Select graph type", ["Bar", "Histogram", "Line"])
+                    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+                    all_cols = df.columns.tolist()
+                    x_col = st.selectbox("X-axis", all_cols, index=0)
+                    y_col = None
+                    if graph_type in ["Bar", "Line"]:
+                        y_col = st.selectbox("Y-axis", numeric_cols, index=0 if numeric_cols else None)
+                    if graph_type == "Bar" and y_col:
+                        fig = px.bar(df, x=x_col, y=y_col, title=f"Bar Graph of {y_col} by {x_col}")
+                        st.plotly_chart(fig, use_container_width=True)
+                    elif graph_type == "Histogram":
+                        hist_col = st.selectbox("Column for Histogram", numeric_cols, index=0 if numeric_cols else None)
+                        fig = px.histogram(df, x=hist_col, title=f"Histogram of {hist_col}")
+                        st.plotly_chart(fig, use_container_width=True)
+                    elif graph_type == "Line" and y_col:
+                        fig = px.line(df, x=x_col, y=y_col, title=f"Line Graph of {y_col} by {x_col}")
+                        st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Graphs and visualizations will appear here.")
                 st.markdown("---")
                 
                 # Continue with visualizations as before...
