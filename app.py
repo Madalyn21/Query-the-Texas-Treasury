@@ -22,13 +22,6 @@ API_URL = "http://127.0.0.1:5000"  # Adjust if your Flask runs elsewhere
 
 # Mock data for testing
 MOCK_FILTER_OPTIONS = {
-    'departments': [
-        'Department of Education',
-        'Department of Health',
-        'Department of Transportation',
-        'Department of Public Safety',
-        'Department of Administration'
-    ],
     'agencies': [
         'Attorney General',
         'Office of the Governor',
@@ -56,7 +49,6 @@ MOCK_FILTER_OPTIONS = {
 
 # Mock data for testing the filter endpoint
 MOCK_DATA = pd.DataFrame({
-    'DEPARTMENT': ['Department of Education', 'Department of Health', 'Department of Transportation', 'Department of Public Safety', 'Department of Administration'] * 20,
     'AGENCY': ['Attorney General', 'Office of the Governor', 'Texas Education Agency', 'Texas Health and Human Services', 'Texas Department of Transportation'] * 20,
     'VENDOR': ['Texas A&M University', 'University of Texas', 'Dell Medical School', 'Texas Children\'s Hospital', 'H-E-B'] * 20,
     'APPROPRIATION_TITLE': ['General Revenue Fund', 'Education Trust Fund', 'Highway Fund', 'Health and Human Services Fund', 'Public Safety Fund'] * 20,
@@ -73,8 +65,6 @@ def get_filtered_data(filters):
     """Get filtered data - using mock data for now"""
     df = MOCK_DATA.copy()
     # Apply filters
-    if filters.get('department'):
-        df = df[df['DEPARTMENT'] == filters['department']]
     if filters.get('agency'):
         df = df[df['AGENCY'] == filters['agency']]
     if filters.get('vendor'):
@@ -234,7 +224,6 @@ def main():
         # Initialize session state for filters if not exists
         if 'filters' not in st.session_state:
             st.session_state.filters = {
-                'department': None,
                 'agency': None,
                 'vendor': None,
                 'appropriation_title': None,
@@ -249,13 +238,6 @@ def main():
             # Get filter options using mock data
             filter_options = get_filter_options()
             
-            # Department Filter
-            departments = filter_options.get('departments', [])
-            st.session_state.filters['department'] = st.selectbox(
-                "Department",
-                options=['All'] + departments,
-                index=0
-            )
             # Agency Filter
             agencies = filter_options.get('agencies', [])
             st.session_state.filters['agency'] = st.selectbox(
