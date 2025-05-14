@@ -6,6 +6,12 @@ import io
 import zipfile
 from PIL import Image
 import os
+from dotenv import load_dotenv
+from logger_config import get_logger
+import secrets
+from datetime import timedelta
+import psutil
+import platform
 
 # Additional imports for advanced visualizations
 import numpy as np
@@ -18,7 +24,85 @@ from datetime import datetime
 import streamlit.components.v1 as components
 import base64
 
-API_URL = "http://127.0.0.1:5000"  # Adjust if your Flask runs elsewhere
+# Initialize logger
+logger = get_logger('app')
+
+# Load environment variables
+load_dotenv()
+logger.info("Environment variables loaded")
+
+# Security configurations
+def configure_security():
+    """Configure security settings for the Streamlit app"""
+    logger.info("Configuring security settings")
+    
+    # Configure session state with secure defaults
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = secrets.token_urlsafe(32)
+    
+    # Set session expiry (24 hours)
+    if 'session_start' not in st.session_state:
+        st.session_state.session_start = pd.Timestamp.now()
+    
+    # Check session expiry
+    if pd.Timestamp.now() - st.session_state.session_start > timedelta(hours=24):
+        logger.warning("Session expired, clearing session state")
+        st.session_state.clear()
+        st.session_state.session_id = secrets.token_urlsafe(32)
+        st.session_state.session_start = pd.Timestamp.now()
+    
+    # Configure Streamlit security settings
+    st.set_page_config(
+        page_title="Texas Treasury Query",
+        page_icon="💰",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    
+    # Add security headers
+    st.markdown("""
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+        <meta http-equiv="X-Content-Type-Options" content="nosniff">
+        <meta http-equiv="X-Frame-Options" content="DENY">
+        <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    """, unsafe_allow_html=True)
+
+def validate_input(data):
+    """Validate and sanitize user input"""
+    if isinstance(data, str):
+        # Remove any potentially dangerous characters
+        return ''.join(c for c in data if c.isalnum() or c in ' -_.,')
+    return data
+
+def secure_request(url, method='GET', **kwargs):
+    """Make secure HTTP requests with proper headers and timeout"""
+    try:
+        headers = {
+            'User-Agent': 'Texas-Treasury-Query/1.0',
+            'Accept': 'application/json',
+            'X-Request-ID': st.session_state.session_id
+        }
+        
+        # Add API key if available
+        api_key = os.getenv('API_KEY')
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+        
+        # Set timeout and verify SSL
+        kwargs.setdefault('timeout', 30)
+        kwargs.setdefault('verify', True)
+        kwargs['headers'] = headers
+        
+        response = requests.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request failed: {str(e)}", exc_info=True)
+        raise
+
+# Get API URL from environment variable with fallback
+API_URL = os.getenv('API_URL', 'http://127.0.0.1:5000')
+logger.info(f"Using API URL: {API_URL}")
 
 # Mock data for testing
 MOCK_FILTER_OPTIONS = {
@@ -67,10 +151,12 @@ MOCK_DATA = pd.DataFrame({
 
 def get_filter_options():
     """Get filter options - using mock data for now"""
+    logger.info("Retrieving filter options")
     return MOCK_FILTER_OPTIONS
 
 def get_filtered_data(filters):
     """Get filtered data - using mock data for now"""
+    logger.info(f"Filtering data with filters: {filters}")
     df = MOCK_DATA.copy()
     # Apply filters
     if filters.get('department'):
@@ -84,13 +170,16 @@ def get_filtered_data(filters):
     if filters.get('fiscal_year'):
         df = df[df['FISCAL_YEAR'] == filters['fiscal_year']]
     if filters.get('date_start'):
-        df = df[df['DATE'] >= filters['date_start']]
+        date_start = pd.to_datetime(filters['date_start'])
+        df = df[df['DATE'] >= date_start]
     if filters.get('date_end'):
-        df = df[df['DATE'] <= filters['date_end']]
+        date_end = pd.to_datetime(filters['date_end'])
+        df = df[df['DATE'] <= date_end]
     if filters.get('min_price'):
         df = df[df['PRICE'] >= filters['min_price']]
     if filters.get('max_price'):
         df = df[df['PRICE'] <= filters['max_price']]
+    logger.info(f"Filtered data contains {len(df)} records")
     return df.to_dict('records')
 
 def df_to_zip(df):
@@ -105,45 +194,45 @@ def df_to_zip(df):
 def draw_network_plotly(df, filter_method="none"):
     # Create a bipartite graph
     B = nx.Graph()
-    payee_nodes = list(df['PAYEE'].unique())
+    vendor_nodes = list(df['VENDOR'].unique())
     agency_nodes = list(df['AGENCY'].unique())
-    B.add_nodes_from(payee_nodes, bipartite=0, label='Payee')
+    B.add_nodes_from(vendor_nodes, bipartite=0, label='Vendor')
     B.add_nodes_from(agency_nodes, bipartite=1, label='Agency')
 
-    # Add weighted edges between payees and agencies
-    edges_df = df.groupby(['PAYEE', 'AGENCY']).size().reset_index(name='COUNT')
+    # Add weighted edges between vendors and agencies
+    edges_df = df.groupby(['VENDOR', 'AGENCY']).size().reset_index(name='COUNT')
     for _, row in edges_df.iterrows():
-        B.add_edge(row['PAYEE'], row['AGENCY'], weight=row['COUNT'])
+        B.add_edge(row['VENDOR'], row['AGENCY'], weight=row['COUNT'])
 
     # Compute layout using spring layout
     pos = nx.spring_layout(B, seed=42)
 
     # Apply filtering if desired
     if filter_method == "top_count_25":
-        # Select top 25 payees by degree (only considering payee nodes)
-        payee_degrees = {p: B.degree(p) for p in payee_nodes}
-        sorted_payees = sorted(payee_degrees.items(), key=lambda x: x[1], reverse=True)
-        top25_payees = [p for p, d in sorted_payees[:25]]
-        # Filter edges: include edge if at least one endpoint (that is a payee) is in top25_payees.
+        # Select top 25 vendors by degree (only considering vendor nodes)
+        vendor_degrees = {v: B.degree(v) for v in vendor_nodes}
+        sorted_vendors = sorted(vendor_degrees.items(), key=lambda x: x[1], reverse=True)
+        top25_vendors = [v for v, d in sorted_vendors[:25]]
+        # Filter edges: include edge if at least one endpoint (that is a vendor) is in top25_vendors
         filtered_edges = []
         for u, v, d in B.edges(data=True):
-            if (B.nodes[u]['bipartite'] == 0 and u in top25_payees) or (
-                    B.nodes[v]['bipartite'] == 0 and v in top25_payees):
+            if (B.nodes[u]['bipartite'] == 0 and u in top25_vendors) or (
+                    B.nodes[v]['bipartite'] == 0 and v in top25_vendors):
                 filtered_edges.append((u, v, d))
         # Collect nodes from these filtered edges
-        filtered_payees = set()
+        filtered_vendors = set()
         filtered_agencies = set()
         for u, v, d in filtered_edges:
             if B.nodes[u]['bipartite'] == 0:
-                filtered_payees.add(u)
+                filtered_vendors.add(u)
             if B.nodes[v]['bipartite'] == 0:
-                filtered_payees.add(v)
+                filtered_vendors.add(v)
             if B.nodes[u]['bipartite'] == 1:
                 filtered_agencies.add(u)
             if B.nodes[v]['bipartite'] == 1:
                 filtered_agencies.add(v)
         B_filtered = nx.Graph()
-        B_filtered.add_nodes_from(filtered_payees, bipartite=0, label='Payee')
+        B_filtered.add_nodes_from(filtered_vendors, bipartite=0, label='Vendor')
         B_filtered.add_nodes_from(filtered_agencies, bipartite=1, label='Agency')
         for u, v, d in filtered_edges:
             B_filtered.add_edge(u, v, weight=d['weight'])
@@ -171,7 +260,7 @@ def draw_network_plotly(df, filter_method="none"):
         node_x.append(x)
         node_y.append(y)
         node_text.append(f"{node} (Degree: {B.degree(node)})")
-        # Differentiate payees and agencies by color
+        # Differentiate vendors and agencies by color
         if B.nodes[node]['bipartite'] == 0:
             node_color.append('skyblue')
         else:
@@ -195,7 +284,7 @@ def draw_network_plotly(df, filter_method="none"):
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
                         title={
-                            'text': '<b>Top 25 Most Connected Payees</b>',
+                            'text': '<b>Top 25 Most Connected Vendors</b>',
                             'font': {'size': 16}
                         },
                         showlegend=False,
@@ -207,19 +296,115 @@ def draw_network_plotly(df, filter_method="none"):
                     )
     return fig
 
+def get_system_status():
+    """Get system status information"""
+    try:
+        status = {
+            'status': 'healthy',
+            'timestamp': pd.Timestamp.now().isoformat(),
+            'version': '1.0.0',  # Update this with your app version
+            'system': {
+                'platform': platform.platform(),
+                'python_version': platform.python_version(),
+                'cpu_usage': psutil.cpu_percent(),
+                'memory_usage': psutil.virtual_memory().percent,
+                'disk_usage': psutil.disk_usage('/').percent
+            },
+            'app': {
+                'session_count': len(st.session_state),
+                'api_url': API_URL,
+                'log_level': os.getenv('LOG_LEVEL', 'INFO')
+            }
+        }
+        return status
+    except Exception as e:
+        logger.error(f"Error getting system status: {str(e)}", exc_info=True)
+        return {
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+
+def check_deployment_health():
+    """Check deployment health and return status"""
+    try:
+        # Check API connectivity
+        api_status = "healthy"
+        try:
+            response = secure_request(f"{API_URL}/health", timeout=5)
+            api_status = response.json().get('status', 'unknown')
+        except Exception as e:
+            logger.error(f"API health check failed: {str(e)}")
+            api_status = "unhealthy"
+
+        # Check disk space
+        disk_status = "healthy"
+        if psutil.disk_usage('/').percent > 90:
+            disk_status = "warning"
+            logger.warning("Disk usage above 90%")
+
+        # Check memory usage
+        memory_status = "healthy"
+        if psutil.virtual_memory().percent > 90:
+            memory_status = "warning"
+            logger.warning("Memory usage above 90%")
+
+        # Overall status
+        overall_status = "healthy"
+        if api_status == "unhealthy" or disk_status == "warning" or memory_status == "warning":
+            overall_status = "warning"
+        if api_status == "unhealthy" and (disk_status == "warning" or memory_status == "warning"):
+            overall_status = "unhealthy"
+
+        return {
+            'status': overall_status,
+            'components': {
+                'api': api_status,
+                'disk': disk_status,
+                'memory': memory_status
+            },
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}", exc_info=True)
+        return {
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
 
 def main():
+    # Configure security settings
+    configure_security()
+    
+    logger.info("Starting application")
+    
+    # Health check endpoint
+    if st.query_params.get('health') == 'check':
+        health_status = check_deployment_health()
+        st.json(health_status)
+        return
+
+    # System status endpoint
+    if st.query_params.get('status') == 'check':
+        system_status = get_system_status()
+        st.json(system_status)
+        return
+
     # Privacy statement modal/checkbox
     if 'privacy_accepted' not in st.session_state:
         st.session_state['privacy_accepted'] = False
+        logger.info("Privacy statement not accepted yet")
 
     if not st.session_state['privacy_accepted']:
+        logger.info("Displaying privacy statement")
         st.markdown("""
         ## Privacy Statement
         By using this application, you acknowledge and accept that the queries you make may be recorded for research, quality assurance, or improvement purposes.
         """)
         if st.button("I Accept the Privacy Statement"):
             st.session_state['privacy_accepted'] = True
+            logger.info("Privacy statement accepted")
         st.stop()
 
     st.title("Query the Texas Treasury")
@@ -345,16 +530,25 @@ def main():
                 """)
 
     if submit_clicked:
-        # Prepare the filter payload
-        filter_payload = {k: v for k, v in st.session_state.filters.items() if v != 'All' and v is not None}
+        logger.info("Query submitted")
+        # Prepare and validate the filter payload
+        filter_payload = {
+            k: validate_input(v) 
+            for k, v in st.session_state.filters.items() 
+            if v != 'All' and v is not None
+        }
+        logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get filtered data using mock data
+            # Get filtered data using mock data (to be replaced with API call)
             data = get_filtered_data(filter_payload)
             
             if data:
                 df = pd.DataFrame(data)
+                # Sanitize column names
+                df.columns = [validate_input(col) for col in df.columns]
                 st.session_state['df'] = df
+                logger.info(f"Retrieved {len(df)} records")
                 
                 # Display results count
                 st.success(f"Found {len(df)} matching records")
@@ -364,6 +558,7 @@ def main():
                 
                 # Download button
                 zip_file = df_to_zip(df)
+                logger.info("Generated zip file for download")
                 st.download_button(
                     label="Download Results",
                     data=zip_file,
@@ -371,78 +566,83 @@ def main():
                     mime="application/zip"
                 )
                 
-                # Placeholder for graphs and visualizations
-                st.markdown("---")
-                st.header("Visualizations & Graphs")
-                st.info("Graphs and visualizations will appear here.")
-                st.markdown("---")
-                
-                # Continue with visualizations as before...
-                if 'PAYMENT_DATE' in df.columns:
-                    df['PAYMENT_DATE'] = pd.to_datetime(df['PAYMENT_DATE'], errors='coerce')
+                # Continue with visualizations
+                try:
+                    logger.info("Generating visualizations")
+                    st.write("Debug - Available columns:", df.columns.tolist())
+                    
+                    if 'DATE' in df.columns:
+                        df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
+                        st.write("Debug - DATE column processed")
+                    else:
+                        st.error("DATE column not found in data")
 
-                if 'PAYMENT_AMOUNT' in df.columns:
-                    df['PAYMENT_AMOUNT'] = pd.to_numeric(df['PAYMENT_AMOUNT'], errors='coerce')
+                    if 'PRICE' in df.columns:
+                        df['PRICE'] = pd.to_numeric(df['PRICE'], errors='coerce')
+                        st.write("Debug - PRICE column processed")
+                    else:
+                        st.error("PRICE column not found in data")
 
-                st.header("Visualizations")
+                    st.header("Visualizations")
 
-                #######################################
-                # 1. Temporal Trend & Anomaly Detection
-                #######################################
-                st.subheader("Payment Trends")
-                df_time = df.groupby('PAYMENT_DATE')['PAYMENT_AMOUNT'].sum().reset_index()
-                mean_amount = df_time['PAYMENT_AMOUNT'].mean()
-                std_amount = df_time['PAYMENT_AMOUNT'].std()
-                threshold = mean_amount + 2 * std_amount
-                df_time['anomaly'] = df_time['PAYMENT_AMOUNT'] > threshold
+                    #######################################
+                    # 1. Temporal Trend & Anomaly Detection
+                    #######################################
+                    st.subheader("Payment Trends")
+                    df_time = df.groupby('DATE')['PRICE'].sum().reset_index()
+                    mean_amount = df_time['PRICE'].mean()
+                    std_amount = df_time['PRICE'].std()
+                    threshold = mean_amount + 2 * std_amount
+                    df_time['anomaly'] = df_time['PRICE'] > threshold
 
-                line_chart = alt.Chart(df_time).mark_line().encode(
-                    x=alt.X('PAYMENT_DATE:T', title='Payment Date'),
-                    y=alt.Y('PAYMENT_AMOUNT:Q', title='Total Payment Amount')
-                ).properties(width=700, height=300)
+                    line_chart = alt.Chart(df_time).mark_line().encode(
+                        x=alt.X('DATE:T', title='Payment Date'),
+                        y=alt.Y('PRICE:Q', title='Total Payment Amount')
+                    ).properties(width=700, height=300)
 
-                anomaly_points = alt.Chart(df_time[df_time['anomaly']]).mark_point(color='red', size=100).encode(
-                    x='PAYMENT_DATE:T',
-                    y='PAYMENT_AMOUNT:Q'
-                )
+                    anomaly_points = alt.Chart(df_time[df_time['anomaly']]).mark_point(color='red', size=100).encode(
+                        x='DATE:T',
+                        y='PRICE:Q'
+                    )
 
-                st.altair_chart(line_chart + anomaly_points, use_container_width=True)
-                st.markdown(
-                    f"**Mean:** {mean_amount:.2f} | **Standard Deviation:** {std_amount:.2f} | **Anomaly Threshold:** {threshold:.2f}")
+                    st.altair_chart(line_chart + anomaly_points, use_container_width=True)
+                    st.markdown(
+                        f"**Mean:** {mean_amount:.2f} | **Standard Deviation:** {std_amount:.2f} | **Anomaly Threshold:** {threshold:.2f}")
 
-                #################################################
-                # 2. Network Graph: Relationships between Payees and Agencies
-                #################################################
-                if 'df' in st.session_state:
-                    df = st.session_state['df']
-                    st.subheader("Relationship between Agencies and Payees")
+                    #################################################
+                    # 2. Network Graph: Relationships between Vendors and Agencies
+                    #################################################
+                    if 'df' in st.session_state:
+                        df = st.session_state['df']
+                        st.subheader("Relationship between Agencies and Vendors")
 
-                    fig_network = draw_network_plotly(df, filter_method="top_count_25")
-                    st.plotly_chart(fig_network, use_container_width=True)
+                        fig_network = draw_network_plotly(df, filter_method="top_count_25")
+                        st.plotly_chart(fig_network, use_container_width=True)
 
-                #################################################
-                # 3. Payment Amount Distribution (Box Plot)
-                #################################################
-                st.subheader("Payment Amount Distribution")
-                fig = px.box(df, x="PAYEE", y="PAYMENT_AMOUNT",
-                             points="all",
-                             title="",
-                             labels={"PAYEE": "Payee", "PAYMENT_AMOUNT": "Payment Amount"})
-                fig.update_xaxes(showticklabels=False, title_text="")
-                st.plotly_chart(fig, use_container_width=True)
+                    #################################################
+                    # 3. Payment Amount Distribution (Box Plot)
+                    #################################################
+                    st.subheader("Payment Amount Distribution")
+                    fig = px.box(df, x="VENDOR", y="PRICE",
+                                points="all",
+                                title="",
+                                labels={"VENDOR": "Vendor", "PRICE": "Payment Amount"})
+                    fig.update_xaxes(showticklabels=False, title_text="")
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as viz_error:
+                    logger.error(f"Error creating visualizations: {str(viz_error)}", exc_info=True)
+                    st.error(f"Error creating visualizations: {str(viz_error)}")
+                    st.info("Please check that your data contains the required columns: DATE, PRICE, VENDOR, and AGENCY")
 
             elif isinstance(data, list) and not data:
+                logger.info("No data returned from query")
                 st.info("No data returned.")
             else:
+                logger.warning(f"Unexpected data type returned: {type(data)}")
                 st.write(data)
         except Exception as e:
+            logger.error(f"Error processing query: {str(e)}", exc_info=True)
             st.error(f"Error calling API: {e}")
-
-    # Always show the Visualizations & Graphs placeholder above the logos
-    st.markdown("---")
-    st.header("Visualizations & Graphs")
-    st.info("Graphs and visualizations will appear here.")
-    st.markdown("---")
 
     # Add AI Analysis placeholder section
     st.header("AI Analysis")
@@ -461,7 +661,7 @@ def main():
                 f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
                 f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
             )
-        svg_path = "/Users/madalyn_nguyen/streamlit_app/Texas_House_Logo.svg"
+        svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
         svg_img_html = ""
         if os.path.exists(svg_path):
             with open(svg_path, "r") as svg_file:
@@ -545,4 +745,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Add psutil to requirements if not already present
+        main()
+    except Exception as e:
+        logger.critical(f"Application failed: {str(e)}", exc_info=True)
+        st.error("An unexpected error occurred. Please try again later.")
+        raise

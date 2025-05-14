@@ -352,9 +352,9 @@ def main():
                     mime="application/zip",
                     use_container_width=True,
                 )
-                
-                # Placeholder for graphs and visualizations
                 st.markdown("---")
+
+                # Placeholder for graphs and visualizations
                 st.header("Visualizations & Graphs")
                 if not df.empty:
                     st.subheader("Create a Graph")
@@ -377,7 +377,6 @@ def main():
                         st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("Graphs and visualizations will appear here.")
-st.markdown("---")
 
                 # Continue with visualizations as before...
                 if 'PAYMENT_DATE' in df.columns:
@@ -541,7 +540,7 @@ st.markdown("---")
             st.markdown("### Texas Department of Government Efficiency")
             st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
     except Exception as e:
-st.markdown("---")
+        st.markdown("---")
         st.markdown("### Texas Department of Government Efficiency")
         st.error(f"Error loading logo: {str(e)}")
 
