@@ -8,6 +8,8 @@ python-dotenv
 python-json-logger
 psutil
 pillow
+psycopg2-binary
+sqlalchemy
 
 # Additional dependencies
 gitdb
