@@ -72,3 +72,59 @@
 {"asctime": "2025-05-14 20:51:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
 {"asctime": "2025-05-14 20:51:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Privacy statement not accepted yet"}
 {"asctime": "2025-05-14 20:51:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:04:31", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:04:31", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:04:31", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:04:31", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:04:31", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:07:38", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:07:38", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:07:38", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:07:38", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:07:38", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:20:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:20:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:20:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:20:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:20:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Privacy statement not accepted yet"}
+{"asctime": "2025-05-14 21:57:11", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Displaying privacy statement"}
+{"asctime": "2025-05-14 21:57:12", "levelname": "INFO", "name": "streamlit_app.app", "message": "Privacy statement accepted"}
+{"asctime": "2025-05-14 21:57:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:57:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:57:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:57:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:57:13", "levelname": "INFO", "name": "streamlit_app.app", "message": "Retrieving filter options"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Retrieving filter options"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Query submitted"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filter payload: {'date_start': datetime.date(2021, 1, 1), 'date_end': datetime.date(2021, 4, 10), 'min_price': 0.0, 'max_price': 1000000.0}"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filtering data with filters: {'date_start': datetime.date(2021, 1, 1), 'date_end': datetime.date(2021, 4, 10), 'min_price': 0.0, 'max_price': 1000000.0}"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filtered data contains 100 records"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Retrieved 100 records"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Generated zip file for download"}
+{"asctime": "2025-05-14 21:57:16", "levelname": "INFO", "name": "streamlit_app.app", "message": "Generating visualizations"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Environment variables loaded"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Using API URL: http://127.0.0.1:5000"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Configuring security settings"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Starting application"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Retrieving filter options"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Query submitted"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filter payload: {'date_start': datetime.date(2021, 1, 1), 'date_end': datetime.date(2021, 4, 10), 'min_price': 0.0, 'max_price': 1000000.0}"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filtering data with filters: {'date_start': datetime.date(2021, 1, 1), 'date_end': datetime.date(2021, 4, 10), 'min_price': 0.0, 'max_price': 1000000.0}"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Filtered data contains 100 records"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Retrieved 100 records"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Generated zip file for download"}
+{"asctime": "2025-05-14 22:17:24", "levelname": "INFO", "name": "streamlit_app.app", "message": "Generating visualizations"}

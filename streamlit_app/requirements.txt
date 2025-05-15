@@ -1,4 +1,4 @@
-# Core dependencies
+# Core Application Dependencies
 streamlit
 pandas
 numpy
@@ -8,60 +8,23 @@ python-dotenv
 python-json-logger
 psutil
 pillow
+
+# Database Dependencies
 psycopg2-binary
 sqlalchemy
 
-# Additional dependencies
-gitdb
-cffi
-defusedxml
-matplotlib
-scipy
+# Development Dependencies
 ipython
-pip
-attrs
-wheel
-cryptography
-tornado
-jinja2
-pytz
-rich
-pygments
-toml
-zipp
-smmap
-mdurl
-setuptools
-overrides
-jsonschema
-narwhals
-pyarrow
-packaging
-referencing
-traitlets
-pyyaml
-MarkupSafe
-python-dateutil
+ipykernel
+jupyter
+
+# Visualization Dependencies
+matplotlib
 plotly
 pydeck
+
+# Utility Dependencies
+python-dateutil
+pytz
 certifi
-tzdata
 urllib3
-six
-sympy
-idna
-tenacity
-fonttools
-pyparsing
-click
-cachetools
-blinker
-watchdog
-webcolors
-jsonpointer
-isoduration
-fqdn
-cycler
-ipykernel
-kiwisolver
-platformdirs
