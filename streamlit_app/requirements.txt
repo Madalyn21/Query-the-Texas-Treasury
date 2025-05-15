@@ -1,3 +1,6 @@
+# Python version requirement
+python_version >= "3.8" and python_version < "3.9"
+
 # Core Application Dependencies
 streamlit
 pandas
