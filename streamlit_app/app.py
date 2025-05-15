@@ -12,6 +12,8 @@ import secrets
 from datetime import timedelta
 import psutil
 import platform
+import json
+import sys
 
 # Additional imports for visualizations
 import numpy as np
@@ -19,6 +21,31 @@ import altair as alt
 from datetime import datetime
 import streamlit.components.v1 as components
 import base64
+
+# Check Python version
+if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
+    current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    st.error(f"""
+    ⚠️ **Python Version Error**
+    
+    Current Python version: {current_version}
+    Required Python version: 3.8.x
+    
+    Please ensure you are using Python 3.8.x to run this application.
+    You can check your Python version by running:
+    ```
+    python --version
+    ```
+    
+    To fix this:
+    1. Install Python 3.8.x from [python.org](https://www.python.org/downloads/)
+    2. Create a new virtual environment with Python 3.8.x
+    3. Reinstall the requirements:
+    ```
+    pip install -r requirements.txt
+    ```
+    """)
+    st.stop()
 
 # Initialize logger
 logger = get_logger('app')
