@@ -13,13 +13,9 @@ from datetime import timedelta
 import psutil
 import platform
 
-# Additional imports for advanced visualizations
+# Additional imports for visualizations
 import numpy as np
 import altair as alt
-import networkx as nx
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-import plotly.express as px
 from datetime import datetime
 import streamlit.components.v1 as components
 import base64
@@ -189,112 +185,6 @@ def df_to_zip(df):
         zf.writestr('data.csv', csv_bytes)
     buffer.seek(0)
     return buffer.getvalue()
-
-
-def draw_network_plotly(df, filter_method="none"):
-    # Create a bipartite graph
-    B = nx.Graph()
-    vendor_nodes = list(df['VENDOR'].unique())
-    agency_nodes = list(df['AGENCY'].unique())
-    B.add_nodes_from(vendor_nodes, bipartite=0, label='Vendor')
-    B.add_nodes_from(agency_nodes, bipartite=1, label='Agency')
-
-    # Add weighted edges between vendors and agencies
-    edges_df = df.groupby(['VENDOR', 'AGENCY']).size().reset_index(name='COUNT')
-    for _, row in edges_df.iterrows():
-        B.add_edge(row['VENDOR'], row['AGENCY'], weight=row['COUNT'])
-
-    # Compute layout using spring layout
-    pos = nx.spring_layout(B, seed=42)
-
-    # Apply filtering if desired
-    if filter_method == "top_count_25":
-        # Select top 25 vendors by degree (only considering vendor nodes)
-        vendor_degrees = {v: B.degree(v) for v in vendor_nodes}
-        sorted_vendors = sorted(vendor_degrees.items(), key=lambda x: x[1], reverse=True)
-        top25_vendors = [v for v, d in sorted_vendors[:25]]
-        # Filter edges: include edge if at least one endpoint (that is a vendor) is in top25_vendors
-        filtered_edges = []
-        for u, v, d in B.edges(data=True):
-            if (B.nodes[u]['bipartite'] == 0 and u in top25_vendors) or (
-                    B.nodes[v]['bipartite'] == 0 and v in top25_vendors):
-                filtered_edges.append((u, v, d))
-        # Collect nodes from these filtered edges
-        filtered_vendors = set()
-        filtered_agencies = set()
-        for u, v, d in filtered_edges:
-            if B.nodes[u]['bipartite'] == 0:
-                filtered_vendors.add(u)
-            if B.nodes[v]['bipartite'] == 0:
-                filtered_vendors.add(v)
-            if B.nodes[u]['bipartite'] == 1:
-                filtered_agencies.add(u)
-            if B.nodes[v]['bipartite'] == 1:
-                filtered_agencies.add(v)
-        B_filtered = nx.Graph()
-        B_filtered.add_nodes_from(filtered_vendors, bipartite=0, label='Vendor')
-        B_filtered.add_nodes_from(filtered_agencies, bipartite=1, label='Agency')
-        for u, v, d in filtered_edges:
-            B_filtered.add_edge(u, v, weight=d['weight'])
-        B = B_filtered
-        pos = nx.spring_layout(B, seed=42)
-
-    # Create edge trace
-    edge_x, edge_y = [], []
-    for edge in B.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])
-        edge_y.extend([y0, y1, None])
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=0.5, color='#888'),
-        hoverinfo='none',
-        mode='lines'
-    )
-
-    # Create node trace
-    node_x, node_y, node_text, node_color = [], [], [], []
-    for node in B.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        node_text.append(f"{node} (Degree: {B.degree(node)})")
-        # Differentiate vendors and agencies by color
-        if B.nodes[node]['bipartite'] == 0:
-            node_color.append('skyblue')
-        else:
-            node_color.append('lightgreen')
-
-    node_trace = go.Scatter(
-        x=node_x, y=node_y,
-        mode='markers+text',
-        text=[node for node in B.nodes()],
-        textposition="top center",
-        hovertext=node_text,
-        marker=dict(
-            showscale=False,
-            color=node_color,
-            size=10,
-            line_width=2
-        )
-    )
-
-    # Create the figure
-    fig = go.Figure(data=[edge_trace, node_trace],
-                    layout=go.Layout(
-                        title={
-                            'text': '<b>Top 25 Most Connected Vendors</b>',
-                            'font': {'size': 16}
-                        },
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=20, l=5, r=5, t=40),
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
-                    )
-                    )
-    return fig
 
 def get_system_status():
     """Get system status information"""
@@ -569,17 +459,14 @@ def main():
                 # Continue with visualizations
                 try:
                     logger.info("Generating visualizations")
-                    st.write("Debug - Available columns:", df.columns.tolist())
                     
                     if 'DATE' in df.columns:
                         df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
-                        st.write("Debug - DATE column processed")
                     else:
                         st.error("DATE column not found in data")
 
                     if 'PRICE' in df.columns:
                         df['PRICE'] = pd.to_numeric(df['PRICE'], errors='coerce')
-                        st.write("Debug - PRICE column processed")
                     else:
                         st.error("PRICE column not found in data")
 
@@ -609,26 +496,7 @@ def main():
                     st.markdown(
                         f"**Mean:** {mean_amount:.2f} | **Standard Deviation:** {std_amount:.2f} | **Anomaly Threshold:** {threshold:.2f}")
 
-                    #################################################
-                    # 2. Network Graph: Relationships between Vendors and Agencies
-                    #################################################
-                    if 'df' in st.session_state:
-                        df = st.session_state['df']
-                        st.subheader("Relationship between Agencies and Vendors")
-
-                        fig_network = draw_network_plotly(df, filter_method="top_count_25")
-                        st.plotly_chart(fig_network, use_container_width=True)
-
-                    #################################################
-                    # 3. Payment Amount Distribution (Box Plot)
-                    #################################################
-                    st.subheader("Payment Amount Distribution")
-                    fig = px.box(df, x="VENDOR", y="PRICE",
-                                points="all",
-                                title="",
-                                labels={"VENDOR": "Vendor", "PRICE": "Payment Amount"})
-                    fig.update_xaxes(showticklabels=False, title_text="")
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Removed network graph visualization section
                 except Exception as viz_error:
                     logger.error(f"Error creating visualizations: {str(viz_error)}", exc_info=True)
                     st.error(f"Error creating visualizations: {str(viz_error)}")
