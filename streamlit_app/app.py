@@ -25,16 +25,6 @@ import base64
 # Version identifier
 APP_VERSION = "1.0.0-DB-TEST-2024-05-16"
 
-def console_output():
-    """Output information to console for debugging"""
-    print("\n" + "="*50)
-    print(f"Texas Treasury Query App")
-    print(f"Version: {APP_VERSION}")
-    print(f"Python Version: {sys.version}")
-    print(f"Current Directory: {os.getcwd()}")
-    print(f"Files in directory: {os.listdir('.')}")
-    print("="*50 + "\n")
-
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
@@ -341,9 +331,6 @@ def test_database_connection():
     print("=== End of Database Connection Test ===\n")
 
 def main():
-    # Output to console
-    console_output()
-    
     # Configure security settings
     configure_security()
     
@@ -367,10 +354,12 @@ def main():
         st.json(system_status)
         return
 
+    
     # Privacy statement modal/checkbox
     if 'privacy_accepted' not in st.session_state:
         st.session_state['privacy_accepted'] = False
         logger.info("Privacy statement not accepted yet")
+
 
     if not st.session_state['privacy_accepted']:
         logger.info("Displaying privacy statement")
@@ -386,6 +375,14 @@ def main():
     st.title("Query the Texas Treasury")
     st.subheader("Committee on the Delivery of Government Efficiency")
 
+    components.html(
+        """
+        <script>
+            console.log("Hello from Streamlit!");
+        </script>
+        """,
+        height=0,  # No visible UI change
+    )
     # Create columns for the filter interface
     col1, col2 = st.columns([1, 1])
     
