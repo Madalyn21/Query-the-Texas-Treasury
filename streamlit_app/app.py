@@ -290,9 +290,41 @@ def check_deployment_health():
             'timestamp': pd.Timestamp.now().isoformat()
         }
 
+def test_database_connection():
+    """Test database connection and display data"""
+    try:
+        from db_config import get_db_connection
+        engine = get_db_connection()
+        
+        # Test query
+        query = "SELECT current_timestamp;"
+        with engine.connect() as connection:
+            result = connection.execute(query)
+            timestamp = result.scalar()
+            st.success(f"Database connection successful! Current timestamp: {timestamp}")
+            
+            # Try to list all tables
+            query = """
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public';
+            """
+            result = connection.execute(query)
+            tables = [row[0] for row in result]
+            st.write("Available tables:", tables)
+            
+    except Exception as e:
+        st.error(f"Database connection failed: {str(e)}")
+        logger.error(f"Database connection error: {str(e)}", exc_info=True)
+
 def main():
     # Configure security settings
     configure_security()
+    
+    # Add database connection test
+    st.sidebar.title("Database Status")
+    if st.sidebar.button("Test Database Connection"):
+        test_database_connection()
     
     logger.info("Starting application")
     
