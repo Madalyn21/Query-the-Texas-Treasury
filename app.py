@@ -473,7 +473,8 @@ def main():
         if st.button("I Accept the Privacy Statement"):
             st.session_state['privacy_accepted'] = True
             logger.info("Privacy statement accepted")
-        st.stop()
+            st.rerun()  # Rerun the app after accepting
+        st.stop()  # Stop execution until privacy is accepted
 
     st.title("Query the Texas Treasury")
     st.subheader("Committee on the Delivery of Government Efficiency")
@@ -493,52 +494,17 @@ def main():
                 'fiscal_year': None
             }
         
-        try:
-            logger.info("Starting to load filter options in main")
-            # Get filter options using database
-            filter_options = get_filter_options()
-            logger.info(f"Received filter options: {filter_options}")
-            
-            # Agency Filter
-            agencies = filter_options.get('agencies', [])
-            logger.info(f"Creating agency dropdown with {len(agencies)} options")
-            st.session_state.filters['agency'] = st.selectbox(
-                "Agency Number",
-                options=['All'] + agencies,
-                index=0
-            )
-            
-            # Vendor Filter
-            vendors = filter_options.get('vendors', [])
-            logger.info(f"Creating vendor dropdown with {len(vendors)} options")
-            st.session_state.filters['vendor'] = st.selectbox(
-                "Vendor Number",
-                options=['All'] + vendors,
-                index=0
-            )
-            
-            # Appropriation Title Filter
-            appropriation_titles = filter_options.get('appropriation_titles', [])
-            logger.info(f"Creating appropriation dropdown with {len(appropriation_titles)} options")
-            st.session_state.filters['appropriation_title'] = st.selectbox(
-                "Appropriation Number",
-                options=['All'] + appropriation_titles,
-                index=0
-            )
-            
-            # Fiscal Year Filter
-            fiscal_years = filter_options.get('fiscal_years', [])
-            logger.info(f"Creating fiscal year dropdown with {len(fiscal_years)} options")
-            st.session_state.filters['fiscal_year'] = st.selectbox(
-                "Fiscal Year",
-                options=['All'] + fiscal_years,
-                index=0
-            )
-            
-        except Exception as e:
-            logger.error(f"Error in main filter section: {str(e)}", exc_info=True)
-            st.error(f"Error loading filter options: {e}")
-            return
+        # Agency Filter Placeholder
+        st.write("Agency Number Dropdown Placeholder")
+        
+        # Vendor Filter Placeholder
+        st.write("Vendor Number Dropdown Placeholder")
+        
+        # Appropriation Title Filter Placeholder
+        st.write("Appropriation Number Dropdown Placeholder")
+        
+        # Fiscal Year Filter Placeholder
+        st.write("Fiscal Year Dropdown Placeholder")
 
     with col2:
         st.subheader("Query Actions")
@@ -602,18 +568,6 @@ def main():
                     mime="application/zip"
                 )
                 
-                # Continue with visualizations
-                try:
-                    logger.info("Generating visualizations")
-                    st.header("Visualizations")
-                    
-                    # Add your visualization code here
-                    st.info("Visualizations will be added based on the data structure")
-                    
-                except Exception as viz_error:
-                    logger.error(f"Error creating visualizations: {str(viz_error)}", exc_info=True)
-                    st.error(f"Error creating visualizations: {str(viz_error)}")
-
             elif isinstance(data, list) and not data:
                 logger.info("No data returned from query")
                 st.info("No data returned.")
@@ -623,6 +577,21 @@ def main():
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
             st.error(f"Error calling API: {e}")
+
+    # Add visualization section (moved outside the submit_clicked block)
+    st.markdown("---")  # Add a separator
+    st.header("Visualizations")
+    
+    # Create two columns for visualizations
+    viz_col1, viz_col2 = st.columns(2)
+    
+    with viz_col1:
+        st.subheader("Payment Distribution")
+        st.info("Payment distribution visualization will be added here after query is submitted")
+        
+    with viz_col2:
+        st.subheader("Trend Analysis")
+        st.info("Trend analysis visualization will be added here after query is submitted")
 
     # Add AI Analysis section
     st.header("AI Analysis")
