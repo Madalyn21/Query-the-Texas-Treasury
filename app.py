@@ -448,23 +448,13 @@ def main():
                 'agency': None,
                 'vendor': None,
                 'appropriation_title': None,
-                'fiscal_year': None,
-                'date_start': None,
-                'date_end': None,
-                'min_price': None,
-                'max_price': None
+                'fiscal_year': None
             }
         
         try:
             # Get filter options using database
             filter_options = get_filter_options()
             table_columns = filter_options.get('table_columns', {})
-            
-            # Display available columns for debugging
-            if st.checkbox("Show Available Columns"):
-                st.write("Available columns in tables:")
-                for table, columns in table_columns.items():
-                    st.write(f"**{table}**: {[col[0] for col in columns]}")
             
             # Agency Filter
             agencies = filter_options.get('agencies', [])
@@ -498,31 +488,6 @@ def main():
                 index=0
             )
             
-            # Date Range Filter
-            date_range = st.date_input(
-                "Payment Date Range",
-                value=(pd.Timestamp('2021-01-01'), pd.Timestamp('2023-12-31'))
-            )
-            if isinstance(date_range, tuple) and len(date_range) == 2:
-                st.session_state.filters['date_start'] = date_range[0]
-                st.session_state.filters['date_end'] = date_range[1]
-            
-            # Price Range Filter
-            col_price1, col_price2 = st.columns(2)
-            with col_price1:
-                st.session_state.filters['min_price'] = st.number_input(
-                    "Minimum Amount",
-                    min_value=0.0,
-                    value=0.0,
-                    step=1000.0
-                )
-            with col_price2:
-                st.session_state.filters['max_price'] = st.number_input(
-                    "Maximum Amount",
-                    min_value=0.0,
-                    value=1000000.0,
-                    step=1000.0
-                )
         except Exception as e:
             st.error(f"Error loading filter options: {e}")
             return
