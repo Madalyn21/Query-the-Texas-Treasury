@@ -295,15 +295,20 @@ def check_deployment_health():
 
 def test_database_connection():
     """Test database connection and display data"""
+    print(f"\n=== Database Connection Test - Version {APP_VERSION} ===")
+    print("Attempting to connect to database...")
     try:
         from db_config import get_db_connection
         engine = get_db_connection()
+        print("Database connection established successfully!")
         
         # Test query
         query = "SELECT current_timestamp;"
+        print(f"Executing test query: {query}")
         with engine.connect() as connection:
             result = connection.execute(query)
             timestamp = result.scalar()
+            print(f"Query successful! Current timestamp: {timestamp}")
             st.success(f"Database connection successful! Current timestamp: {timestamp}")
             
             # Try to list all tables
@@ -312,13 +317,18 @@ def test_database_connection():
             FROM information_schema.tables 
             WHERE table_schema = 'public';
             """
+            print("Fetching list of tables...")
             result = connection.execute(query)
             tables = [row[0] for row in result]
+            print(f"Found {len(tables)} tables: {tables}")
             st.write("Available tables:", tables)
             
     except Exception as e:
-        st.error(f"Database connection failed: {str(e)}")
+        error_msg = f"Database connection failed: {str(e)}"
+        print(f"ERROR: {error_msg}")
+        st.error(error_msg)
         logger.error(f"Database connection error: {str(e)}", exc_info=True)
+    print("=== End of Database Connection Test ===\n")
 
 def main():
     # Configure security settings
