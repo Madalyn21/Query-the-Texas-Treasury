@@ -22,6 +22,9 @@ from datetime import datetime
 import streamlit.components.v1 as components
 import base64
 
+# Version identifier
+APP_VERSION = "1.0.0-DB-TEST-2024-05-16"
+
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
@@ -320,6 +323,12 @@ def test_database_connection():
 def main():
     # Configure security settings
     configure_security()
+    
+    # Display version in sidebar
+    st.sidebar.title("Database Status")
+    st.sidebar.info(f"App Version: {APP_VERSION}")
+    if st.sidebar.button("Test Database Connection"):
+        test_database_connection()
     
     logger.info("Starting application")
     
