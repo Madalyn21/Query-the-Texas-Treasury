@@ -195,17 +195,20 @@ def get_filter_options():
             'fiscal_years': []
         }
 
-def get_filtered_data(filters):
+def get_filtered_data(filters, table_choice):
     """Get filtered data from database"""
-    logger.info(f"Filtering data with filters: {filters}")
+    logger.info(f"Filtering data with filters: {filters} from table: {table_choice}")
     try:
         from db_config import get_db_connection
         engine = get_db_connection()
         
+        # Determine which table to query based on selection
+        main_table = "paymentinformation" if table_choice == "Payment Information" else "contractinfo"
+        
         # Build the base query
-        query = text("""
+        query = text(f"""
             SELECT p.*, c.*, m.*
-            FROM paymentinformation p
+            FROM {main_table} p
             LEFT JOIN contractinfo c ON p.payment_id = c.payment_id
             LEFT JOIN mergedinfo m ON p.payment_id = m.payment_id
             WHERE 1=1
@@ -485,6 +488,13 @@ def main():
     with col1:
         st.subheader("Filter Criteria")
         
+        # Add table selection
+        table_choice = st.radio(
+            "Select Data Source",
+            ["Payment Information", "Contract Information"],
+            help="Choose which table to query data from"
+        )
+        
         # Initialize session state for filters if not exists
         if 'filters' not in st.session_state:
             st.session_state.filters = {
@@ -494,8 +504,49 @@ def main():
                 'fiscal_year': None
             }
         
-        # Agency Filter Placeholder
-        st.write("Agency Number Dropdown Placeholder")
+        # Agency Filter
+        try:
+            from db_config import get_db_connection
+            engine = get_db_connection()
+            
+            with engine.connect() as connection:
+                if table_choice == "Payment Information":
+                    # Get unique agency names and numbers for paymentinformation
+                    agency_query = text("""
+                        SELECT DISTINCT agency_title, agency_number 
+                        FROM paymentinformation 
+                        WHERE agency_title IS NOT NULL AND agency_number IS NOT NULL 
+                        ORDER BY agency_title
+                    """)
+                    agencies = [(f"{row[0]} ({row[1]})", row[1]) for row in connection.execute(agency_query)]
+                else:
+                    # Get unique agencies for contractinfo
+                    agency_query = text("""
+                        SELECT DISTINCT agency 
+                        FROM contractinfo 
+                        WHERE agency IS NOT NULL 
+                        ORDER BY agency
+                    """)
+                    agencies = [(str(row[0]), row[0]) for row in connection.execute(agency_query)]
+                
+                agency_options = ["All"] + [agency[0] for agency in agencies]
+                selected_agency = st.selectbox(
+                    "Agency",
+                    agency_options,
+                    help="Select an agency to filter by"
+                )
+                
+                # Store the agency value in session state
+                if selected_agency != "All":
+                    selected_agency_value = next((agency[1] for agency in agencies if agency[0] == selected_agency), None)
+                    st.session_state.filters['agency'] = selected_agency_value
+                else:
+                    st.session_state.filters['agency'] = None
+                    
+        except Exception as e:
+            logger.error(f"Error loading agency options: {str(e)}")
+            st.error("Error loading agency options")
+            st.session_state.filters['agency'] = None
         
         # Vendor Filter Placeholder
         st.write("Vendor Number Dropdown Placeholder")
@@ -542,8 +593,8 @@ def main():
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get filtered data
-            data = get_filtered_data(filter_payload)
+            # Get filtered data with table choice
+            data = get_filtered_data(filter_payload, table_choice)
             
             if data:
                 df = pd.DataFrame(data)
