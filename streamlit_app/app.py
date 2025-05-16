@@ -321,11 +321,6 @@ def main():
     # Configure security settings
     configure_security()
     
-    # Add database connection test
-    st.sidebar.title("Database Status")
-    if st.sidebar.button("Test Database Connection"):
-        test_database_connection()
-    
     logger.info("Starting application")
     
     # Health check endpoint
