@@ -284,7 +284,7 @@ def test_database_connection():
             WHERE table_schema = 'public';
             """
             print("Fetching list of tables...")
-            result = connection.execute(query)
+            result = connection.execute(text(query))
             tables = [row[0] for row in result]
             print(f"Found {len(tables)} tables: {tables}")
             st.write("Available tables:", tables)
