@@ -249,13 +249,33 @@ def get_filtered_data(filters, table_choice):
             query = text(str(query) + " AND p.amount <= :max_price")
             params['max_price'] = filters['max_price']
         
-        # Execute query
+        # Execute query with chunking
+        all_data = []
+        chunk_size = 100
+        offset = 0
+        
         with engine.connect() as connection:
-            result = connection.execute(query, params)
-            data = [dict(row) for row in result]
+            while True:
+                # Add LIMIT and OFFSET to the query
+                chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
+                result = connection.execute(chunk_query, params)
+                chunk_data = [dict(row) for row in result]
+                
+                if not chunk_data:
+                    break
+                    
+                all_data.extend(chunk_data)
+                offset += chunk_size
+                
+                # Log progress
+                logger.info(f"Retrieved {len(all_data)} records so far")
+                
+                # If we got less than chunk_size records, we've reached the end
+                if len(chunk_data) < chunk_size:
+                    break
             
-        logger.info(f"Retrieved {len(data)} records")
-        return data
+        logger.info(f"Total records retrieved: {len(all_data)}")
+        return all_data
         
     except Exception as e:
         logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
@@ -408,24 +428,29 @@ def test_database_connection():
 
 def main():
     # Configure Streamlit security settings first
+    logger.info("Starting main function")
     st.set_page_config(
         page_title="Texas Treasury Query",
         page_icon="💰",
         layout="wide",
         initial_sidebar_state="collapsed"
     )
+    logger.info("Page config set")
     
     # Add loading delay
     with st.spinner('Loading application...'):
         time.sleep(1)  # Wait for 1 second
+    logger.info("Loading spinner completed")
     
     # Configure other security settings
     if 'session_id' not in st.session_state:
         st.session_state.session_id = secrets.token_urlsafe(32)
+        logger.info("New session ID generated")
     
     # Set session expiry (24 hours)
     if 'session_start' not in st.session_state:
         st.session_state.session_start = pd.Timestamp.now()
+        logger.info("Session start time set")
     
     # Check session expiry
     if pd.Timestamp.now() - st.session_state.session_start > timedelta(hours=24):
@@ -435,6 +460,7 @@ def main():
         st.session_state.session_start = pd.Timestamp.now()
     
     # Add security headers
+    logger.info("Adding security headers")
     st.markdown("""
         <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
         <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -443,12 +469,13 @@ def main():
     """, unsafe_allow_html=True)
     
     # Display version in sidebar
+    logger.info("Setting up sidebar")
     st.sidebar.title("Database Status")
     st.sidebar.info(f"App Version: {APP_VERSION}")
     if st.sidebar.button("Test Database Connection"):
         test_database_connection()
     
-    logger.info("Starting application")
+    logger.info("Starting application main content")
     
     # Health check endpoint
     if st.query_params.get('health') == 'check':
@@ -463,6 +490,7 @@ def main():
         return
 
     # Privacy statement modal/checkbox
+    logger.info("Checking privacy statement")
     if 'privacy_accepted' not in st.session_state:
         st.session_state['privacy_accepted'] = False
         logger.info("Privacy statement not accepted yet")
@@ -479,13 +507,16 @@ def main():
             st.rerun()  # Rerun the app after accepting
         st.stop()  # Stop execution until privacy is accepted
 
+    logger.info("Displaying main title")
     st.title("Query the Texas Treasury")
     st.subheader("Committee on the Delivery of Government Efficiency")
 
     # Create columns for the filter interface
+    logger.info("Creating filter interface columns")
     col1, col2 = st.columns([1, 1])
     
     with col1:
+        logger.info("Setting up filter criteria")
         st.subheader("Filter Criteria")
         
         # Add table selection
@@ -494,6 +525,7 @@ def main():
             ["Payment Information", "Contract Information"],
             help="Choose which table to query data from"
         )
+        logger.info(f"Table choice selected: {table_choice}")
         
         # Initialize session state for filters if not exists
         if 'filters' not in st.session_state:
@@ -503,15 +535,17 @@ def main():
                 'appropriation_title': None,
                 'fiscal_year': None
             }
+            logger.info("Initialized filter session state")
         
         # Agency Filter
         try:
+            logger.info("Attempting to load agency options")
             from db_config import get_db_connection
             engine = get_db_connection()
             
             with engine.connect() as connection:
                 if table_choice == "Payment Information":
-                    # Get unique agency names and numbers for paymentinformation
+                    logger.info("Loading payment information agency options")
                     agency_query = text("""
                         SELECT DISTINCT agency_title, agency_number 
                         FROM paymentinformation 
@@ -520,7 +554,7 @@ def main():
                     """)
                     agencies = [(f"{row[0]} ({row[1]})", row[1]) for row in connection.execute(agency_query)]
                 else:
-                    # Get unique agencies for contractinfo
+                    logger.info("Loading contract information agency options")
                     agency_query = text("""
                         SELECT DISTINCT agency 
                         FROM contractinfo 
@@ -535,6 +569,7 @@ def main():
                     agency_options,
                     help="Select an agency to filter by"
                 )
+                logger.info(f"Agency selected: {selected_agency}")
                 
                 # Store the agency value in session state
                 if selected_agency != "All":
@@ -544,7 +579,7 @@ def main():
                     st.session_state.filters['agency'] = None
                     
         except Exception as e:
-            logger.error(f"Error loading agency options: {str(e)}")
+            logger.error(f"Error loading agency options: {str(e)}", exc_info=True)
             st.error("Error loading agency options")
             st.session_state.filters['agency'] = None
         
@@ -558,6 +593,7 @@ def main():
         st.write("Fiscal Year Dropdown Placeholder")
 
     with col2:
+        logger.info("Setting up query actions")
         st.subheader("Query Actions")
         submit_clicked = st.button("Submit Query")
         readme_clicked = st.button("About")
@@ -590,6 +626,12 @@ def main():
             for k, v in st.session_state.filters.items() 
             if v != 'All' and v is not None
         }
+        
+        # Add test query for WPI agency
+        if table_choice == "Payment Information":
+            filter_payload['agency'] = "WPI"
+            logger.info("Added test query for WPI agency")
+        
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
@@ -629,7 +671,8 @@ def main():
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
             st.error(f"Error calling API: {e}")
 
-    # Add visualization section (moved outside the submit_clicked block)
+    # Add visualization section
+    logger.info("Adding visualization section")
     st.markdown("---")  # Add a separator
     st.header("Visualizations")
     
@@ -645,11 +688,13 @@ def main():
         st.info("Trend analysis visualization will be added here after query is submitted")
 
     # Add AI Analysis section
+    logger.info("Adding AI Analysis section")
     st.header("AI Analysis")
     st.info("AI-powered analysis and insights will appear here.")
     st.markdown("---")
 
     # Add logos section
+    logger.info("Adding logos section")
     try:
         # Responsive side-by-side clickable logos with improved flexbox layout
         logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
@@ -743,7 +788,9 @@ def main():
         st.markdown("---")
         st.markdown("### Texas Department of Government Efficiency")
         st.error(f"Error loading logo: {str(e)}")
-
+        logger.error(f"Error in logos section: {str(e)}", exc_info=True)
+    
+    logger.info("Main function completed successfully")
 
 if __name__ == "__main__":
     try:
