@@ -1,4 +1,17 @@
+# System files
 .DS_Store
-.idea/
 __pycache__/
 *.pyc
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+venv/
+myenv/
+
+# IDE
+.vscode/
+.idea/
