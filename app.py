@@ -15,6 +15,7 @@ import platform
 import json
 import sys
 import time
+from sqlalchemy import text
 
 # Additional imports for visualizations
 import numpy as np
@@ -24,7 +25,7 @@ import streamlit.components.v1 as components
 import base64
 
 # Version identifier
-APP_VERSION = "1.0.0-DB-TEST-2024-05-16"
+APP_VERSION = "1.1.1-DB-TEST-2024-05-16"
 
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
