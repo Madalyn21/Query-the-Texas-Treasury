@@ -8,6 +8,7 @@ python-dotenv
 python-json-logger
 psutil
 pillow
+networkx
 
 # Database Dependencies
 psycopg2-binary

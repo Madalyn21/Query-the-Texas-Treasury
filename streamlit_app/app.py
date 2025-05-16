@@ -58,42 +58,6 @@ logger = get_logger('app')
 load_dotenv()
 logger.info("Environment variables loaded")
 
-# Security configurations
-def configure_security():
-    """Configure security settings for the Streamlit app"""
-    logger.info("Configuring security settings")
-    
-    # Configure session state with secure defaults
-    if 'session_id' not in st.session_state:
-        st.session_state.session_id = secrets.token_urlsafe(32)
-    
-    # Set session expiry (24 hours)
-    if 'session_start' not in st.session_state:
-        st.session_state.session_start = pd.Timestamp.now()
-    
-    # Check session expiry
-    if pd.Timestamp.now() - st.session_state.session_start > timedelta(hours=24):
-        logger.warning("Session expired, clearing session state")
-        st.session_state.clear()
-        st.session_state.session_id = secrets.token_urlsafe(32)
-        st.session_state.session_start = pd.Timestamp.now()
-    
-    # Configure Streamlit security settings
-    st.set_page_config(
-        page_title="Texas Treasury Query",
-        page_icon="💰",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-    
-    # Add security headers
-    st.markdown("""
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        <meta http-equiv="X-Frame-Options" content="DENY">
-        <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    """, unsafe_allow_html=True)
-
 def validate_input(data):
     """Validate and sanitize user input"""
     if isinstance(data, str):
@@ -332,12 +296,40 @@ def test_database_connection():
     print("=== End of Database Connection Test ===\n")
 
 def main():
+    # Configure Streamlit security settings first
+    st.set_page_config(
+        page_title="Texas Treasury Query",
+        page_icon="💰",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    
     # Add loading delay
     with st.spinner('Loading application...'):
         time.sleep(1)  # Wait for 1 second
     
-    # Configure security settings
-    configure_security()
+    # Configure other security settings
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = secrets.token_urlsafe(32)
+    
+    # Set session expiry (24 hours)
+    if 'session_start' not in st.session_state:
+        st.session_state.session_start = pd.Timestamp.now()
+    
+    # Check session expiry
+    if pd.Timestamp.now() - st.session_state.session_start > timedelta(hours=24):
+        logger.warning("Session expired, clearing session state")
+        st.session_state.clear()
+        st.session_state.session_id = secrets.token_urlsafe(32)
+        st.session_state.session_start = pd.Timestamp.now()
+    
+    # Add security headers
+    st.markdown("""
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+        <meta http-equiv="X-Content-Type-Options" content="nosniff">
+        <meta http-equiv="X-Frame-Options" content="DENY">
+        <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    """, unsafe_allow_html=True)
     
     # Display version in sidebar
     st.sidebar.title("Database Status")
