@@ -107,42 +107,73 @@ def get_filter_options():
         with engine.connect() as connection:
             logger.info("Database connection established")
             
-            # Test query to verify connection
-            test_query = text("SELECT COUNT(*) FROM paymentinformation")
-            count = connection.execute(test_query).scalar()
-            logger.info(f"Total records in paymentinformation: {count}")
+            # First, let's check if we can access the table
+            test_query = text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'paymentinformation'
+                );
+            """)
+            table_exists = connection.execute(test_query).scalar()
+            logger.info(f"Paymentinformation table exists: {table_exists}")
+            
+            if not table_exists:
+                st.error("Required table 'paymentinformation' not found in database")
+                return {
+                    'agencies': [],
+                    'vendors': [],
+                    'appropriation_titles': [],
+                    'fiscal_years': []
+                }
+            
+            # Get column names to verify they exist
+            columns_query = text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'paymentinformation';
+            """)
+            columns = [row[0] for row in connection.execute(columns_query)]
+            logger.info(f"Available columns: {columns}")
             
             # Get unique values for each filter using actual column names
             try:
                 agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation WHERE agency_number IS NOT NULL ORDER BY agency_number")
                 agencies = [str(row[0]) for row in connection.execute(agency_query)]
                 logger.info(f"Retrieved {len(agencies)} agency numbers")
+                st.write(f"Found {len(agencies)} agency numbers")  # Debug output
             except Exception as e:
                 logger.error(f"Error getting agency numbers: {str(e)}")
+                st.error(f"Error getting agency numbers: {str(e)}")
                 agencies = []
             
             try:
                 vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation WHERE vendor_number IS NOT NULL ORDER BY vendor_number")
                 vendors = [str(row[0]) for row in connection.execute(vendor_query)]
                 logger.info(f"Retrieved {len(vendors)} vendor numbers")
+                st.write(f"Found {len(vendors)} vendor numbers")  # Debug output
             except Exception as e:
                 logger.error(f"Error getting vendor numbers: {str(e)}")
+                st.error(f"Error getting vendor numbers: {str(e)}")
                 vendors = []
             
             try:
                 appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation WHERE appropriation_number IS NOT NULL ORDER BY appropriation_number")
                 appropriation_titles = [str(row[0]) for row in connection.execute(appropriation_query)]
                 logger.info(f"Retrieved {len(appropriation_titles)} appropriation numbers")
+                st.write(f"Found {len(appropriation_titles)} appropriation numbers")  # Debug output
             except Exception as e:
                 logger.error(f"Error getting appropriation numbers: {str(e)}")
+                st.error(f"Error getting appropriation numbers: {str(e)}")
                 appropriation_titles = []
             
             try:
                 fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation WHERE fiscal_year IS NOT NULL ORDER BY fiscal_year")
                 fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_query)]
                 logger.info(f"Retrieved {len(fiscal_years)} fiscal years")
+                st.write(f"Found {len(fiscal_years)} fiscal years")  # Debug output
             except Exception as e:
                 logger.error(f"Error getting fiscal years: {str(e)}")
+                st.error(f"Error getting fiscal years: {str(e)}")
                 fiscal_years = []
             
             options = {
