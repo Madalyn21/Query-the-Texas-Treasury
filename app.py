@@ -98,35 +98,64 @@ logger.info(f"Using API URL: {API_URL}")
 
 def get_filter_options():
     """Get filter options from database"""
-    logger.info("Retrieving filter options")
+    logger.info("Starting to retrieve filter options")
     try:
         from db_config import get_db_connection
+        logger.info("Getting database connection")
         engine = get_db_connection()
         
         with engine.connect() as connection:
+            logger.info("Database connection established")
+            
+            # Test query to verify connection
+            test_query = text("SELECT COUNT(*) FROM paymentinformation")
+            count = connection.execute(test_query).scalar()
+            logger.info(f"Total records in paymentinformation: {count}")
+            
             # Get unique values for each filter using actual column names
-            agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation WHERE agency_number IS NOT NULL ORDER BY agency_number")
-            agencies = [str(row[0]) for row in connection.execute(agency_query)]
+            try:
+                agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation WHERE agency_number IS NOT NULL ORDER BY agency_number")
+                agencies = [str(row[0]) for row in connection.execute(agency_query)]
+                logger.info(f"Retrieved {len(agencies)} agency numbers")
+            except Exception as e:
+                logger.error(f"Error getting agency numbers: {str(e)}")
+                agencies = []
             
-            vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation WHERE vendor_number IS NOT NULL ORDER BY vendor_number")
-            vendors = [str(row[0]) for row in connection.execute(vendor_query)]
+            try:
+                vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation WHERE vendor_number IS NOT NULL ORDER BY vendor_number")
+                vendors = [str(row[0]) for row in connection.execute(vendor_query)]
+                logger.info(f"Retrieved {len(vendors)} vendor numbers")
+            except Exception as e:
+                logger.error(f"Error getting vendor numbers: {str(e)}")
+                vendors = []
             
-            appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation WHERE appropriation_number IS NOT NULL ORDER BY appropriation_number")
-            appropriation_titles = [str(row[0]) for row in connection.execute(appropriation_query)]
+            try:
+                appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation WHERE appropriation_number IS NOT NULL ORDER BY appropriation_number")
+                appropriation_titles = [str(row[0]) for row in connection.execute(appropriation_query)]
+                logger.info(f"Retrieved {len(appropriation_titles)} appropriation numbers")
+            except Exception as e:
+                logger.error(f"Error getting appropriation numbers: {str(e)}")
+                appropriation_titles = []
             
-            fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation WHERE fiscal_year IS NOT NULL ORDER BY fiscal_year")
-            fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_query)]
+            try:
+                fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation WHERE fiscal_year IS NOT NULL ORDER BY fiscal_year")
+                fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_query)]
+                logger.info(f"Retrieved {len(fiscal_years)} fiscal years")
+            except Exception as e:
+                logger.error(f"Error getting fiscal years: {str(e)}")
+                fiscal_years = []
             
-            logger.info(f"Retrieved options - Agencies: {len(agencies)}, Vendors: {len(vendors)}, Appropriations: {len(appropriation_titles)}, Years: {len(fiscal_years)}")
-            
-            return {
+            options = {
                 'agencies': agencies,
                 'vendors': vendors,
                 'appropriation_titles': appropriation_titles,
                 'fiscal_years': fiscal_years
             }
+            logger.info(f"Returning filter options: {options}")
+            return options
+            
     except Exception as e:
-        logger.error(f"Error getting filter options: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_filter_options: {str(e)}", exc_info=True)
         st.error(f"Error retrieving filter options: {str(e)}")
         return {
             'agencies': [],
@@ -399,12 +428,10 @@ def main():
         st.json(system_status)
         return
 
-    
     # Privacy statement modal/checkbox
     if 'privacy_accepted' not in st.session_state:
         st.session_state['privacy_accepted'] = False
         logger.info("Privacy statement not accepted yet")
-
 
     if not st.session_state['privacy_accepted']:
         logger.info("Displaying privacy statement")
@@ -420,14 +447,6 @@ def main():
     st.title("Query the Texas Treasury")
     st.subheader("Committee on the Delivery of Government Efficiency")
 
-    components.html(
-        """
-        <script>
-            console.log("Hello from Streamlit!");
-        </script>
-        """,
-        height=0,  # No visible UI change
-    )
     # Create columns for the filter interface
     col1, col2 = st.columns([1, 1])
     
@@ -444,54 +463,49 @@ def main():
             }
         
         try:
+            logger.info("Starting to load filter options in main")
             # Get filter options using database
             filter_options = get_filter_options()
+            logger.info(f"Received filter options: {filter_options}")
             
             # Agency Filter
             agencies = filter_options.get('agencies', [])
-            if agencies:
-                st.session_state.filters['agency'] = st.selectbox(
-                    "Agency Number",
-                    options=['All'] + agencies,
-                    index=0
-                )
-            else:
-                st.warning("No agency numbers found in database")
+            logger.info(f"Creating agency dropdown with {len(agencies)} options")
+            st.session_state.filters['agency'] = st.selectbox(
+                "Agency Number",
+                options=['All'] + agencies,
+                index=0
+            )
             
             # Vendor Filter
             vendors = filter_options.get('vendors', [])
-            if vendors:
-                st.session_state.filters['vendor'] = st.selectbox(
-                    "Vendor Number",
-                    options=['All'] + vendors,
-                    index=0
-                )
-            else:
-                st.warning("No vendor numbers found in database")
+            logger.info(f"Creating vendor dropdown with {len(vendors)} options")
+            st.session_state.filters['vendor'] = st.selectbox(
+                "Vendor Number",
+                options=['All'] + vendors,
+                index=0
+            )
             
             # Appropriation Title Filter
             appropriation_titles = filter_options.get('appropriation_titles', [])
-            if appropriation_titles:
-                st.session_state.filters['appropriation_title'] = st.selectbox(
-                    "Appropriation Number",
-                    options=['All'] + appropriation_titles,
-                    index=0
-                )
-            else:
-                st.warning("No appropriation numbers found in database")
+            logger.info(f"Creating appropriation dropdown with {len(appropriation_titles)} options")
+            st.session_state.filters['appropriation_title'] = st.selectbox(
+                "Appropriation Number",
+                options=['All'] + appropriation_titles,
+                index=0
+            )
             
             # Fiscal Year Filter
             fiscal_years = filter_options.get('fiscal_years', [])
-            if fiscal_years:
-                st.session_state.filters['fiscal_year'] = st.selectbox(
-                    "Fiscal Year",
-                    options=['All'] + fiscal_years,
-                    index=0
-                )
-            else:
-                st.warning("No fiscal years found in database")
+            logger.info(f"Creating fiscal year dropdown with {len(fiscal_years)} options")
+            st.session_state.filters['fiscal_year'] = st.selectbox(
+                "Fiscal Year",
+                options=['All'] + fiscal_years,
+                index=0
+            )
             
         except Exception as e:
+            logger.error(f"Error in main filter section: {str(e)}", exc_info=True)
             st.error(f"Error loading filter options: {e}")
             return
 
@@ -510,21 +524,14 @@ def main():
                 ### How to Use
                 1. Select your desired filters from the dropdown menus
                 2. Use 'All' to include all values for that field
-                3. Set minimum and maximum amounts to filter by payment size
-                4. Click 'Submit Query' to view the results
-                5. Download the results using the download button
+                3. Click 'Submit Query' to view the results
+                4. Download the results using the download button
                 
                 ### Data Fields
                 - **Fiscal Year**: The fiscal year of the payment
                 - **Agency**: The government agency making the payment
-                - **Payee**: The recipient of the payment
-                - **Expenditure Category**: The category of expenditure
-                - **Appropriated Fund**: The fund from which the payment was made
-                - **Comptroller Object**: The comptroller object code
-                - **Payment Month**: The month of the payment
-                - **Amount Range**: Filter payments by amount
-                
-                Note: This is currently using mock data for demonstration purposes.
+                - **Vendor**: The recipient of the payment
+                - **Appropriation**: The appropriation number for the payment
                 """)
 
     if submit_clicked:
@@ -538,7 +545,7 @@ def main():
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get filtered data using mock data (to be replaced with API call)
+            # Get filtered data
             data = get_filtered_data(filter_payload)
             
             if data:
@@ -567,48 +574,14 @@ def main():
                 # Continue with visualizations
                 try:
                     logger.info("Generating visualizations")
-                    
-                    if 'DATE' in df.columns:
-                        df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
-                    else:
-                        st.error("DATE column not found in data")
-
-                    if 'PRICE' in df.columns:
-                        df['PRICE'] = pd.to_numeric(df['PRICE'], errors='coerce')
-                    else:
-                        st.error("PRICE column not found in data")
-
                     st.header("Visualizations")
-
-                    #######################################
-                    # 1. Temporal Trend & Anomaly Detection
-                    #######################################
-                    st.subheader("Payment Trends")
-                    df_time = df.groupby('DATE')['PRICE'].sum().reset_index()
-                    mean_amount = df_time['PRICE'].mean()
-                    std_amount = df_time['PRICE'].std()
-                    threshold = mean_amount + 2 * std_amount
-                    df_time['anomaly'] = df_time['PRICE'] > threshold
-
-                    line_chart = alt.Chart(df_time).mark_line().encode(
-                        x=alt.X('DATE:T', title='Payment Date'),
-                        y=alt.Y('PRICE:Q', title='Total Payment Amount')
-                    ).properties(width=700, height=300)
-
-                    anomaly_points = alt.Chart(df_time[df_time['anomaly']]).mark_point(color='red', size=100).encode(
-                        x='DATE:T',
-                        y='PRICE:Q'
-                    )
-
-                    st.altair_chart(line_chart + anomaly_points, use_container_width=True)
-                    st.markdown(
-                        f"**Mean:** {mean_amount:.2f} | **Standard Deviation:** {std_amount:.2f} | **Anomaly Threshold:** {threshold:.2f}")
-
-                    # Removed network graph visualization section
+                    
+                    # Add your visualization code here
+                    st.info("Visualizations will be added based on the data structure")
+                    
                 except Exception as viz_error:
                     logger.error(f"Error creating visualizations: {str(viz_error)}", exc_info=True)
                     st.error(f"Error creating visualizations: {str(viz_error)}")
-                    st.info("Please check that your data contains the required columns: DATE, PRICE, VENDOR, and AGENCY")
 
             elif isinstance(data, list) and not data:
                 logger.info("No data returned from query")
@@ -620,11 +593,12 @@ def main():
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
             st.error(f"Error calling API: {e}")
 
-    # Add AI Analysis placeholder section
+    # Add AI Analysis section
     st.header("AI Analysis")
     st.info("AI-powered analysis and insights will appear here.")
     st.markdown("---")
 
+    # Add logos section
     try:
         # Responsive side-by-side clickable logos with improved flexbox layout
         logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
