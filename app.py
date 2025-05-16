@@ -271,7 +271,7 @@ def test_database_connection():
         query = "SELECT current_timestamp;"
         print(f"Executing test query: {query}")
         with engine.connect() as connection:
-            result = connection.execute(query)
+            result = connection.execute(text(query))
             timestamp = result.scalar()
             print(f"Query successful! Current timestamp: {timestamp}")
             st.success(f"Database connection successful! Current timestamp: {timestamp}")
@@ -679,7 +679,7 @@ def main():
                     x_encoded = base64.b64encode(x_img_file.read()).decode()
                 x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
             st.markdown(
-                f'<div class="find-x-container">Find us on X {x_logo_html}</div>',
+                f'<div class="find-x-container">Find us on {x_logo_html}</div>',
                 unsafe_allow_html=True
             )
         else:
