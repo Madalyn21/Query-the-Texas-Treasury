@@ -104,23 +104,33 @@ def get_filter_options():
         engine = get_db_connection()
         
         with engine.connect() as connection:
-            # Get unique departments
-            dept_query = text("SELECT DISTINCT department FROM paymentinformation ORDER BY department")
+            # First, let's check the table structure
+            table_info_query = text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'paymentinformation'
+                ORDER BY ordinal_position;
+            """)
+            columns = [row[0] for row in connection.execute(table_info_query)]
+            logger.info(f"Available columns in paymentinformation: {columns}")
+            
+            # Get unique departments (adjust column name if needed)
+            dept_query = text("SELECT DISTINCT department_name FROM paymentinformation ORDER BY department_name")
             departments = [row[0] for row in connection.execute(dept_query)]
             
-            # Get unique agencies
-            agency_query = text("SELECT DISTINCT agency FROM paymentinformation ORDER BY agency")
+            # Get unique agencies (adjust column name if needed)
+            agency_query = text("SELECT DISTINCT agency_name FROM paymentinformation ORDER BY agency_name")
             agencies = [row[0] for row in connection.execute(agency_query)]
             
-            # Get unique vendors
-            vendor_query = text("SELECT DISTINCT vendor FROM paymentinformation ORDER BY vendor")
+            # Get unique vendors (adjust column name if needed)
+            vendor_query = text("SELECT DISTINCT vendor_name FROM paymentinformation ORDER BY vendor_name")
             vendors = [row[0] for row in connection.execute(vendor_query)]
             
-            # Get unique appropriation titles
+            # Get unique appropriation titles (adjust column name if needed)
             title_query = text("SELECT DISTINCT appropriation_title FROM paymentinformation ORDER BY appropriation_title")
             appropriation_titles = [row[0] for row in connection.execute(title_query)]
             
-            # Get unique fiscal years
+            # Get unique fiscal years (adjust column name if needed)
             year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
             fiscal_years = [str(row[0]) for row in connection.execute(year_query)]
             
