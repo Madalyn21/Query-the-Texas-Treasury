@@ -103,53 +103,44 @@ def get_filter_options():
         from db_config import get_db_connection
         engine = get_db_connection()
         
+        # Get table columns first
+        table_columns = get_table_columns()
+        logger.info(f"Retrieved table columns: {table_columns}")
+        
         with engine.connect() as connection:
-            # First, let's check the table structure
-            table_info_query = text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'paymentinformation'
-                ORDER BY ordinal_position;
-            """)
-            columns = [row[0] for row in connection.execute(table_info_query)]
-            logger.info(f"Available columns in paymentinformation: {columns}")
-            
-            # Get unique departments (adjust column name if needed)
-            dept_query = text("SELECT DISTINCT department_name FROM paymentinformation ORDER BY department_name")
-            departments = [row[0] for row in connection.execute(dept_query)]
-            
-            # Get unique agencies (adjust column name if needed)
+            # Get unique values for each filter using actual column names
             agency_query = text("SELECT DISTINCT agency_name FROM paymentinformation ORDER BY agency_name")
             agencies = [row[0] for row in connection.execute(agency_query)]
             
-            # Get unique vendors (adjust column name if needed)
             vendor_query = text("SELECT DISTINCT vendor_name FROM paymentinformation ORDER BY vendor_name")
             vendors = [row[0] for row in connection.execute(vendor_query)]
             
-            # Get unique appropriation titles (adjust column name if needed)
-            title_query = text("SELECT DISTINCT appropriation_title FROM paymentinformation ORDER BY appropriation_title")
-            appropriation_titles = [row[0] for row in connection.execute(title_query)]
+            appropriation_query = text("SELECT DISTINCT appropriation_title FROM paymentinformation ORDER BY appropriation_title")
+            appropriation_titles = [row[0] for row in connection.execute(appropriation_query)]
             
-            # Get unique fiscal years (adjust column name if needed)
-            year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
-            fiscal_years = [str(row[0]) for row in connection.execute(year_query)]
+            fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
+            fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_query)]
+            
+            # Log the available columns for debugging
+            for table, columns in table_columns.items():
+                logger.info(f"Columns in {table}: {[col[0] for col in columns]}")
             
             return {
-                'departments': departments,
                 'agencies': agencies,
                 'vendors': vendors,
                 'appropriation_titles': appropriation_titles,
-                'fiscal_years': fiscal_years
+                'fiscal_years': fiscal_years,
+                'table_columns': table_columns  # Include table columns in return value
             }
     except Exception as e:
         logger.error(f"Error getting filter options: {str(e)}", exc_info=True)
         st.error(f"Error retrieving filter options: {str(e)}")
         return {
-            'departments': [],
             'agencies': [],
             'vendors': [],
             'appropriation_titles': [],
-            'fiscal_years': []
+            'fiscal_years': [],
+            'table_columns': {}
         }
 
 def get_filtered_data(filters):
@@ -171,16 +162,12 @@ def get_filtered_data(filters):
         params = {}
         
         # Add filters to query
-        if filters.get('department'):
-            query = text(str(query) + " AND p.department = :department")
-            params['department'] = filters['department']
-        
         if filters.get('agency'):
-            query = text(str(query) + " AND p.agency = :agency")
+            query = text(str(query) + " AND p.agency_name = :agency")
             params['agency'] = filters['agency']
         
         if filters.get('vendor'):
-            query = text(str(query) + " AND p.vendor = :vendor")
+            query = text(str(query) + " AND p.vendor_name = :vendor")
             params['vendor'] = filters['vendor']
         
         if filters.get('appropriation_title'):
@@ -305,6 +292,32 @@ def check_deployment_health():
             'timestamp': pd.Timestamp.now().isoformat()
         }
 
+def get_table_columns():
+    """Get column names for all tables"""
+    try:
+        from db_config import get_db_connection
+        engine = get_db_connection()
+        
+        tables = ['paymentinformation', 'contractinfo', 'mergedinfo']
+        table_columns = {}
+        
+        with engine.connect() as connection:
+            for table in tables:
+                query = text(f"""
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = '{table}'
+                    ORDER BY ordinal_position;
+                """)
+                result = connection.execute(query)
+                columns = [(row[0], row[1]) for row in result]
+                table_columns[table] = columns
+                
+        return table_columns
+    except Exception as e:
+        logger.error(f"Error getting table columns: {str(e)}", exc_info=True)
+        return {}
+
 def test_database_connection():
     """Test database connection and display data"""
     print(f"\n=== Database Connection Test - Version {APP_VERSION} ===")
@@ -323,15 +336,13 @@ def test_database_connection():
             print(f"Query successful! Current timestamp: {timestamp}")
             st.success(f"Database connection successful! Current timestamp: {timestamp}")
             
-            # Try to list all tables
-            query = """
-            SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
-            """
-            print("Fetching list of tables...")
-            result = connection.execute(text(query))
-            tables = [row[0] for row in result]
-            print(f"Found {len(tables)} tables: {tables}")
-            st.write("Available tables:", tables)
+            # Get and display table columns
+            table_columns = get_table_columns()
+            st.subheader("Database Table Structure")
+            for table, columns in table_columns.items():
+                st.write(f"**{table}**")
+                df = pd.DataFrame(columns, columns=['Column Name', 'Data Type'])
+                st.dataframe(df)
             
     except Exception as e:
         error_msg = f"Database connection failed: {str(e)}"
@@ -434,7 +445,6 @@ def main():
         # Initialize session state for filters if not exists
         if 'filters' not in st.session_state:
             st.session_state.filters = {
-                'department': None,
                 'agency': None,
                 'vendor': None,
                 'appropriation_title': None,
@@ -446,30 +456,32 @@ def main():
             }
         
         try:
-            # Get filter options using mock data
+            # Get filter options using database
             filter_options = get_filter_options()
+            table_columns = filter_options.get('table_columns', {})
             
-            # Department Filter
-            departments = filter_options.get('departments', [])
-            st.session_state.filters['department'] = st.selectbox(
-                "Department",
-                options=['All'] + departments,
-                index=0
-            )
+            # Display available columns for debugging
+            if st.checkbox("Show Available Columns"):
+                st.write("Available columns in tables:")
+                for table, columns in table_columns.items():
+                    st.write(f"**{table}**: {[col[0] for col in columns]}")
+            
             # Agency Filter
             agencies = filter_options.get('agencies', [])
             st.session_state.filters['agency'] = st.selectbox(
-                "Agency",
+                "Agency Name",
                 options=['All'] + agencies,
                 index=0
             )
+            
             # Vendor Filter
             vendors = filter_options.get('vendors', [])
             st.session_state.filters['vendor'] = st.selectbox(
-                "Vendor",
+                "Vendor Name",
                 options=['All'] + vendors,
                 index=0
             )
+            
             # Appropriation Title Filter
             appropriation_titles = filter_options.get('appropriation_titles', [])
             st.session_state.filters['appropriation_title'] = st.selectbox(
@@ -477,6 +489,7 @@ def main():
                 options=['All'] + appropriation_titles,
                 index=0
             )
+            
             # Fiscal Year Filter
             fiscal_years = filter_options.get('fiscal_years', [])
             st.session_state.filters['fiscal_year'] = st.selectbox(
@@ -484,26 +497,28 @@ def main():
                 options=['All'] + fiscal_years,
                 index=0
             )
+            
             # Date Range Filter
             date_range = st.date_input(
-                "Date Range",
+                "Payment Date Range",
                 value=(pd.Timestamp('2021-01-01'), pd.Timestamp('2023-12-31'))
             )
             if isinstance(date_range, tuple) and len(date_range) == 2:
                 st.session_state.filters['date_start'] = date_range[0]
                 st.session_state.filters['date_end'] = date_range[1]
+            
             # Price Range Filter
             col_price1, col_price2 = st.columns(2)
             with col_price1:
                 st.session_state.filters['min_price'] = st.number_input(
-                    "Minimum Price",
+                    "Minimum Amount",
                     min_value=0.0,
                     value=0.0,
                     step=1000.0
                 )
             with col_price2:
                 st.session_state.filters['max_price'] = st.number_input(
-                    "Maximum Price",
+                    "Maximum Amount",
                     min_value=0.0,
                     value=1000000.0,
                     step=1000.0
