@@ -103,34 +103,27 @@ def get_filter_options():
         from db_config import get_db_connection
         engine = get_db_connection()
         
-        # Get table columns first
-        table_columns = get_table_columns()
-        logger.info(f"Retrieved table columns: {table_columns}")
-        
         with engine.connect() as connection:
             # Get unique values for each filter using actual column names
-            agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation ORDER BY agency_number")
-            agencies = [row[0] for row in connection.execute(agency_query)]
+            agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation WHERE agency_number IS NOT NULL ORDER BY agency_number")
+            agencies = [str(row[0]) for row in connection.execute(agency_query)]
             
-            vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation ORDER BY vendor_number")
-            vendors = [row[0] for row in connection.execute(vendor_query)]
+            vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation WHERE vendor_number IS NOT NULL ORDER BY vendor_number")
+            vendors = [str(row[0]) for row in connection.execute(vendor_query)]
             
-            appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation ORDER BY appropriation_number")
-            appropriation_titles = [row[0] for row in connection.execute(appropriation_query)]
+            appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation WHERE appropriation_number IS NOT NULL ORDER BY appropriation_number")
+            appropriation_titles = [str(row[0]) for row in connection.execute(appropriation_query)]
             
-            fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
+            fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation WHERE fiscal_year IS NOT NULL ORDER BY fiscal_year")
             fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_query)]
             
-            # Log the available columns for debugging
-            for table, columns in table_columns.items():
-                logger.info(f"Columns in {table}: {[col[0] for col in columns]}")
+            logger.info(f"Retrieved options - Agencies: {len(agencies)}, Vendors: {len(vendors)}, Appropriations: {len(appropriation_titles)}, Years: {len(fiscal_years)}")
             
             return {
                 'agencies': agencies,
                 'vendors': vendors,
                 'appropriation_titles': appropriation_titles,
-                'fiscal_years': fiscal_years,
-                'table_columns': table_columns  # Include table columns in return value
+                'fiscal_years': fiscal_years
             }
     except Exception as e:
         logger.error(f"Error getting filter options: {str(e)}", exc_info=True)
@@ -139,8 +132,7 @@ def get_filter_options():
             'agencies': [],
             'vendors': [],
             'appropriation_titles': [],
-            'fiscal_years': [],
-            'table_columns': {}
+            'fiscal_years': []
         }
 
 def get_filtered_data(filters):
@@ -454,39 +446,50 @@ def main():
         try:
             # Get filter options using database
             filter_options = get_filter_options()
-            table_columns = filter_options.get('table_columns', {})
             
             # Agency Filter
             agencies = filter_options.get('agencies', [])
-            st.session_state.filters['agency'] = st.selectbox(
-                "Agency Number",
-                options=['All'] + agencies,
-                index=0
-            )
+            if agencies:
+                st.session_state.filters['agency'] = st.selectbox(
+                    "Agency Number",
+                    options=['All'] + agencies,
+                    index=0
+                )
+            else:
+                st.warning("No agency numbers found in database")
             
             # Vendor Filter
             vendors = filter_options.get('vendors', [])
-            st.session_state.filters['vendor'] = st.selectbox(
-                "Vendor Number",
-                options=['All'] + vendors,
-                index=0
-            )
+            if vendors:
+                st.session_state.filters['vendor'] = st.selectbox(
+                    "Vendor Number",
+                    options=['All'] + vendors,
+                    index=0
+                )
+            else:
+                st.warning("No vendor numbers found in database")
             
             # Appropriation Title Filter
             appropriation_titles = filter_options.get('appropriation_titles', [])
-            st.session_state.filters['appropriation_title'] = st.selectbox(
-                "Appropriation Number",
-                options=['All'] + appropriation_titles,
-                index=0
-            )
+            if appropriation_titles:
+                st.session_state.filters['appropriation_title'] = st.selectbox(
+                    "Appropriation Number",
+                    options=['All'] + appropriation_titles,
+                    index=0
+                )
+            else:
+                st.warning("No appropriation numbers found in database")
             
             # Fiscal Year Filter
             fiscal_years = filter_options.get('fiscal_years', [])
-            st.session_state.filters['fiscal_year'] = st.selectbox(
-                "Fiscal Year",
-                options=['All'] + fiscal_years,
-                index=0
-            )
+            if fiscal_years:
+                st.session_state.filters['fiscal_year'] = st.selectbox(
+                    "Fiscal Year",
+                    options=['All'] + fiscal_years,
+                    index=0
+                )
+            else:
+                st.warning("No fiscal years found in database")
             
         except Exception as e:
             st.error(f"Error loading filter options: {e}")
