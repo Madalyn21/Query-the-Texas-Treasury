@@ -96,83 +96,119 @@ def secure_request(url, method='GET', **kwargs):
 API_URL = os.getenv('API_URL', 'http://127.0.0.1:5000')
 logger.info(f"Using API URL: {API_URL}")
 
-# Mock data for testing
-MOCK_FILTER_OPTIONS = {
-    'departments': [
-        'Department of Education',
-        'Department of Health',
-        'Department of Transportation',
-        'Department of Public Safety',
-        'Department of Administration'
-    ],
-    'agencies': [
-        'Attorney General',
-        'Office of the Governor',
-        'Texas Education Agency',
-        'Texas Health and Human Services',
-        'Texas Department of Transportation'
-    ],
-    'vendors': [
-        'Texas A&M University',
-        'University of Texas',
-        'Dell Medical School',
-        'Texas Children\'s Hospital',
-        'H-E-B',
-        'Dell Inc.'
-    ],
-    'appropriation_titles': [
-        'General Revenue Fund',
-        'Education Trust Fund',
-        'Highway Fund',
-        'Health and Human Services Fund',
-        'Public Safety Fund'
-    ],
-    'fiscal_years': ['2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023']
-}
-
-# Mock data for testing the filter endpoint
-MOCK_DATA = pd.DataFrame({
-    'DEPARTMENT': ['Department of Education', 'Department of Health', 'Department of Transportation', 'Department of Public Safety', 'Department of Administration'] * 20,
-    'AGENCY': ['Attorney General', 'Office of the Governor', 'Texas Education Agency', 'Texas Health and Human Services', 'Texas Department of Transportation'] * 20,
-    'VENDOR': ['Texas A&M University', 'University of Texas', 'Dell Medical School', 'Texas Children\'s Hospital', 'H-E-B'] * 20,
-    'APPROPRIATION_TITLE': ['General Revenue Fund', 'Education Trust Fund', 'Highway Fund', 'Health and Human Services Fund', 'Public Safety Fund'] * 20,
-    'FISCAL_YEAR': ['2022', '2022', '2021', '2021', '2023'] * 20,
-    'DATE': pd.date_range(start='2021-01-01', periods=100, freq='D'),
-    'PRICE': np.random.uniform(1000, 1000000, 100)
-})
-
 def get_filter_options():
-    """Get filter options - using mock data for now"""
+    """Get filter options from database"""
     logger.info("Retrieving filter options")
-    return MOCK_FILTER_OPTIONS
+    try:
+        from db_config import get_db_connection
+        engine = get_db_connection()
+        
+        with engine.connect() as connection:
+            # Get unique departments
+            dept_query = text("SELECT DISTINCT department FROM paymentinformation ORDER BY department")
+            departments = [row[0] for row in connection.execute(dept_query)]
+            
+            # Get unique agencies
+            agency_query = text("SELECT DISTINCT agency FROM paymentinformation ORDER BY agency")
+            agencies = [row[0] for row in connection.execute(agency_query)]
+            
+            # Get unique vendors
+            vendor_query = text("SELECT DISTINCT vendor FROM paymentinformation ORDER BY vendor")
+            vendors = [row[0] for row in connection.execute(vendor_query)]
+            
+            # Get unique appropriation titles
+            title_query = text("SELECT DISTINCT appropriation_title FROM paymentinformation ORDER BY appropriation_title")
+            appropriation_titles = [row[0] for row in connection.execute(title_query)]
+            
+            # Get unique fiscal years
+            year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
+            fiscal_years = [str(row[0]) for row in connection.execute(year_query)]
+            
+            return {
+                'departments': departments,
+                'agencies': agencies,
+                'vendors': vendors,
+                'appropriation_titles': appropriation_titles,
+                'fiscal_years': fiscal_years
+            }
+    except Exception as e:
+        logger.error(f"Error getting filter options: {str(e)}", exc_info=True)
+        st.error(f"Error retrieving filter options: {str(e)}")
+        return {
+            'departments': [],
+            'agencies': [],
+            'vendors': [],
+            'appropriation_titles': [],
+            'fiscal_years': []
+        }
 
 def get_filtered_data(filters):
-    """Get filtered data - using mock data for now"""
+    """Get filtered data from database"""
     logger.info(f"Filtering data with filters: {filters}")
-    df = MOCK_DATA.copy()
-    # Apply filters
-    if filters.get('department'):
-        df = df[df['DEPARTMENT'] == filters['department']]
-    if filters.get('agency'):
-        df = df[df['AGENCY'] == filters['agency']]
-    if filters.get('vendor'):
-        df = df[df['VENDOR'] == filters['vendor']]
-    if filters.get('appropriation_title'):
-        df = df[df['APPROPRIATION_TITLE'] == filters['appropriation_title']]
-    if filters.get('fiscal_year'):
-        df = df[df['FISCAL_YEAR'] == filters['fiscal_year']]
-    if filters.get('date_start'):
-        date_start = pd.to_datetime(filters['date_start'])
-        df = df[df['DATE'] >= date_start]
-    if filters.get('date_end'):
-        date_end = pd.to_datetime(filters['date_end'])
-        df = df[df['DATE'] <= date_end]
-    if filters.get('min_price'):
-        df = df[df['PRICE'] >= filters['min_price']]
-    if filters.get('max_price'):
-        df = df[df['PRICE'] <= filters['max_price']]
-    logger.info(f"Filtered data contains {len(df)} records")
-    return df.to_dict('records')
+    try:
+        from db_config import get_db_connection
+        engine = get_db_connection()
+        
+        # Build the base query
+        query = text("""
+            SELECT p.*, c.*, m.*
+            FROM paymentinformation p
+            LEFT JOIN contractinfo c ON p.payment_id = c.payment_id
+            LEFT JOIN mergedinfo m ON p.payment_id = m.payment_id
+            WHERE 1=1
+        """)
+        
+        params = {}
+        
+        # Add filters to query
+        if filters.get('department'):
+            query = text(str(query) + " AND p.department = :department")
+            params['department'] = filters['department']
+        
+        if filters.get('agency'):
+            query = text(str(query) + " AND p.agency = :agency")
+            params['agency'] = filters['agency']
+        
+        if filters.get('vendor'):
+            query = text(str(query) + " AND p.vendor = :vendor")
+            params['vendor'] = filters['vendor']
+        
+        if filters.get('appropriation_title'):
+            query = text(str(query) + " AND p.appropriation_title = :appropriation_title")
+            params['appropriation_title'] = filters['appropriation_title']
+        
+        if filters.get('fiscal_year'):
+            query = text(str(query) + " AND p.fiscal_year = :fiscal_year")
+            params['fiscal_year'] = filters['fiscal_year']
+        
+        if filters.get('date_start'):
+            query = text(str(query) + " AND p.payment_date >= :date_start")
+            params['date_start'] = filters['date_start']
+        
+        if filters.get('date_end'):
+            query = text(str(query) + " AND p.payment_date <= :date_end")
+            params['date_end'] = filters['date_end']
+        
+        if filters.get('min_price'):
+            query = text(str(query) + " AND p.amount >= :min_price")
+            params['min_price'] = filters['min_price']
+        
+        if filters.get('max_price'):
+            query = text(str(query) + " AND p.amount <= :max_price")
+            params['max_price'] = filters['max_price']
+        
+        # Execute query
+        with engine.connect() as connection:
+            result = connection.execute(query, params)
+            data = [dict(row) for row in result]
+            
+        logger.info(f"Retrieved {len(data)} records")
+        return data
+        
+    except Exception as e:
+        logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
+        st.error(f"Error retrieving data: {str(e)}")
+        return []
 
 def df_to_zip(df):
     csv_bytes = df.to_csv(index=False).encode('utf-8')
@@ -441,7 +477,7 @@ def main():
             # Date Range Filter
             date_range = st.date_input(
                 "Date Range",
-                value=(MOCK_DATA['DATE'].min(), MOCK_DATA['DATE'].max())
+                value=(pd.Timestamp('2021-01-01'), pd.Timestamp('2023-12-31'))
             )
             if isinstance(date_range, tuple) and len(date_range) == 2:
                 st.session_state.filters['date_start'] = date_range[0]
