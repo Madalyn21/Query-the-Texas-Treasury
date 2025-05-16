@@ -279,9 +279,7 @@ def test_database_connection():
             
             # Try to list all tables
             query = """
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public';
+            SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
             """
             print("Fetching list of tables...")
             result = connection.execute(text(query))
