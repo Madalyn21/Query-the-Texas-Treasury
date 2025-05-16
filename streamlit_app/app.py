@@ -25,6 +25,16 @@ import base64
 # Version identifier
 APP_VERSION = "1.0.0-DB-TEST-2024-05-16"
 
+def console_output():
+    """Output information to console for debugging"""
+    print("\n" + "="*50)
+    print(f"Texas Treasury Query App")
+    print(f"Version: {APP_VERSION}")
+    print(f"Python Version: {sys.version}")
+    print(f"Current Directory: {os.getcwd()}")
+    print(f"Files in directory: {os.listdir('.')}")
+    print("="*50 + "\n")
+
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
@@ -331,6 +341,9 @@ def test_database_connection():
     print("=== End of Database Connection Test ===\n")
 
 def main():
+    # Output to console
+    console_output()
+    
     # Configure security settings
     configure_security()
     
