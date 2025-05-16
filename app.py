@@ -672,7 +672,7 @@ def main():
                 unsafe_allow_html=True
             )
             # Add Find us on X section
-            x_logo_path = os.path.join(os.path.dirname(__file__), "X_logo.png")
+            x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
             x_logo_html = ""
             if os.path.exists(x_logo_path):
                 with open(x_logo_path, "rb") as x_img_file:
