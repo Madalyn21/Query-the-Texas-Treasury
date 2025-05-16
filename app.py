@@ -109,13 +109,13 @@ def get_filter_options():
         
         with engine.connect() as connection:
             # Get unique values for each filter using actual column names
-            agency_query = text("SELECT DISTINCT agency_name FROM paymentinformation ORDER BY agency_name")
+            agency_query = text("SELECT DISTINCT agency_number FROM paymentinformation ORDER BY agency_number")
             agencies = [row[0] for row in connection.execute(agency_query)]
             
-            vendor_query = text("SELECT DISTINCT vendor_name FROM paymentinformation ORDER BY vendor_name")
+            vendor_query = text("SELECT DISTINCT vendor_number FROM paymentinformation ORDER BY vendor_number")
             vendors = [row[0] for row in connection.execute(vendor_query)]
             
-            appropriation_query = text("SELECT DISTINCT appropriation_title FROM paymentinformation ORDER BY appropriation_title")
+            appropriation_query = text("SELECT DISTINCT appropriation_number FROM paymentinformation ORDER BY appropriation_number")
             appropriation_titles = [row[0] for row in connection.execute(appropriation_query)]
             
             fiscal_year_query = text("SELECT DISTINCT fiscal_year FROM paymentinformation ORDER BY fiscal_year")
@@ -469,7 +469,7 @@ def main():
             # Agency Filter
             agencies = filter_options.get('agencies', [])
             st.session_state.filters['agency'] = st.selectbox(
-                "Agency Name",
+                "Agency Number",
                 options=['All'] + agencies,
                 index=0
             )
@@ -477,7 +477,7 @@ def main():
             # Vendor Filter
             vendors = filter_options.get('vendors', [])
             st.session_state.filters['vendor'] = st.selectbox(
-                "Vendor Name",
+                "Vendor Number",
                 options=['All'] + vendors,
                 index=0
             )
@@ -485,7 +485,7 @@ def main():
             # Appropriation Title Filter
             appropriation_titles = filter_options.get('appropriation_titles', [])
             st.session_state.filters['appropriation_title'] = st.selectbox(
-                "Appropriation Title",
+                "Appropriation Number",
                 options=['All'] + appropriation_titles,
                 index=0
             )
