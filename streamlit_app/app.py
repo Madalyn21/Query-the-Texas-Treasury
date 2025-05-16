@@ -14,6 +14,7 @@ import psutil
 import platform
 import json
 import sys
+import time
 
 # Additional imports for visualizations
 import numpy as np
@@ -331,6 +332,10 @@ def test_database_connection():
     print("=== End of Database Connection Test ===\n")
 
 def main():
+    # Add loading delay
+    with st.spinner('Loading application...'):
+        time.sleep(1)  # Wait for 1 second
+    
     # Configure security settings
     configure_security()
     
