@@ -778,10 +778,13 @@ def search_vendors(search_term, file_path, limit=15, offset=0):
         matching_vendors = set()
         chunk_size = 1000
         
+        # Determine which column name to use based on the file path
+        column_name = 'Vendor' if 'contract_vendor_list.csv' in file_path else 'Ven_NAME'
+        
         for chunk in pd.read_csv(
             file_path,
             chunksize=chunk_size,
-            usecols=['Ven_NAME'],
+            usecols=[column_name],
             encoding='latin1',
             quoting=3,
             quotechar=None,
@@ -790,7 +793,7 @@ def search_vendors(search_term, file_path, limit=15, offset=0):
         ):
             # Clean and filter vendor names
             cleaned_vendors = (
-                chunk['Ven_NAME']
+                chunk[column_name]
                 .str.replace('"""', '')
                 .str.replace('"', '')
                 .str.strip()
@@ -1018,58 +1021,8 @@ def main():
                 appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
                 selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
                 
-                # Add a searchable vendor selection
-                vendor_search = st.text_input(
-                    "Search Vendors",
-                    help="Type at least 2 characters to search for vendors",
-                    placeholder="Type at least 2 characters to search",
-                    key="vendor_search"
-                )
-                
-                # Initialize vendor state
-                if 'selected_vendor' not in st.session_state:
-                    st.session_state.selected_vendor = None
-                if 'vendor_limit' not in st.session_state:
-                    st.session_state.vendor_limit = 50
-                
-                # Get matching vendors based on search input
-                matching_vendors = search_vendors(
-                    vendor_search, 
-                    filter_options['vendor_file_path'], 
-                    limit=st.session_state.vendor_limit
-                )
-                
-                # Display matching vendors in a selectbox if there are results
-                if matching_vendors:
-                    # Create a container for the vendor selection
-                    vendor_container = st.container()
-                    
-                    with vendor_container:
-                        # Create the selectbox with current vendors
-                        selected_vendor = st.selectbox(
-                            "Select Vendor",
-                            options=[""] + matching_vendors,  # Add empty option at start
-                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
-                            key="vendor_select",
-                            help="Select a vendor from the search results"
-                        )
-                        
-                        # Add "Load More" button if there are enough results
-                        if len(matching_vendors) >= st.session_state.vendor_limit:
-                            if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
-                                # Store current selection before loading more
-                                st.session_state.selected_vendor = selected_vendor
-                                # Increase the limit
-                                st.session_state.vendor_limit += 50
-                                # Force a rerun to update the UI with more vendors
-                                st.experimental_rerun()
-                        
-                        # Update session state with selected vendor
-                        if selected_vendor != st.session_state.selected_vendor:
-                            st.session_state.selected_vendor = selected_vendor
-                
-                # Store the selected vendor in the filters
-                st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
+                # Add vendor file path for payment information
+                vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
             else:
                 # Display Contract Information dropdowns
                 agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
@@ -1078,45 +1031,86 @@ def main():
                 category_options = ["All"] + [category[0] for category in filter_options['categories']]
                 selected_category = st.selectbox("Category", category_options)
                 
-                # Add a searchable vendor selection
-                vendor_search = st.text_input(
-                    "Search Vendors",
-                    help="Type at least 2 characters to search for vendors",
-                    placeholder="Type at least 2 characters to search",
-                    key="vendor_search"
-                )
+                procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
+                selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
                 
-                # Initialize vendor state
-                if 'selected_vendor' not in st.session_state:
-                    st.session_state.selected_vendor = None
+                status_options = ["All"] + [status[0] for status in filter_options['statuses']]
+                selected_status = st.selectbox("Status", status_options)
                 
-                # Get matching vendors based on search input
-                matching_vendors = search_vendors(
-                    vendor_search, 
-                    filter_options['vendor_file_path'], 
-                    limit=50  # Show more results at once
-                )
+                subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
+                selected_subject = st.selectbox("Subject", subject_options)
                 
-                # Display matching vendors in a selectbox if there are results
-                if matching_vendors:
-                    # Create a container for the vendor selection
-                    vendor_container = st.container()
+                # Add vendor file path for contract information
+                vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
+            
+            # Add a searchable vendor selection
+            # Initialize debounce state
+            if 'last_search_time' not in st.session_state:
+                st.session_state.last_search_time = time.time()
+            if 'search_term' not in st.session_state:
+                st.session_state.search_term = ""
+            
+            # Get the current search input
+            current_search = st.text_input(
+                "Search Vendors",
+                help="Type at least 2 characters to search for vendors",
+                placeholder="Type at least 2 characters to search",
+                key="vendor_search"
+            )
+            
+            # Check if we should update the search
+            current_time = time.time()
+            if (current_search != st.session_state.search_term and 
+                len(current_search) >= 2 and 
+                current_time - st.session_state.last_search_time > 0.3):  # 300ms debounce
+                st.session_state.search_term = current_search
+                st.session_state.last_search_time = current_time
+                st.experimental_rerun()
+            
+            # Initialize vendor state
+            if 'selected_vendor' not in st.session_state:
+                st.session_state.selected_vendor = None
+            if 'vendor_limit' not in st.session_state:
+                st.session_state.vendor_limit = 50
+            
+            # Get matching vendors based on search input
+            matching_vendors = search_vendors(
+                st.session_state.search_term, 
+                vendor_file_path, 
+                limit=st.session_state.vendor_limit
+            )
+            
+            # Display matching vendors in a selectbox if there are results
+            if matching_vendors:
+                # Create a container for the vendor selection
+                vendor_container = st.container()
+                
+                with vendor_container:
+                    # Create the selectbox with current vendors
+                    selected_vendor = st.selectbox(
+                        "Select Vendor",
+                        options=[""] + matching_vendors,  # Add empty option at start
+                        index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                        key="vendor_select",
+                        help="Select a vendor from the search results"
+                    )
                     
-                    with vendor_container:
-                        # Create the selectbox with current vendors
-                        selected_vendor = st.selectbox(
-                            "Select Vendor",
-                            options=[""] + matching_vendors,  # Add empty option at start
-                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
-                            key="vendor_select",
-                            help="Select a vendor from the search results"
-                        )
-                        
-                        # Update session state with selected vendor
+                    # Add "Load More" button if there are enough results
+                    if len(matching_vendors) >= st.session_state.vendor_limit:
+                        if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
+                            # Store current selection before loading more
+                            st.session_state.selected_vendor = selected_vendor
+                            # Increase the limit
+                            st.session_state.vendor_limit += 50
+                            # Force a rerun to update the UI with more vendors
+                            st.experimental_rerun()
+                    
+                    # Update session state with selected vendor
+                    if selected_vendor != st.session_state.selected_vendor:
                         st.session_state.selected_vendor = selected_vendor
-                
-                # Store the selected vendor in the filters
-                st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
+            
+            # Store the selected vendor in the filters
+            st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
 
         with col2:
             # Create a fixed position container for query actions
