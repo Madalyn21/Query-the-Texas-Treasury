@@ -560,31 +560,64 @@ def load_filter_options(table_choice):
                             chunk_size = 1000  # Smaller chunk size
                             total_chunks = 0
                             
-                            # Read with specific encoding and quote handling
-                            for chunk in pd.read_csv(
-                                file_path,
-                                chunksize=chunk_size,
-                                usecols=['Ven_NAME'],
-                                encoding='utf-8',
-                                quoting=1,  # QUOTE_ALL
-                                quotechar='"',
-                                escapechar='\\'
-                            ):
-                                # Clean the vendor names
-                                cleaned_vendors = chunk['Ven_NAME'].str.replace('"', '').str.strip()
-                                unique_vendors.update(cleaned_vendors.dropna().unique())
-                                total_chunks += 1
-                                logger.info(f"Processed chunk {total_chunks} of vendor file")
-                            
-                            # Convert set to DataFrame
-                            data_dict[file_path] = pd.DataFrame({'Ven_NAME': list(unique_vendors)})
-                            logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                            try:
+                                # Read with specific encoding and quote handling
+                                for chunk in pd.read_csv(
+                                    file_path,
+                                    chunksize=chunk_size,
+                                    usecols=['Ven_NAME'],
+                                    encoding='latin1',  # Use latin1 which can handle all byte values
+                                    quoting=3,  # QUOTE_NONE
+                                    quotechar=None,
+                                    escapechar='\\',
+                                    on_bad_lines='skip'  # Skip problematic lines
+                                ):
+                                    # Clean the vendor names
+                                    cleaned_vendors = (
+                                        chunk['Ven_NAME']
+                                        .str.replace('"""', '')  # Remove triple quotes
+                                        .str.replace('"', '')    # Remove double quotes
+                                        .str.strip()             # Remove whitespace
+                                    )
+                                    unique_vendors.update(cleaned_vendors.dropna().unique())
+                                    total_chunks += 1
+                                    logger.info(f"Processed chunk {total_chunks} of vendor file")
+                                
+                                # Convert set to DataFrame
+                                data_dict[file_path] = pd.DataFrame({'Ven_NAME': list(unique_vendors)})
+                                logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                            except Exception as e:
+                                import traceback
+                                error_details = traceback.format_exc()
+                                logger.error(f"Detailed error loading {file_path}:\n{error_details}")
+                                st.error(f"""
+                                Error loading {file_path}:
+                                Error type: {type(e).__name__}
+                                Error message: {str(e)}
+                                
+                                Please check:
+                                1. File exists at: {os.path.abspath(file_path)}
+                                2. File is readable
+                                3. File has correct format
+                                """)
+                                data_dict[file_path] = pd.DataFrame()
                         else:
                             data_dict[file_path] = load_csv_data(file_path)
                         progress_bar.progress((i + 1) / len(file_paths))
                     except Exception as e:
-                        logger.error(f"Error loading {file_path}: {str(e)}", exc_info=True)
-                        st.error(f"Error loading {file_path}. Using empty data.")
+                        import traceback
+                        error_details = traceback.format_exc()
+                        logger.error(f"Detailed error loading {file_path}:\n{error_details}")
+                        st.error(f"""
+                        Error loading {file_path}:
+                        Error type: {type(e).__name__}
+                        Error message: {str(e)}
+                        
+                        Please check:
+                        1. File exists at: {os.path.abspath(file_path)}
+                        2. File is readable
+                        3. File has correct format
+                        """)
                         data_dict[file_path] = pd.DataFrame()
                 
                 # Process the data with error handling
@@ -655,31 +688,62 @@ def load_filter_options(table_choice):
                             chunk_size = 1000  # Smaller chunk size
                             total_chunks = 0
                             
-                            # Read with specific encoding and quote handling
-                            for chunk in pd.read_csv(
-                                file_path,
-                                chunksize=chunk_size,
-                                usecols=['Vendor'],
-                                encoding='utf-8',
-                                quoting=1,  # QUOTE_ALL
-                                quotechar='"',
-                                escapechar='\\'
-                            ):
-                                # Clean the vendor names
-                                cleaned_vendors = chunk['Vendor'].str.replace('"', '').str.strip()
-                                unique_vendors.update(cleaned_vendors.dropna().unique())
-                                total_chunks += 1
-                                logger.info(f"Processed chunk {total_chunks} of vendor file")
-                            
-                            # Convert set to DataFrame
-                            data_dict[file_path] = pd.DataFrame({'Vendor': list(unique_vendors)})
-                            logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                            try:
+                                # First try to read the file header to check structure
+                                header_df = pd.read_csv(file_path, nrows=0)
+                                logger.info(f"File header columns: {header_df.columns.tolist()}")
+                                
+                                # Read with specific encoding and quote handling
+                                for chunk in pd.read_csv(
+                                    file_path,
+                                    chunksize=chunk_size,
+                                    usecols=['Vendor'],
+                                    encoding='utf-8',
+                                    quoting=1,  # QUOTE_ALL
+                                    quotechar='"',
+                                    escapechar='\\'
+                                ):
+                                    # Clean the vendor names
+                                    cleaned_vendors = chunk['Vendor'].str.replace('"', '').str.strip()
+                                    unique_vendors.update(cleaned_vendors.dropna().unique())
+                                    total_chunks += 1
+                                    logger.info(f"Processed chunk {total_chunks} of vendor file")
+                                
+                                # Convert set to DataFrame
+                                data_dict[file_path] = pd.DataFrame({'Vendor': list(unique_vendors)})
+                                logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                            except Exception as e:
+                                import traceback
+                                error_details = traceback.format_exc()
+                                logger.error(f"Detailed error loading {file_path}:\n{error_details}")
+                                st.error(f"""
+                                Error loading {file_path}:
+                                Error type: {type(e).__name__}
+                                Error message: {str(e)}
+                                
+                                Please check:
+                                1. File exists at: {os.path.abspath(file_path)}
+                                2. File is readable
+                                3. File has correct format
+                                """)
+                                data_dict[file_path] = pd.DataFrame()
                         else:
                             data_dict[file_path] = load_csv_data(file_path)
                         progress_bar.progress((i + 1) / len(file_paths))
                     except Exception as e:
-                        logger.error(f"Error loading {file_path}: {str(e)}", exc_info=True)
-                        st.error(f"Error loading {file_path}. Using empty data.")
+                        import traceback
+                        error_details = traceback.format_exc()
+                        logger.error(f"Detailed error loading {file_path}:\n{error_details}")
+                        st.error(f"""
+                        Error loading {file_path}:
+                        Error type: {type(e).__name__}
+                        Error message: {str(e)}
+                        
+                        Please check:
+                        1. File exists at: {os.path.abspath(file_path)}
+                        2. File is readable
+                        3. File has correct format
+                        """)
                         data_dict[file_path] = pd.DataFrame()
                 
                 # Process the data with error handling
@@ -733,8 +797,16 @@ def load_filter_options(table_choice):
                 return result
                 
     except Exception as e:
-        logger.error(f"Error loading filter options: {str(e)}", exc_info=True)
-        st.error(f"Error loading filter options: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Detailed error in load_filter_options:\n{error_details}")
+        st.error(f"""
+        Error loading filter options:
+        Error type: {type(e).__name__}
+        Error message: {str(e)}
+        
+        Full error details have been logged.
+        """)
         return None
 
 from visualization_utils import generate_all_visualizations
