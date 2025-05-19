@@ -1065,7 +1065,7 @@ def main():
                 current_time - st.session_state.last_search_time > 0.3):  # 300ms debounce
                 st.session_state.search_term = current_search
                 st.session_state.last_search_time = current_time
-                st.experimental_rerun()
+                st.rerun()
             
             # Initialize vendor state
             if 'selected_vendor' not in st.session_state:
@@ -1103,7 +1103,7 @@ def main():
                             # Increase the limit
                             st.session_state.vendor_limit += 50
                             # Force a rerun to update the UI with more vendors
-                            st.experimental_rerun()
+                            st.rerun()
                     
                     # Update session state with selected vendor
                     if selected_vendor != st.session_state.selected_vendor:
