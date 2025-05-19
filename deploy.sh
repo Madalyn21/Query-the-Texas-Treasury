@@ -42,7 +42,17 @@ check_environment() {
     fi
     
     # Check if .env file has required variables
-    required_vars=("API_URL" "STREAMLIT_SERVER_PORT" "STREAMLIT_SERVER_ADDRESS")
+    required_vars=(
+        "API_URL" 
+        "API_KEY" 
+        "STREAMLIT_SERVER_PORT" 
+        "STREAMLIT_SERVER_ADDRESS"
+        "DB_HOST"
+        "DB_PORT"
+        "DB_NAME"
+        "DB_USER"
+        "DB_PASSWORD"
+    )
     for var in "${required_vars[@]}"; do
         if ! grep -q "^$var=" .env; then
             print_error "Required variable $var not found in .env file"

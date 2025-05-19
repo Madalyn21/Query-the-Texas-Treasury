@@ -4,7 +4,14 @@
 
 ### Environment Setup
 - [ ] Create production `.env` file with all required variables
-- [ ] Set up proper API credentials and keys
+- [ ] Set up proper API credentials and keys:
+  ```bash
+  # Required environment variables
+  API_URL=<your-api-url>
+  API_KEY=<your-api-key>
+  STREAMLIT_SERVER_PORT=8501
+  STREAMLIT_SERVER_ADDRESS=0.0.0.0
+  ```
 - [ ] Configure production API URL
 - [ ] Enable all security features in production environment
 

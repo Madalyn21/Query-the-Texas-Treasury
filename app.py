@@ -1,21 +1,26 @@
-# dashboard.py
-import streamlit as st
-import requests
-import pandas as pd
+# Standard library imports
 import io
-import zipfile
-from PIL import Image
-import os
-from dotenv import load_dotenv
-from logger_config import get_logger
-import secrets
-from datetime import timedelta
-import psutil
-import platform
 import json
+import os
+import platform
+import secrets
 import sys
 import time
+import zipfile
+from datetime import timedelta
+
+# Third-party imports
+import pandas as pd
+import psutil
+import requests
+import streamlit as st
+from dotenv import load_dotenv
+from PIL import Image
 from sqlalchemy import text
+
+# Local imports
+from logger_config import get_logger
+from query_utils import get_filtered_data
 
 # Additional imports for visualizations
 import numpy as np
@@ -102,7 +107,10 @@ def secure_request(url, method='GET', **kwargs):
         
         # Add API key if available
         api_key = os.getenv('API_KEY')
-        if api_key:
+        if not api_key:
+            logger.warning("API_KEY not found in environment variables. API requests may fail.")
+            st.warning("API authentication not configured. Some features may be limited.")
+        else:
             headers['Authorization'] = f'Bearer {api_key}'
         
         # Set timeout and verify SSL
@@ -115,6 +123,12 @@ def secure_request(url, method='GET', **kwargs):
         return response
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {str(e)}", exc_info=True)
+        if "401" in str(e):
+            st.error("Authentication failed. Please check API credentials.")
+        elif "403" in str(e):
+            st.error("Access denied. Please check API permissions.")
+        else:
+            st.error(f"Request failed: {str(e)}")
         raise
 
 # Get API URL from environment variable with fallback
@@ -608,6 +622,8 @@ def load_filter_options(table_choice):
         st.error(f"Error loading filter options: {str(e)}")
         return None
 
+from visualization_utils import generate_all_visualizations
+
 def main():
     # Initialize session state at the start
     initialize_session_state()
@@ -894,13 +910,14 @@ def main():
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get filtered data with table choice
-            data = get_filtered_data(filter_payload, table_choice)
+            # Get database connection
+            from db_config import get_db_connection
+            engine = get_db_connection()
             
-            if data:
-                df = pd.DataFrame(data)
-                # Sanitize column names
-                df.columns = [validate_input(col) for col in df.columns]
+            # Get filtered data using the new query utilities
+            df = get_filtered_data(filter_payload, table_choice, engine)
+            
+            if not df.empty:
                 st.session_state['df'] = df
                 logger.info(f"Retrieved {len(df)} records")
                 
@@ -924,31 +941,46 @@ def main():
                     help="Click to download the queried data as a ZIP file"
                 )
                 
-            elif isinstance(data, list) and not data:
+            else:
                 logger.info("No data returned from query")
                 st.info("No data returned.")
-            else:
-                logger.warning(f"Unexpected data type returned: {type(data)}")
-                st.write(data)
+                
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}", exc_info=True)
-            st.error(f"Error calling API: {e}")
+            st.error(f"Error retrieving data: {str(e)}")
 
     # Add visualization section
     logger.info("Adding visualization section")
     st.markdown("---")  # Add a separator
     st.header("Visualizations")
     
-    # Create two columns for visualizations
-    viz_col1, viz_col2 = st.columns(2)
-    
-    with viz_col1:
-        st.subheader("Payment Distribution")
-        st.info("Payment distribution visualization will be added here after query is submitted")
-        
-    with viz_col2:
-        st.subheader("Trend Analysis")
-        st.info("Trend analysis visualization will be added here after query is submitted")
+    if 'df' in st.session_state and not st.session_state['df'].empty:
+        try:
+            # Generate all visualizations
+            visualizations = generate_all_visualizations(st.session_state['df'])
+            
+            # Create two columns for visualizations
+            viz_col1, viz_col2 = st.columns(2)
+            
+            with viz_col1:
+                st.subheader("Payment Distribution")
+                st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                
+                st.subheader("Top Vendors")
+                st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                
+            with viz_col2:
+                st.subheader("Trend Analysis")
+                st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                
+                st.subheader("Category Distribution")
+                st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                
+        except Exception as e:
+            logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
+            st.error("Error generating visualizations. Please check the data format.")
+    else:
+        st.info("Submit a query to see visualizations of the data.")
 
     # Add AI Analysis section
     logger.info("Adding AI Analysis section")

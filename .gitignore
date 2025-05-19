@@ -11,7 +11,25 @@ logs/
 .env
 venv/
 myenv/
+.venv/
+venv311/
+testenv/
 
 # IDE
 .vscode/
 .idea/
+
+# Development
+.devcontainer/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
