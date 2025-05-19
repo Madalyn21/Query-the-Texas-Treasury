@@ -620,15 +620,25 @@ def load_filter_options(table_choice):
                 
                 # Process the data with error handling
                 try:
-                    agencies = process_dropdown_data(data_dict[file_paths[0]], 'Agency')
+                    agency_df = pd.read_csv('Dropdown_Menu/contract_agency_list.csv')
+                    logger.info(f"Found columns in contract_agency_list.csv: {agency_df.columns.tolist()}")
+                    if 'Agency' not in agency_df.columns:
+                        raise Exception(f"Column 'Agency' not found. Available columns: {agency_df.columns.tolist()}")
+                    agencies = [(str(row['Agency']), str(row['Agency'])) for _, row in agency_df.iterrows()]
+                    agencies.sort(key=lambda x: x[0])
                 except Exception as e:
-                    logger.error(f"Error processing agencies: {str(e)}")
+                    logger.error(f"Error loading agency data: {str(e)}", exc_info=True)
                     agencies = []
                 
                 try:
-                    categories = process_dropdown_data(data_dict[file_paths[1]], 'Category')
+                    category_df = pd.read_csv('Dropdown_Menu/contract_category_list.csv')
+                    logger.info(f"Found columns in contract_category_list.csv: {category_df.columns.tolist()}")
+                    if 'Category' not in category_df.columns:
+                        raise Exception(f"Column 'Category' not found. Available columns: {category_df.columns.tolist()}")
+                    categories = [(str(row['Category']), str(row['Category'])) for _, row in category_df.iterrows()]
+                    categories.sort(key=lambda x: x[0])
                 except Exception as e:
-                    logger.error(f"Error processing categories: {str(e)}")
+                    logger.error(f"Error loading category data: {str(e)}", exc_info=True)
                     categories = []
                 
                 try:
@@ -843,55 +853,30 @@ def main():
             # Add fiscal year and month sliders
             st.subheader("Fiscal Year and Month")
             
-            # Fiscal Year Slider
+            # Load fiscal years
             try:
-                logger.info("Attempting to load fiscal years from Dropdown_Menu/fiscal_years_both.csv")
-                fiscal_years_df = load_csv_data('Dropdown_Menu/fiscal_years_both.csv')
-                
-                # Log the columns we found
+                fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
                 logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
-                
-                # Get fiscal years - using the same column for both payment and contract information
                 if 'fiscal_year' not in fiscal_years_df.columns:
-                    logger.error(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                    st.error(f"Column 'fiscal_year' not found in the data. Available columns: {fiscal_years_df.columns.tolist()}")
-                    selected_fiscal_year = (2021, 2023)  # Default range
-                else:
-                    try:
-                        fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
-                        logger.info(f"Found fiscal years: {fiscal_years}")
-                        
-                        if not fiscal_years:
-                            logger.warning("No fiscal years found in the data")
-                            st.warning("No fiscal years found in the data")
-                            selected_fiscal_year = (2021, 2023)  # Default range
-                        else:
-                            min_year = min(fiscal_years)
-                            max_year = max(fiscal_years)
-                            logger.info(f"Setting fiscal year range from {min_year} to {max_year}")
-                            
-                            selected_fiscal_year = st.slider(
-                                "Fiscal Year",
-                                min_value=min_year,
-                                max_value=max_year,
-                                value=(min_year, max_year),
-                                help="Select a range of fiscal years"
-                            )
-                    except ValueError as e:
-                        logger.error(f"Error converting fiscal years to integers: {str(e)}")
-                        st.error("Error processing fiscal years. Please check the data format.")
-                        selected_fiscal_year = (2021, 2023)  # Default range
+                    raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+                fiscal_years = fiscal_years_df['fiscal_year'].tolist()
+                fiscal_years.sort(reverse=True)
+            except Exception as e:
+                logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
+                fiscal_years = []
+            
+            # Fiscal Year Slider
+            if fiscal_years:
+                selected_fiscal_year = st.select_slider(
+                    "Fiscal Year",
+                    options=fiscal_years,
+                    value=(fiscal_years[-1], fiscal_years[0]),
+                    help="Select a range of fiscal years"
+                )
                 
                 # Store the selected fiscal year range
                 st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
                 st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
-                
-            except Exception as e:
-                error_msg = f"Error loading fiscal years: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                st.error(error_msg)
-                st.info("Please check that the file 'Dropdown_Menu/fiscal_years_both.csv' exists and contains the column 'fiscal_year'")
-                selected_fiscal_year = (2021, 2023)  # Default range
             
             # Fiscal Month Slider with month names
             month_names = [
