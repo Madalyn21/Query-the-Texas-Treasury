@@ -27,7 +27,7 @@ from sqlalchemy import text
 
 # Local imports
 from logger_config import get_logger
-from query_utils import get_filtered_data
+from query_utils import get_filtered_data, check_table_accessibility
 from db_config import get_db_connection
 
 # Additional imports for visualizations
@@ -368,34 +368,56 @@ def test_database_connection():
     """Test database connection and display data"""
     print(f"\n=== Database Connection Test - Version {APP_VERSION} ===")
     print("Attempting to connect to database...")
+    
     try:
         from db_config import get_db_connection
+        from query_utils import check_table_accessibility
+        
         engine = get_db_connection()
         print("Database connection established successfully!")
         
-        # Test query
+        # Test basic connection
         query = "SELECT current_timestamp;"
         print(f"Executing test query: {query}")
         with engine.connect() as connection:
             result = connection.execute(text(query))
             timestamp = result.scalar()
-            print(f"Query successful! Current timestamp: {timestamp}")
             st.success(f"Database connection successful! Current timestamp: {timestamp}")
-            
-            # Get and display table columns
-            table_columns = get_table_columns()
-            st.subheader("Database Table Structure")
-            for table, columns in table_columns.items():
-                st.write(f"**{table}**")
-                df = pd.DataFrame(columns, columns=['Column Name', 'Data Type'])
-                st.dataframe(df)
+        
+        # Check table accessibility
+        st.subheader("Database Table Structure")
+        accessibility = check_table_accessibility(engine)
+        
+        # Display table status
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if accessibility['paymentinformation']:
+                st.success("✅ Payment Information table is accessible")
+            else:
+                st.error("❌ Payment Information table is not accessible")
+                
+        with col2:
+            if accessibility['contractinfo']:
+                st.success("✅ Contract Information table is accessible")
+            else:
+                st.error("❌ Contract Information table is not accessible")
+        
+        # Display overall status
+        if accessibility['paymentinformation'] and accessibility['contractinfo']:
+            st.success("Both tables are accessible and ready for queries")
+        elif accessibility['paymentinformation']:
+            st.warning("Only Payment Information table is accessible")
+        elif accessibility['contractinfo']:
+            st.warning("Only Contract Information table is accessible")
+        else:
+            st.error("Neither table is accessible. Please check database configuration.")
             
     except Exception as e:
         error_msg = f"Database connection failed: {str(e)}"
-        print(f"ERROR: {error_msg}")
         st.error(error_msg)
         logger.error(f"Database connection error: {str(e)}", exc_info=True)
-    print("=== End of Database Connection Test ===\n")
+        print("=== End of Database Connection Test ===\n")
 
 def download_csv(df):
     """Convert DataFrame to CSV and create download button"""

@@ -87,42 +87,72 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
         engine: SQLAlchemy engine instance
         
     Returns:
-        Dict[str, bool]: Dictionary with table names as keys and accessibility status as values
+        Dict[str, bool]: Dictionary indicating which tables are accessible
     """
-    logger.info("Checking table accessibility")
-    tables = {
+    accessibility = {
         'paymentinformation': False,
         'contractinfo': False
     }
     
     try:
         with engine.connect() as connection:
-            for table in tables.keys():
-                # Check if table exists
-                check_table = text(f"""
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_name = '{table}'
-                    );
-                """)
-                table_exists = connection.execute(check_table).scalar()
-                
-                if table_exists:
-                    # Check if we can query the table
-                    try:
-                        test_query = text(f"SELECT 1 FROM {table} LIMIT 1")
-                        connection.execute(test_query).scalar()
-                        tables[table] = True
-                        logger.info(f"Table {table} is accessible")
-                    except Exception as e:
-                        logger.error(f"Table {table} exists but is not accessible: {str(e)}")
-                else:
-                    logger.error(f"Table {table} does not exist")
-    
+            # Check paymentinformation table
+            check_payment = text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'paymentinformation'
+                );
+            """)
+            payment_exists = connection.execute(check_payment).scalar()
+            
+            if payment_exists:
+                # Try to execute a simple query on paymentinformation
+                test_payment = text("SELECT COUNT(*) FROM paymentinformation LIMIT 1")
+                try:
+                    payment_count = connection.execute(test_payment).scalar()
+                    logger.info(f"Payment Information table is accessible. Sample count: {payment_count}")
+                    accessibility['paymentinformation'] = True
+                except Exception as e:
+                    logger.error(f"Payment Information table exists but is not accessible: {str(e)}")
+            else:
+                logger.warning("Payment Information table does not exist")
+            
+            # Check contractinfo table
+            check_contract = text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'contractinfo'
+                );
+            """)
+            contract_exists = connection.execute(check_contract).scalar()
+            
+            if contract_exists:
+                # Try to execute a simple query on contractinfo
+                test_contract = text("SELECT COUNT(*) FROM contractinfo LIMIT 1")
+                try:
+                    contract_count = connection.execute(test_contract).scalar()
+                    logger.info(f"Contract Information table is accessible. Sample count: {contract_count}")
+                    accessibility['contractinfo'] = True
+                except Exception as e:
+                    logger.error(f"Contract Information table exists but is not accessible: {str(e)}")
+            else:
+                logger.warning("Contract Information table does not exist")
+            
+            # Log overall status
+            if accessibility['paymentinformation'] and accessibility['contractinfo']:
+                logger.info("Both tables are accessible")
+            elif accessibility['paymentinformation']:
+                logger.info("Only Payment Information table is accessible")
+            elif accessibility['contractinfo']:
+                logger.info("Only Contract Information table is accessible")
+            else:
+                logger.error("Neither table is accessible")
+            
+            return accessibility
+            
     except Exception as e:
         logger.error(f"Error checking table accessibility: {str(e)}")
-    
-    return tables
+        return accessibility
 
 def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     """
