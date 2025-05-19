@@ -19,14 +19,18 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     logger.info(f"Building base query for {table_choice}")
     
     # Determine which table to query based on selection
-    main_table = "paymentinformation" if table_choice == "Payment Information" else "contractinfo"
-    
-    # Build the base query
-    query = text(f"""
-        SELECT p.*
-        FROM {main_table} p
-        WHERE 1=1
-    """)
+    if table_choice == "Payment Information":
+        query = text("""
+            SELECT p.*
+            FROM paymentinformation p
+            WHERE 1=1
+        """)
+    else:  # Contract Information
+        query = text("""
+            SELECT c.*
+            FROM contractinfo c
+            WHERE 1=1
+        """)
     
     return query, {}
 
