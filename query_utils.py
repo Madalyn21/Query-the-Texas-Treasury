@@ -103,6 +103,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
         with engine.connect() as connection:
             # First, let's check if the table exists
             table_name = "paymentinformation" if "paymentinformation" in str(query).lower() else "contractinfo"
+            logger.info(f"Checking for table: {table_name}")
+            
             check_table = text(f"""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
@@ -118,11 +120,12 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             
             # Let's also check the columns
             columns_query = text(f"""
-                SELECT column_name 
+                SELECT column_name, data_type 
                 FROM information_schema.columns 
-                WHERE table_name = '{table_name}';
+                WHERE table_name = '{table_name}'
+                ORDER BY ordinal_position;
             """)
-            columns = [row[0] for row in connection.execute(columns_query)]
+            columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
             # Let's check if we have any data for the agency
@@ -133,8 +136,28 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     FROM {table_name} 
                     WHERE agency_title = :agency
                 """)
-                agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
-                logger.info(f"Found {agency_count} records for exact agency match: {params['agency']}")
+                try:
+                    agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
+                    logger.info(f"Found {agency_count} records for exact agency match: {params['agency']}")
+                except Exception as e:
+                    logger.error(f"Error checking exact agency match: {str(e)}")
+                    # Try with different column names
+                    for col in ['agency', 'agency_name', 'agency_title', 'agency_number']:
+                        try:
+                            agency_check = text(f"""
+                                SELECT COUNT(*) 
+                                FROM {table_name} 
+                                WHERE {col} = :agency
+                            """)
+                            agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
+                            logger.info(f"Found {agency_count} records for agency match using column {col}: {params['agency']}")
+                            if agency_count > 0:
+                                # Update the query to use this column
+                                query = text(str(query).replace('agency_title', col))
+                                logger.info(f"Updated query to use column {col}")
+                                break
+                        except Exception as e:
+                            logger.error(f"Error checking agency match with column {col}: {str(e)}")
                 
                 # Then check case-insensitive match
                 agency_check_ci = text(f"""
@@ -142,8 +165,11 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     FROM {table_name} 
                     WHERE LOWER(agency_title) = LOWER(:agency)
                 """)
-                agency_count_ci = connection.execute(agency_check_ci, {'agency': params['agency']}).scalar()
-                logger.info(f"Found {agency_count_ci} records for case-insensitive agency match: {params['agency']}")
+                try:
+                    agency_count_ci = connection.execute(agency_check_ci, {'agency': params['agency']}).scalar()
+                    logger.info(f"Found {agency_count_ci} records for case-insensitive agency match: {params['agency']}")
+                except Exception as e:
+                    logger.error(f"Error checking case-insensitive agency match: {str(e)}")
                 
                 # If no matches, let's see what agencies are similar
                 if agency_count_ci == 0:
@@ -153,8 +179,11 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                         WHERE agency_title ILIKE :agency_pattern
                         LIMIT 5
                     """)
-                    similar = connection.execute(similar_agencies, {'agency_pattern': f'%{params["agency"]}%'}).fetchall()
-                    logger.info(f"Similar agencies found: {[row[0] for row in similar]}")
+                    try:
+                        similar = connection.execute(similar_agencies, {'agency_pattern': f'%{params["agency"]}%'}).fetchall()
+                        logger.info(f"Similar agencies found: {[row[0] for row in similar]}")
+                    except Exception as e:
+                        logger.error(f"Error finding similar agencies: {str(e)}")
             
             # Check if we have any data for the fiscal year
             if params.get('fiscal_year'):
@@ -163,38 +192,56 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     FROM {table_name} 
                     WHERE fiscal_year = :fiscal_year
                 """)
-                year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
-                logger.info(f"Found {year_count} records for fiscal year: {params['fiscal_year']}")
+                try:
+                    year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
+                    logger.info(f"Found {year_count} records for fiscal year: {params['fiscal_year']}")
+                except Exception as e:
+                    logger.error(f"Error checking fiscal year: {str(e)}")
+                    # Try with different column names
+                    for col in ['fiscal_year', 'year', 'payment_year', 'contract_year']:
+                        try:
+                            year_check = text(f"""
+                                SELECT COUNT(*) 
+                                FROM {table_name} 
+                                WHERE {col} = :fiscal_year
+                            """)
+                            year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
+                            logger.info(f"Found {year_count} records for fiscal year using column {col}: {params['fiscal_year']}")
+                            if year_count > 0:
+                                # Update the query to use this column
+                                query = text(str(query).replace('fiscal_year', col))
+                                logger.info(f"Updated query to use column {col}")
+                                break
+                        except Exception as e:
+                            logger.error(f"Error checking fiscal year with column {col}: {str(e)}")
             
+            # Now execute the main query with chunking
             while True:
-                # Add LIMIT and OFFSET to the query
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
                 logger.info(f"Executing chunk query: {str(chunk_query)}")
+                logger.info(f"Chunk parameters: {params}")
                 
-                result = connection.execute(chunk_query, params)
-                chunk_data = [dict(row) for row in result]
-                
-                logger.info(f"Chunk returned {len(chunk_data)} records")
-                
-                if not chunk_data:
-                    break
+                try:
+                    chunk_data = connection.execute(chunk_query, params).fetchall()
+                    if not chunk_data:
+                        break
                     
-                all_data.extend(chunk_data)
-                offset += chunk_size
-                
-                # Log progress
-                logger.info(f"Retrieved {len(all_data)} records so far")
-                
-                # If we got less than chunk_size records, we've reached the end
-                if len(chunk_data) < chunk_size:
+                    # Convert to list of dicts
+                    chunk_dicts = [dict(row) for row in chunk_data]
+                    all_data.extend(chunk_dicts)
+                    logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
+                    
+                    offset += chunk_size
+                except Exception as e:
+                    logger.error(f"Error executing chunk query: {str(e)}")
                     break
             
-            logger.info(f"Total records retrieved: {len(all_data)}")
+            logger.info(f"Query execution returned {len(all_data)} records")
             return all_data
             
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}", exc_info=True)
-        raise
+        return []
 
 def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     """
