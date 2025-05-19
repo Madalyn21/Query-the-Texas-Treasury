@@ -739,23 +739,34 @@ def main():
             
             # Get fiscal years - using the same column for both payment and contract information
             if 'fiscal_year' not in fiscal_years_df.columns:
-                raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-            
-            fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
-            
-            if not fiscal_years:
-                raise Exception("No fiscal years found in the data")
-            
-            min_year = min(fiscal_years)
-            max_year = max(fiscal_years)
-            
-            selected_fiscal_year = st.slider(
-                "Fiscal Year",
-                min_value=min_year,
-                max_value=max_year,
-                value=(min_year, max_year),
-                help="Select a range of fiscal years"
-            )
+                logger.error(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+                st.error(f"Column 'fiscal_year' not found in the data. Available columns: {fiscal_years_df.columns.tolist()}")
+                selected_fiscal_year = (2021, 2023)  # Default range
+            else:
+                try:
+                    fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
+                    logger.info(f"Found fiscal years: {fiscal_years}")
+                    
+                    if not fiscal_years:
+                        logger.warning("No fiscal years found in the data")
+                        st.warning("No fiscal years found in the data")
+                        selected_fiscal_year = (2021, 2023)  # Default range
+                    else:
+                        min_year = min(fiscal_years)
+                        max_year = max(fiscal_years)
+                        logger.info(f"Setting fiscal year range from {min_year} to {max_year}")
+                        
+                        selected_fiscal_year = st.slider(
+                            "Fiscal Year",
+                            min_value=min_year,
+                            max_value=max_year,
+                            value=(min_year, max_year),
+                            help="Select a range of fiscal years"
+                        )
+                except ValueError as e:
+                    logger.error(f"Error converting fiscal years to integers: {str(e)}")
+                    st.error("Error processing fiscal years. Please check the data format.")
+                    selected_fiscal_year = (2021, 2023)  # Default range
             
             # Store the selected fiscal year range
             st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
