@@ -28,6 +28,7 @@ from sqlalchemy import text
 # Local imports
 from logger_config import get_logger
 from query_utils import get_filtered_data
+from db_config import get_db_connection
 
 # Additional imports for visualizations
 import numpy as np
@@ -158,7 +159,6 @@ def get_filter_options():
     """Get filter options from database"""
     logger.info("Starting to retrieve filter options")
     try:
-        from db_config import get_db_connection
         logger.info("Getting database connection")
         engine = get_db_connection()
         
@@ -260,8 +260,9 @@ def get_filtered_data(filters, table_choice):
         from db_config import get_db_connection
         engine = get_db_connection()
         
-        # Get filtered data using the new query utilities
-        df = get_filtered_data(filter_payload, table_choice)
+        # Get filtered data using the query utilities
+        from query_utils import get_filtered_data as query_utils_get_filtered_data
+        df = query_utils_get_filtered_data(filters, table_choice)
         
         if not df.empty:
             logger.info(f"Retrieved {len(df)} records")
@@ -1129,7 +1130,10 @@ def main():
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get filtered data using the new query utilities
+            # Get database connection
+            engine = get_db_connection()
+            
+            # Get filtered data using the query utilities
             df = get_filtered_data(filter_payload, table_choice)
             
             if not df.empty:
@@ -1155,7 +1159,6 @@ def main():
                     mime="application/zip",
                     help="Click to download the queried data as a ZIP file"
                 )
-                
             else:
                 logger.info("No data returned from query")
                 st.info("No data returned.")
