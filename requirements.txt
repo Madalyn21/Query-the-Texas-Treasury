@@ -8,24 +8,16 @@ python-dotenv
 python-json-logger
 psutil
 pillow
-networkx
 
 # Database Dependencies
 psycopg2-binary
 sqlalchemy
 
-# Development Dependencies
-ipython
-ipykernel
-jupyter
-
 # Visualization Dependencies
 matplotlib
 plotly
-pydeck
 
 # Utility Dependencies
 python-dateutil
-pytz
 certifi
 urllib3
