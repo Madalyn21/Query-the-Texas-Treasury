@@ -8,6 +8,8 @@ python-dotenv
 python-json-logger
 psutil
 pillow
+pytz
+backports.zoneinfo
 
 # Database Dependencies
 psycopg2-binary
