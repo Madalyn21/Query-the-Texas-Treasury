@@ -253,29 +253,6 @@ def get_filter_options():
             'fiscal_years': []
         }
 
-def get_filtered_data(filters, table_choice):
-    """Get filtered data from database"""
-    logger.info(f"Filtering data with filters: {filters} from table: {table_choice}")
-    try:
-        from db_config import get_db_connection
-        engine = get_db_connection()
-        
-        # Get filtered data using the query utilities
-        from query_utils import get_filtered_data as query_utils_get_filtered_data
-        df = query_utils_get_filtered_data(filters, table_choice)
-        
-        if not df.empty:
-            logger.info(f"Retrieved {len(df)} records")
-            return df
-        else:
-            logger.info("No data returned from query")
-            return pd.DataFrame()
-            
-    except Exception as e:
-        logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
-        st.error(f"Error retrieving data: {str(e)}")
-        return pd.DataFrame()
-
 def df_to_zip(df):
     csv_bytes = df.to_csv(index=False).encode('utf-8')
     buffer = io.BytesIO()
@@ -1134,7 +1111,7 @@ def main():
             engine = get_db_connection()
             
             # Get filtered data using the query utilities
-            df = get_filtered_data(filter_payload, table_choice)
+            df = get_filtered_data(filter_payload, table_choice, engine)
             
             if not df.empty:
                 st.session_state['df'] = df
