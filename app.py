@@ -554,57 +554,9 @@ def load_filter_options(table_choice):
                 for i, file_path in enumerate(file_paths):
                     try:
                         if file_path.endswith('payments_ven_namelist.csv'):
-                            # Use chunking for the large vendor file with smaller chunks
-                            logger.info(f"Loading large vendor file: {file_path}")
-                            unique_vendors = set()
-                            chunk_size = 5000  # Increased chunk size since we're only keeping unique values
-                            total_chunks = 0
-                            
-                            try:
-                                # Read with specific encoding and quote handling
-                                for chunk in pd.read_csv(
-                                    file_path,
-                                    chunksize=chunk_size,
-                                    usecols=['Ven_NAME'],
-                                    encoding='latin1',  # Use latin1 which can handle all byte values
-                                    quoting=3,  # QUOTE_NONE
-                                    quotechar=None,
-                                    escapechar='\\',
-                                    on_bad_lines='skip'  # Skip problematic lines
-                                ):
-                                    # Clean the vendor names
-                                    cleaned_vendors = (
-                                        chunk['Ven_NAME']
-                                        .str.replace('"""', '')  # Remove triple quotes
-                                        .str.replace('"', '')    # Remove double quotes
-                                        .str.strip()             # Remove whitespace
-                                    )
-                                    unique_vendors.update(cleaned_vendors.dropna().unique())
-                                    total_chunks += 1
-                                    logger.info(f"Processed chunk {total_chunks}, current unique vendors: {len(unique_vendors)}")
-                                
-                                # Convert set to DataFrame
-                                data_dict[file_path] = pd.DataFrame({'Ven_NAME': list(unique_vendors)})
-                                logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
-                                
-                                # Verify the number of unique vendors
-                                if len(unique_vendors) > 50000:
-                                    logger.warning(f"Number of unique vendors ({len(unique_vendors)}) is higher than expected (45k)")
-                            except Exception as e:
-                                import traceback
-                                error_details = traceback.format_exc()
-                                logger.error(f"Detailed error loading {file_path}:\n{error_details}")
-                                st.error(f"""
-                                Error loading {file_path}:
-                                Error type: {type(e).__name__}
-                                Error message: {str(e)}
-                                
-                                Please check:
-                                1. File exists at: {os.path.abspath(file_path)}
-                                2. File is readable
-                                3. File has correct format
-                                """)
-                                data_dict[file_path] = pd.DataFrame()
+                            # Initialize empty DataFrame for vendors - we'll load them on demand
+                            data_dict[file_path] = pd.DataFrame(columns=['Ven_NAME'])
+                            logger.info("Initialized empty vendor DataFrame for on-demand loading")
                         else:
                             data_dict[file_path] = load_csv_data(file_path)
                         progress_bar.progress((i + 1) / len(file_paths))
@@ -649,18 +601,16 @@ def load_filter_options(table_choice):
                     logger.error(f"Error processing appropriation objects: {str(e)}")
                     appropriation_objects = []
                 
-                try:
-                    vendors = process_dropdown_data(data_dict[file_paths[4]], 'Ven_NAME')
-                except Exception as e:
-                    logger.error(f"Error processing vendors: {str(e)}")
-                    vendors = []
+                # Initialize empty vendors list - we'll load them on demand
+                vendors = []
                 
                 result = {
                     'agencies': agencies,
                     'appropriation_titles': appropriation_titles,
                     'payment_sources': payment_sources,
                     'appropriation_objects': appropriation_objects,
-                    'vendors': vendors
+                    'vendors': vendors,
+                    'vendor_file_path': file_paths[4]  # Store the vendor file path for later use
                 }
                 
                 # Cache the result in session state
@@ -818,6 +768,53 @@ def load_filter_options(table_choice):
         """)
         return None
 
+def search_vendors(search_term, file_path, limit=15, offset=0):
+    """Search for vendors matching the search term"""
+    if not search_term or len(search_term) < 2:
+        return []
+    
+    try:
+        # Read the vendor file in chunks and filter for matches
+        matching_vendors = set()
+        chunk_size = 1000
+        
+        for chunk in pd.read_csv(
+            file_path,
+            chunksize=chunk_size,
+            usecols=['Ven_NAME'],
+            encoding='latin1',
+            quoting=3,
+            quotechar=None,
+            escapechar='\\',
+            on_bad_lines='skip'
+        ):
+            # Clean and filter vendor names
+            cleaned_vendors = (
+                chunk['Ven_NAME']
+                .str.replace('"""', '')
+                .str.replace('"', '')
+                .str.strip()
+            )
+            
+            # Filter for matches
+            matches = cleaned_vendors[
+                cleaned_vendors.str.lower().str.contains(search_term.lower(), na=False)
+            ].unique()
+            
+            matching_vendors.update(matches)
+            
+            # If we have enough matches, we can stop
+            if len(matching_vendors) >= offset + limit:
+                break
+        
+        # Convert to sorted list and get the requested slice
+        sorted_vendors = sorted(list(matching_vendors))
+        return sorted_vendors[offset:offset + limit]
+    
+    except Exception as e:
+        logger.error(f"Error searching vendors: {str(e)}")
+        return []
+
 from visualization_utils import generate_all_visualizations
 
 def main():
@@ -908,197 +905,283 @@ def main():
     st.title("Query the Texas Treasury")
     st.subheader("Committee on the Delivery of Government Efficiency")
 
-    # Create columns for the filter interface
-    logger.info("Creating filter interface columns")
-    col1, col2 = st.columns([1, 1])
+    # Create a container for the main content
+    main_container = st.container()
     
-    with col1:
-        logger.info("Setting up filter criteria")
-        st.subheader("Filter Criteria")
+    with main_container:
+        # Create columns for the filter interface with adjusted widths
+        col1, col2 = st.columns([2, 1])  # Changed from [1, 1] to [2, 1] to give more space to filters
         
-        # Add table selection
-        table_choice = st.radio(
-            "Select Data Source",
-            ["Payment Information", "Contract Information"],
-            help="Choose which table to query data from"
-        )
-        logger.info(f"Table choice selected: {table_choice}")
-        
-        # Add fiscal year and month sliders
-        st.subheader("Fiscal Year and Month")
-        
-        # Fiscal Year Slider
-        try:
-            logger.info("Attempting to load fiscal years from Dropdown_Menu/fiscal_years_both.csv")
-            fiscal_years_df = load_csv_data('Dropdown_Menu/fiscal_years_both.csv')
+        with col1:
+            logger.info("Setting up filter criteria")
+            st.subheader("Filter Criteria")
             
-            # Log the columns we found
-            logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
+            # Add table selection
+            table_choice = st.radio(
+                "Select Data Source",
+                ["Payment Information", "Contract Information"],
+                help="Choose which table to query data from"
+            )
+            logger.info(f"Table choice selected: {table_choice}")
             
-            # Get fiscal years - using the same column for both payment and contract information
-            if 'fiscal_year' not in fiscal_years_df.columns:
-                logger.error(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                st.error(f"Column 'fiscal_year' not found in the data. Available columns: {fiscal_years_df.columns.tolist()}")
-                selected_fiscal_year = (2021, 2023)  # Default range
-            else:
-                try:
-                    fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
-                    logger.info(f"Found fiscal years: {fiscal_years}")
-                    
-                    if not fiscal_years:
-                        logger.warning("No fiscal years found in the data")
-                        st.warning("No fiscal years found in the data")
-                        selected_fiscal_year = (2021, 2023)  # Default range
-                    else:
-                        min_year = min(fiscal_years)
-                        max_year = max(fiscal_years)
-                        logger.info(f"Setting fiscal year range from {min_year} to {max_year}")
-                        
-                        selected_fiscal_year = st.slider(
-                            "Fiscal Year",
-                            min_value=min_year,
-                            max_value=max_year,
-                            value=(min_year, max_year),
-                            help="Select a range of fiscal years"
-                        )
-                except ValueError as e:
-                    logger.error(f"Error converting fiscal years to integers: {str(e)}")
-                    st.error("Error processing fiscal years. Please check the data format.")
+            # Add fiscal year and month sliders
+            st.subheader("Fiscal Year and Month")
+            
+            # Fiscal Year Slider
+            try:
+                logger.info("Attempting to load fiscal years from Dropdown_Menu/fiscal_years_both.csv")
+                fiscal_years_df = load_csv_data('Dropdown_Menu/fiscal_years_both.csv')
+                
+                # Log the columns we found
+                logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
+                
+                # Get fiscal years - using the same column for both payment and contract information
+                if 'fiscal_year' not in fiscal_years_df.columns:
+                    logger.error(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+                    st.error(f"Column 'fiscal_year' not found in the data. Available columns: {fiscal_years_df.columns.tolist()}")
                     selected_fiscal_year = (2021, 2023)  # Default range
+                else:
+                    try:
+                        fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
+                        logger.info(f"Found fiscal years: {fiscal_years}")
+                        
+                        if not fiscal_years:
+                            logger.warning("No fiscal years found in the data")
+                            st.warning("No fiscal years found in the data")
+                            selected_fiscal_year = (2021, 2023)  # Default range
+                        else:
+                            min_year = min(fiscal_years)
+                            max_year = max(fiscal_years)
+                            logger.info(f"Setting fiscal year range from {min_year} to {max_year}")
+                            
+                            selected_fiscal_year = st.slider(
+                                "Fiscal Year",
+                                min_value=min_year,
+                                max_value=max_year,
+                                value=(min_year, max_year),
+                                help="Select a range of fiscal years"
+                            )
+                    except ValueError as e:
+                        logger.error(f"Error converting fiscal years to integers: {str(e)}")
+                        st.error("Error processing fiscal years. Please check the data format.")
+                        selected_fiscal_year = (2021, 2023)  # Default range
+                
+                # Store the selected fiscal year range
+                st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
+                st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
+                
+            except Exception as e:
+                error_msg = f"Error loading fiscal years: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                st.error(error_msg)
+                st.info("Please check that the file 'Dropdown_Menu/fiscal_years_both.csv' exists and contains the column 'fiscal_year'")
+                selected_fiscal_year = (2021, 2023)  # Default range
             
-            # Store the selected fiscal year range
-            st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
-            st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
+            # Fiscal Month Slider with month names
+            month_names = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]
             
-        except Exception as e:
-            error_msg = f"Error loading fiscal years: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            st.error(error_msg)
-            st.info("Please check that the file 'Dropdown_Menu/fiscal_years_both.csv' exists and contains the column 'fiscal_year'")
-            selected_fiscal_year = (2021, 2023)  # Default range
-        
-        # Fiscal Month Slider with month names
-        month_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
-        
-        selected_fiscal_month = st.select_slider(
-            "Fiscal Month",
-            options=month_names,
-            value=("January", "December"),
-            help="Select a range of fiscal months"
-        )
-        
-        # Convert month names to numbers for storage
-        month_to_number = {name: i+1 for i, name in enumerate(month_names)}
-        st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
-        st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
-        
-        # Add a separator
-        st.markdown("---")
-        
-        # Load filter options
-        filter_options = load_filter_options(table_choice)
-        if filter_options is None:
-            return
+            selected_fiscal_month = st.select_slider(
+                "Fiscal Month",
+                options=month_names,
+                value=("January", "December"),
+                help="Select a range of fiscal months"
+            )
+            
+            # Convert month names to numbers for storage
+            month_to_number = {name: i+1 for i, name in enumerate(month_names)}
+            st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
+            st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
+            
+            # Add a separator
+            st.markdown("---")
+            
+            # Load filter options
+            filter_options = load_filter_options(table_choice)
+            if filter_options is None:
+                return
 
-        # Display dropdowns based on table choice
-        if table_choice == "Payment Information":
-            # Display Payment Information dropdowns
-            agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-            selected_agency = st.selectbox("Agency", agency_options)
-            
-            appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
-            selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
-            
-            payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
-            selected_payment_source = st.selectbox("Payment Source", payment_source_options)
-            
-            appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
-            selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
-            
-            vendor_options = ["All"] + [vendor[0] for vendor in filter_options['vendors']]
-            selected_vendor = st.selectbox("Vendor", vendor_options)
-            
-            # Store Payment Information filters
-            st.session_state.filters.update({
-                'agency': next((agency[1] for agency in filter_options['agencies'] if agency[0] == selected_agency), None) if selected_agency != "All" else None,
-                'appropriation_title': next((title[1] for title in filter_options['appropriation_titles'] if title[0] == selected_appropriation), None) if selected_appropriation != "All" else None,
-                'payment_source': next((source[1] for source in filter_options['payment_sources'] if source[0] == selected_payment_source), None) if selected_payment_source != "All" else None,
-                'appropriation_object': next((obj[1] for obj in filter_options['appropriation_objects'] if obj[0] == selected_appropriation_object), None) if selected_appropriation_object != "All" else None,
-                'vendor': next((vendor[1] for vendor in filter_options['vendors'] if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None
-            })
-        else:
-            # Display Contract Information dropdowns
-            agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-            selected_agency = st.selectbox("Agency", agency_options)
-            
-            category_options = ["All"] + [category[0] for category in filter_options['categories']]
-            selected_category = st.selectbox("Category", category_options)
-            
-            vendor_options = ["All"] + [vendor[0] for vendor in filter_options['vendors']]
-            selected_vendor = st.selectbox("Vendor", vendor_options)
-            
-            procurement_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
-            selected_procurement = st.selectbox("Procurement Method", procurement_options)
-            
-            status_options = ["All"] + [status[0] for status in filter_options['statuses']]
-            selected_status = st.selectbox("Status", status_options)
-            
-            subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
-            selected_subject = st.selectbox("Subject", subject_options)
-            
-            # Store Contract Information filters
-            st.session_state.filters.update({
-                'agency': next((agency[1] for agency in filter_options['agencies'] if agency[0] == selected_agency), None) if selected_agency != "All" else None,
-                'category': next((category[1] for category in filter_options['categories'] if category[0] == selected_category), None) if selected_category != "All" else None,
-                'vendor': next((vendor[1] for vendor in filter_options['vendors'] if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None,
-                'procurement_method': next((method[1] for method in filter_options['procurement_methods'] if method[0] == selected_procurement), None) if selected_procurement != "All" else None,
-                'status': next((status[1] for status in filter_options['statuses'] if status[0] == selected_status), None) if selected_status != "All" else None,
-                'subject': next((subject[1] for subject in filter_options['subjects'] if subject[0] == selected_subject), None) if selected_subject != "All" else None
-            })
+            # Display dropdowns based on table choice
+            if table_choice == "Payment Information":
+                # Display Payment Information dropdowns
+                agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                selected_agency = st.selectbox("Agency", agency_options)
+                
+                appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
+                selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
+                
+                payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
+                selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+                
+                appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
+                selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+                
+                # Add a searchable vendor selection
+                vendor_search = st.text_input(
+                    "Search Vendors",
+                    help="Type at least 2 characters to search for vendors",
+                    placeholder="Type at least 2 characters to search",
+                    key="vendor_search"
+                )
+                
+                # Initialize vendor state
+                if 'selected_vendor' not in st.session_state:
+                    st.session_state.selected_vendor = None
+                if 'vendor_limit' not in st.session_state:
+                    st.session_state.vendor_limit = 50
+                
+                # Get matching vendors based on search input
+                matching_vendors = search_vendors(
+                    vendor_search, 
+                    filter_options['vendor_file_path'], 
+                    limit=st.session_state.vendor_limit
+                )
+                
+                # Display matching vendors in a selectbox if there are results
+                if matching_vendors:
+                    # Create a container for the vendor selection
+                    vendor_container = st.container()
+                    
+                    with vendor_container:
+                        # Create the selectbox with current vendors
+                        selected_vendor = st.selectbox(
+                            "Select Vendor",
+                            options=[""] + matching_vendors,  # Add empty option at start
+                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                            key="vendor_select",
+                            help="Select a vendor from the search results"
+                        )
+                        
+                        # Add "Load More" button if there are enough results
+                        if len(matching_vendors) >= st.session_state.vendor_limit:
+                            if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
+                                # Store current selection before loading more
+                                st.session_state.selected_vendor = selected_vendor
+                                # Increase the limit
+                                st.session_state.vendor_limit += 50
+                                # Force a rerun to update the UI with more vendors
+                                st.experimental_rerun()
+                        
+                        # Update session state with selected vendor
+                        if selected_vendor != st.session_state.selected_vendor:
+                            st.session_state.selected_vendor = selected_vendor
+                
+                # Store the selected vendor in the filters
+                st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
+            else:
+                # Display Contract Information dropdowns
+                agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                selected_agency = st.selectbox("Agency", agency_options)
+                
+                category_options = ["All"] + [category[0] for category in filter_options['categories']]
+                selected_category = st.selectbox("Category", category_options)
+                
+                # Add a searchable vendor selection
+                vendor_search = st.text_input(
+                    "Search Vendors",
+                    help="Type at least 2 characters to search for vendors",
+                    placeholder="Type at least 2 characters to search",
+                    key="vendor_search"
+                )
+                
+                # Initialize vendor state
+                if 'selected_vendor' not in st.session_state:
+                    st.session_state.selected_vendor = None
+                
+                # Get matching vendors based on search input
+                matching_vendors = search_vendors(
+                    vendor_search, 
+                    filter_options['vendor_file_path'], 
+                    limit=50  # Show more results at once
+                )
+                
+                # Display matching vendors in a selectbox if there are results
+                if matching_vendors:
+                    # Create a container for the vendor selection
+                    vendor_container = st.container()
+                    
+                    with vendor_container:
+                        # Create the selectbox with current vendors
+                        selected_vendor = st.selectbox(
+                            "Select Vendor",
+                            options=[""] + matching_vendors,  # Add empty option at start
+                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                            key="vendor_select",
+                            help="Select a vendor from the search results"
+                        )
+                        
+                        # Update session state with selected vendor
+                        st.session_state.selected_vendor = selected_vendor
+                
+                # Store the selected vendor in the filters
+                st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
 
-    with col2:
-        logger.info("Setting up query actions")
-        st.subheader("Query Actions")
-        submit_clicked = st.button("Submit Query")
-        readme_clicked = st.button("About")
-        
-        if readme_clicked:
-            with st.expander("**About the Data and How to Use**", expanded=True):
-                st.markdown("""
-                ### Data Overview
-                This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
-                provided and managed by the Texas Comptroller of Public Accounts.
-                
-                ### How to Use
-                1. Select your desired filters from the dropdown menus
-                2. Use 'All' to include all values for that field
-                3. Click 'Submit Query' to view the results
-                4. Download the results using the download button
-                
-                ### Understanding the Dropdown Categories
-                
-                #### Payment Information Categories
-                - **Agency**: The government agency making the payment
-                - **Vendor**: The recipient of the payment
-                - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget (e.g., "Highway Maintenance" or "School Nutrition Program"). Think of it as the label on a line in the government's spending plan.
-                - **Payment Source (Fund Title)**: The name of the account that actually holds the money. Different funds keep different revenue sources separate, like a "General Fund" for tax revenues or a "Highway Trust Fund" for fuel-tax money, so officials can track where dollars come from and where they should go.
-                - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy, that is, salaries, office supplies, construction services, travel reimbursements, etc. It's the budget's "line-item" level.
-                
-                #### Contract Information Categories
-                - **Agency**: The government agency managing the contract
-                - **Vendor**: The company or entity providing the goods or services
-                - **Category**: The general type or classification of the contract
-                - **Procurement Method**: How the government chose the vendor for a contract, such as competitive bidding, non-competitive, and whether it is a contract between state agencies. It tells you how the deal was struck.
-                - **Status**: The current state of the contract (e.g., active, completed, terminated)
-                - **Subject**: A short description of what the contract covers: e.g., repairing a bridge, providing IT support, supplying textbooks, etc. It's the plain-language summary of the job the vendor has been hired to do.
-                
-                ### Data Fields
-                - **Fiscal Year**: The fiscal year of the payment or contract
-                - **Fiscal Month**: The month within the fiscal year
-                """)
+        with col2:
+            # Create a fixed position container for query actions
+            st.markdown("""
+                <style>
+                .fixed-query-container {
+                    position: sticky;
+                    top: 2rem;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    z-index: 100;
+                }
+                .query-content {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                div[data-testid="stButton"] {
+                    display: flex;
+                    justify-content: center;
+                    margin: 0.5rem 0;
+                }
+                </style>
+                <div class="fixed-query-container">
+                    <div class="query-content">
+            """, unsafe_allow_html=True)
+            
+            logger.info("Setting up query actions")
+            st.subheader("Query Actions")
+            
+            submit_clicked = st.button("Submit Query", use_container_width=True)
+            readme_clicked = st.button("About", use_container_width=True)
+            
+            if readme_clicked:
+                with st.expander("**About the Data and How to Use**", expanded=True):
+                    st.markdown("""
+                    ### Data Overview
+                    This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
+                    provided and managed by the Texas Comptroller of Public Accounts.
+                    
+                    ### How to Use
+                    1. Select your desired filters from the dropdown menus
+                    2. Use 'All' to include all values for that field
+                    3. Click 'Submit Query' to view the results
+                    4. Download the results using the download button
+                    
+                    ### Understanding the Dropdown Categories
+                    
+                    #### Payment Information Categories
+                    - **Agency**: The government agency making the payment
+                    - **Vendor**: The recipient of the payment
+                    - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
+                    - **Payment Source (Fund Title)**: The name of the account that actually holds the money
+                    - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
+                    
+                    #### Contract Information Categories
+                    - **Agency**: The government agency managing the contract
+                    - **Vendor**: The company or entity providing the goods or services
+                    - **Category**: The general type or classification of the contract
+                    - **Procurement Method**: How the government chose the vendor for a contract
+                    - **Status**: The current state of the contract
+                    - **Subject**: A short description of what the contract covers
+                    """)
+            
+            st.markdown("</div></div>", unsafe_allow_html=True)
 
     if submit_clicked:
         logger.info("Query submitted")
