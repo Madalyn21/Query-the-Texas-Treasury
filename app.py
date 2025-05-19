@@ -503,53 +503,6 @@ def download_csv(df):
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
 
-# Add these new functions after the existing imports
-from concurrent.futures import ThreadPoolExecutor
-import threading
-
-# Add a lock for thread-safe operations
-data_lock = threading.Lock()
-
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def load_csv_data_parallel(file_paths):
-    """Load multiple CSV files in parallel"""
-    def load_single_file(file_path):
-        try:
-            return load_csv_data(file_path)
-        except Exception as e:
-            logger.error(f"Error loading {file_path}: {str(e)}")
-            return None
-
-    with ThreadPoolExecutor(max_workers=min(len(file_paths), 4)) as executor:
-        results = list(executor.map(load_single_file, file_paths))
-    return {path: df for path, df in zip(file_paths, results) if df is not None}
-
-def initialize_session_state():
-    """Initialize session state variables"""
-    if 'filter_options' not in st.session_state:
-        st.session_state.filter_options = {
-            'Payment Information': None,
-            'Contract Information': None
-        }
-    if 'data_loaded' not in st.session_state:
-        st.session_state.data_loaded = False
-    if 'filters' not in st.session_state:
-        st.session_state.filters = {
-            'agency': None,
-            'vendor': None,
-            'appropriation_title': None,
-            'payment_source': None,
-            'appropriation_object': None,
-            'fiscal_year_start': None,
-            'fiscal_year_end': None,
-            'fiscal_month_start': None,
-            'fiscal_month_end': None,
-            'category': None,
-            'procurement_method': None,
-            'status': None,
-            'subject': None
-        }
-
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
     # Check if we already have the data cached in session state
@@ -570,9 +523,11 @@ def load_filter_options(table_choice):
                     'Dropdown_Menu/payments_ven_namelist.csv'
                 ]
                 
-                # Load all files in parallel
-                data_dict = load_csv_data_parallel(file_paths)
-                progress_bar.progress(50)
+                # Load files sequentially
+                data_dict = {}
+                for i, file_path in enumerate(file_paths):
+                    data_dict[file_path] = load_csv_data(file_path)
+                    progress_bar.progress((i + 1) / len(file_paths))
                 
                 # Process the data
                 agencies = process_dropdown_data(data_dict[file_paths[0]], 'AGY_TITLE')
@@ -580,8 +535,6 @@ def load_filter_options(table_choice):
                 payment_sources = process_dropdown_data(data_dict[file_paths[2]], 'FUND_TITLE')
                 appropriation_objects = process_dropdown_data(data_dict[file_paths[3]], 'OBJ_TITLE')
                 vendors = process_dropdown_data(data_dict[file_paths[4]], 'Ven_NAME')
-                
-                progress_bar.progress(100)
                 
                 result = {
                     'agencies': agencies,
@@ -609,9 +562,11 @@ def load_filter_options(table_choice):
                     'Dropdown_Menu/contract_subject_list.csv'
                 ]
                 
-                # Load all files in parallel
-                data_dict = load_csv_data_parallel(file_paths)
-                progress_bar.progress(50)
+                # Load files sequentially
+                data_dict = {}
+                for i, file_path in enumerate(file_paths):
+                    data_dict[file_path] = load_csv_data(file_path)
+                    progress_bar.progress((i + 1) / len(file_paths))
                 
                 # Process the data
                 agencies = process_dropdown_data(data_dict[file_paths[0]], 'Agency')
@@ -620,8 +575,6 @@ def load_filter_options(table_choice):
                 procurement_methods = process_dropdown_data(data_dict[file_paths[3]], 'Procurement Method')
                 statuses = process_dropdown_data(data_dict[file_paths[4]], 'Status')
                 subjects = process_dropdown_data(data_dict[file_paths[5]], 'Subject')
-                
-                progress_bar.progress(100)
                 
                 result = {
                     'agencies': agencies,
