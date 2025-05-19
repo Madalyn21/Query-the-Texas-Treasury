@@ -48,21 +48,38 @@ def add_filters_to_query(query: text, params: Dict, filters: Dict, table_choice:
     logger.info(f"Adding filters to query: {filters}")
     
     # Add common filters
-    if filters.get('fiscal_year_start'):
-        query = text(str(query) + " AND p.fiscal_year >= :fiscal_year_start")
-        params['fiscal_year_start'] = filters['fiscal_year_start']
-    
-    if filters.get('fiscal_year_end'):
-        query = text(str(query) + " AND p.fiscal_year <= :fiscal_year_end")
-        params['fiscal_year_end'] = filters['fiscal_year_end']
-    
-    if filters.get('fiscal_month_start'):
-        query = text(str(query) + " AND p.fiscal_month >= :fiscal_month_start")
-        params['fiscal_month_start'] = filters['fiscal_month_start']
-    
-    if filters.get('fiscal_month_end'):
-        query = text(str(query) + " AND p.fiscal_month <= :fiscal_month_end")
-        params['fiscal_month_end'] = filters['fiscal_month_end']
+    if table_choice == "Payment Information":
+        if filters.get('fiscal_year_start'):
+            query = text(str(query) + " AND p.fiscal_year >= :fiscal_year_start")
+            params['fiscal_year_start'] = filters['fiscal_year_start']
+        
+        if filters.get('fiscal_year_end'):
+            query = text(str(query) + " AND p.fiscal_year <= :fiscal_year_end")
+            params['fiscal_year_end'] = filters['fiscal_year_end']
+        
+        if filters.get('fiscal_month_start'):
+            query = text(str(query) + " AND p.fiscal_month >= :fiscal_month_start")
+            params['fiscal_month_start'] = filters['fiscal_month_start']
+        
+        if filters.get('fiscal_month_end'):
+            query = text(str(query) + " AND p.fiscal_month <= :fiscal_month_end")
+            params['fiscal_month_end'] = filters['fiscal_month_end']
+    else:  # Contract Information
+        if filters.get('fiscal_year_start'):
+            query = text(str(query) + " AND EXTRACT(YEAR FROM c.completion_date_date) >= :fiscal_year_start")
+            params['fiscal_year_start'] = filters['fiscal_year_start']
+        
+        if filters.get('fiscal_year_end'):
+            query = text(str(query) + " AND EXTRACT(YEAR FROM c.completion_date_date) <= :fiscal_year_end")
+            params['fiscal_year_end'] = filters['fiscal_year_end']
+        
+        if filters.get('fiscal_month_start'):
+            query = text(str(query) + " AND EXTRACT(MONTH FROM c.completion_date_date) >= :fiscal_month_start")
+            params['fiscal_month_start'] = filters['fiscal_month_start']
+        
+        if filters.get('fiscal_month_end'):
+            query = text(str(query) + " AND EXTRACT(MONTH FROM c.completion_date_date) <= :fiscal_month_end")
+            params['fiscal_month_end'] = filters['fiscal_month_end']
     
     # Add table-specific filters
     if table_choice == "Payment Information":

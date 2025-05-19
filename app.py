@@ -1194,12 +1194,8 @@ def main():
         logger.info(f"Filter payload: {filter_payload}")
         
         try:
-            # Get database connection
-            from db_config import get_db_connection
-            engine = get_db_connection()
-            
             # Get filtered data using the new query utilities
-            df = get_filtered_data(filter_payload, table_choice, engine)
+            df = get_filtered_data(filter_payload, table_choice)
             
             if not df.empty:
                 st.session_state['df'] = df
