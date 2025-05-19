@@ -78,6 +78,12 @@ def load_csv_data(file_path, encoding='utf-8'):
     except Exception as e:
         raise Exception(f"Error reading {file_path}: {str(e)}")
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def process_dropdown_data(df, column_name):
+    """Process dropdown data with caching"""
+    values = df[column_name].unique()
+    return sorted([(str(val), str(val)) for val in values])
+
 def validate_input(data):
     """Validate and sanitize user input"""
     if isinstance(data, str):
@@ -236,7 +242,7 @@ def get_filtered_data(filters, table_choice):
         params = {}
         
         # Add filters to query
-        if filters.get('agency'):
+        if filters.get('Agency'):
             query = text(str(query) + " AND p.agency_name = :agency")
             params['agency'] = filters['agency']
         
@@ -464,6 +470,63 @@ def download_csv(df):
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
 
+def load_filter_options(table_choice):
+    """Load all filter options for a given table choice"""
+    try:
+        if table_choice == "Payment Information":
+            with st.spinner('Loading payment information filters...'):
+                # Load all payment CSV files in parallel
+                agencies_df = load_csv_data('Dropdown_Menu/payments_agy_titlelist.csv')
+                appropriation_df = load_csv_data('Dropdown_Menu/payments_apro_titlelist.csv')
+                payment_source_df = load_csv_data('Dropdown_Menu/payments_fund_titlelist.csv')
+                appropriation_obj_df = load_csv_data('Dropdown_Menu/payments_obj_titlelist.csv')
+                vendor_df = load_csv_data('Dropdown_Menu/payments_ven_namelist.csv')
+
+                # Process the data
+                agencies = process_dropdown_data(agencies_df, 'AGY_TITLE')
+                appropriation_titles = process_dropdown_data(appropriation_df, 'APRO_TITLE')
+                payment_sources = process_dropdown_data(payment_source_df, 'FUND_TITLE')
+                appropriation_objects = process_dropdown_data(appropriation_obj_df, 'OBJ_TITLE')
+                vendors = process_dropdown_data(vendor_df, 'Ven_NAME')
+
+                return {
+                    'agencies': agencies,
+                    'appropriation_titles': appropriation_titles,
+                    'payment_sources': payment_sources,
+                    'appropriation_objects': appropriation_objects,
+                    'vendors': vendors
+                }
+        else:
+            with st.spinner('Loading contract information filters...'):
+                # Load all contract CSV files in parallel
+                agency_df = load_csv_data('Dropdown_Menu/contract_agency_list.csv')
+                category_df = load_csv_data('Dropdown_Menu/contract_category_list.csv')
+                vendor_df = load_csv_data('Dropdown_Menu/contract_vendor_list.csv')
+                procurement_df = load_csv_data('Dropdown_Menu/contract_procurement_method_list.csv')
+                status_df = load_csv_data('Dropdown_Menu/contract_status_list.csv')
+                subject_df = load_csv_data('Dropdown_Menu/contract_subject_list.csv')
+
+                # Process the data
+                agencies = process_dropdown_data(agency_df, 'Agency')
+                categories = process_dropdown_data(category_df, 'Category')
+                vendors = process_dropdown_data(vendor_df, 'Vendor')
+                procurement_methods = process_dropdown_data(procurement_df, 'Procurement Method')
+                statuses = process_dropdown_data(status_df, 'Status')
+                subjects = process_dropdown_data(subject_df, 'Subject')
+
+                return {
+                    'agencies': agencies,
+                    'categories': categories,
+                    'vendors': vendors,
+                    'procurement_methods': procurement_methods,
+                    'statuses': statuses,
+                    'subjects': subjects
+                }
+    except Exception as e:
+        logger.error(f"Error loading filter options: {str(e)}", exc_info=True)
+        st.error(f"Error loading filter options: {str(e)}")
+        return None
+
 def main():
     # Configure Streamlit security settings first
     logger.info("Starting main function")
@@ -586,15 +649,11 @@ def main():
             # Log the columns we found
             logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
             
-            # Get fiscal years based on the selected data type
-            if table_choice == "Payment Information":
-                if 'PAYMENT_FISCAL_YEAR' not in fiscal_years_df.columns:
-                    raise Exception(f"Column 'PAYMENT_FISCAL_YEAR' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                fiscal_years = sorted([int(year) for year in fiscal_years_df['PAYMENT_FISCAL_YEAR'].unique()])
-            else:
-                if 'CONTRACT_FISCAL_YEAR' not in fiscal_years_df.columns:
-                    raise Exception(f"Column 'CONTRACT_FISCAL_YEAR' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                fiscal_years = sorted([int(year) for year in fiscal_years_df['CONTRACT_FISCAL_YEAR'].unique()])
+            # Get fiscal years - using the same column for both payment and contract information
+            if 'fiscal_year' not in fiscal_years_df.columns:
+                raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+            
+            fiscal_years = sorted([int(year) for year in fiscal_years_df['fiscal_year'].unique()])
             
             if not fiscal_years:
                 raise Exception("No fiscal years found in the data")
@@ -618,7 +677,7 @@ def main():
             error_msg = f"Error loading fiscal years: {str(e)}"
             logger.error(error_msg, exc_info=True)
             st.error(error_msg)
-            st.info("Please check that the file 'Dropdown_Menu/fiscal_years_both.csv' exists and contains the correct columns (PAYMENT_FISCAL_YEAR and/or CONTRACT_FISCAL_YEAR)")
+            st.info("Please check that the file 'Dropdown_Menu/fiscal_years_both.csv' exists and contains the column 'fiscal_year'")
             selected_fiscal_year = (2021, 2023)  # Default range
         
         # Fiscal Month Slider with month names
@@ -642,151 +701,66 @@ def main():
         # Add a separator
         st.markdown("---")
         
-        # Agency Filter
-        try:
-            if table_choice == "Payment Information":
-                agencies_df = load_csv_data('Dropdown_Menu/payments_agy_titlelist.csv')
-                agencies = [(str(row['AGY_TITLE']), str(row['AGY_TITLE'])) 
-                          for _, row in agencies_df.iterrows()]
-                agencies = list(set(agencies))  # Remove duplicates
-                agencies.sort(key=lambda x: x[0])
-                
-                # Appropriation Title Filter
-                appropriation_df = load_csv_data('Dropdown_Menu/payments_apro_titlelist.csv')
-                appropriation_titles = [(str(row['APRO_TITLE']), str(row['APRO_TITLE'])) 
-                                      for _, row in appropriation_df.iterrows()]
-                appropriation_titles = list(set(appropriation_titles))
-                appropriation_titles.sort(key=lambda x: x[0])
-                
-                # Payment Source Filter
-                payment_source_df = load_csv_data('Dropdown_Menu/payments_fund_titlelist.csv')
-                payment_sources = [(str(row['FUND_TITLE']), str(row['FUND_TITLE'])) 
-                                 for _, row in payment_source_df.drop_duplicates(subset=['FUND_TITLE']).iterrows()]
-                payment_sources.sort(key=lambda x: x[0])
-                
-                # Appropriation Object Filter
-                appropriation_obj_df = load_csv_data('Dropdown_Menu/payments_obj_titlelist.csv')
-                appropriation_objects = [(str(row['OBJ_TITLE']), str(row['OBJ_TITLE'])) 
-                                       for _, row in appropriation_obj_df.drop_duplicates(subset=['OBJ_TITLE']).iterrows()]
-                appropriation_objects.sort(key=lambda x: x[0])
-                
-                # Vendor Filter
-                vendor_df = load_csv_data('Dropdown_Menu/payments_ven_namelist.csv')
-                vendors = [(str(row['Ven_NAME']), str(row['Ven_NAME'])) 
-                          for _, row in vendor_df.iterrows()]
-                vendors = list(set(vendors))
-                vendors.sort(key=lambda x: x[0])
-                
-            else:
-                # Contract Information section
-                agency_df = load_csv_data('Dropdown_Menu/contract_agency_list.csv')
-                agencies = [(str(row['AGENCY']), str(row['AGENCY'])) 
-                          for _, row in agency_df.iterrows()]
-                agencies = list(set(agencies))
-                agencies.sort(key=lambda x: x[0])
-                
-                # Category Filter
-                category_df = load_csv_data('Dropdown_Menu/contract_category_list.csv')
-                categories = [(str(row['CATEGORY']), str(row['CATEGORY'])) 
-                            for _, row in category_df.iterrows()]
-                categories = list(set(categories))
-                categories.sort(key=lambda x: x[0])
-                
-                # Vendor Filter
-                vendor_df = load_csv_data('Dropdown_Menu/contract_vendor_list.csv')
-                vendors = [(str(row['VENDOR']), str(row['VENDOR'])) 
-                          for _, row in vendor_df.iterrows()]
-                vendors = list(set(vendors))
-                vendors.sort(key=lambda x: x[0])
-                
-                # Procurement Method Filter
-                procurement_df = load_csv_data('Dropdown_Menu/contract_procurement_method_list.csv')
-                procurement_methods = [(str(row['PROCUREMENT_METHOD']), str(row['PROCUREMENT_METHOD'])) 
-                                     for _, row in procurement_df.iterrows()]
-                procurement_methods = list(set(procurement_methods))
-                procurement_methods.sort(key=lambda x: x[0])
-                
-                # Status Filter
-                status_df = load_csv_data('Dropdown_Menu/contract_status_list.csv')
-                statuses = [(str(row['STATUS']), str(row['STATUS'])) 
-                           for _, row in status_df.iterrows()]
-                statuses = list(set(statuses))
-                statuses.sort(key=lambda x: x[0])
-                
-                # Subject Filter
-                subject_df = load_csv_data('Dropdown_Menu/contract_subject_list.csv')
-                subjects = [(str(row['SUBJECT']), str(row['SUBJECT'])) 
-                           for _, row in subject_df.iterrows()]
-                subjects = list(set(subjects))
-                subjects.sort(key=lambda x: x[0])
+        # Load filter options
+        filter_options = load_filter_options(table_choice)
+        if filter_options is None:
+            return
+
+        # Display dropdowns based on table choice
+        if table_choice == "Payment Information":
+            # Display Payment Information dropdowns
+            agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+            selected_agency = st.selectbox("Agency", agency_options)
             
-            # Display dropdowns based on table choice
-            if table_choice == "Payment Information":
-                # Display Payment Information dropdowns
-                agency_options = ["All"] + [agency[0] for agency in agencies]
-                selected_agency = st.selectbox("Agency", agency_options)
-                
-                appropriation_options = ["All"] + [title[0] for title in appropriation_titles]
-                selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
-                
-                payment_source_options = ["All"] + [source[0] for source in payment_sources]
-                selected_payment_source = st.selectbox("Payment Source", payment_source_options)
-                
-                appropriation_object_options = ["All"] + [obj[0] for obj in appropriation_objects]
-                selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
-                
-                vendor_options = ["All"] + [vendor[0] for vendor in vendors]
-                selected_vendor = st.selectbox("Vendor", vendor_options)
-                
-                # Store Payment Information filters
-                st.session_state.filters.update({
-                    'agency': next((agency[1] for agency in agencies if agency[0] == selected_agency), None) if selected_agency != "All" else None,
-                    'appropriation_title': next((title[1] for title in appropriation_titles if title[0] == selected_appropriation), None) if selected_appropriation != "All" else None,
-                    'payment_source': next((source[1] for source in payment_sources if source[0] == selected_payment_source), None) if selected_payment_source != "All" else None,
-                    'appropriation_object': next((obj[1] for obj in appropriation_objects if obj[0] == selected_appropriation_object), None) if selected_appropriation_object != "All" else None,
-                    'vendor': next((vendor[1] for vendor in vendors if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None
-                })
-            else:
-                # Display Contract Information dropdowns
-                agency_options = ["All"] + [agency[0] for agency in agencies]
-                selected_agency = st.selectbox("Agency", agency_options)
-                
-                category_options = ["All"] + [category[0] for category in categories]
-                selected_category = st.selectbox("Category", category_options)
-                
-                vendor_options = ["All"] + [vendor[0] for vendor in vendors]
-                selected_vendor = st.selectbox("Vendor", vendor_options)
-                
-                procurement_options = ["All"] + [method[0] for method in procurement_methods]
-                selected_procurement = st.selectbox("Procurement Method", procurement_options)
-                
-                status_options = ["All"] + [status[0] for status in statuses]
-                selected_status = st.selectbox("Status", status_options)
-                
-                subject_options = ["All"] + [subject[0] for subject in subjects]
-                selected_subject = st.selectbox("Subject", subject_options)
-                
-                # Store Contract Information filters
-                st.session_state.filters.update({
-                    'agency': next((agency[1] for agency in agencies if agency[0] == selected_agency), None) if selected_agency != "All" else None,
-                    'category': next((category[1] for category in categories if category[0] == selected_category), None) if selected_category != "All" else None,
-                    'vendor': next((vendor[1] for vendor in vendors if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None,
-                    'procurement_method': next((method[1] for method in procurement_methods if method[0] == selected_procurement), None) if selected_procurement != "All" else None,
-                    'status': next((status[1] for status in statuses if status[0] == selected_status), None) if selected_status != "All" else None,
-                    'subject': next((subject[1] for subject in subjects if subject[0] == selected_subject), None) if selected_subject != "All" else None
-                })
-                
-        except Exception as e:
-            logger.error(f"Error in filter section: {str(e)}", exc_info=True)
-            st.error("Error loading filter options")
-            st.session_state.filters = {
-                'agency': None,
-                'vendor': None,
-                'appropriation_title': None,
-                'payment_source': None,
-                'appropriation_object': None,
-                'fiscal_year': None
-            }
+            appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
+            selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
+            
+            payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
+            selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+            
+            appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
+            selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+            
+            vendor_options = ["All"] + [vendor[0] for vendor in filter_options['vendors']]
+            selected_vendor = st.selectbox("Vendor", vendor_options)
+            
+            # Store Payment Information filters
+            st.session_state.filters.update({
+                'agency': next((agency[1] for agency in filter_options['agencies'] if agency[0] == selected_agency), None) if selected_agency != "All" else None,
+                'appropriation_title': next((title[1] for title in filter_options['appropriation_titles'] if title[0] == selected_appropriation), None) if selected_appropriation != "All" else None,
+                'payment_source': next((source[1] for source in filter_options['payment_sources'] if source[0] == selected_payment_source), None) if selected_payment_source != "All" else None,
+                'appropriation_object': next((obj[1] for obj in filter_options['appropriation_objects'] if obj[0] == selected_appropriation_object), None) if selected_appropriation_object != "All" else None,
+                'vendor': next((vendor[1] for vendor in filter_options['vendors'] if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None
+            })
+        else:
+            # Display Contract Information dropdowns
+            agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+            selected_agency = st.selectbox("Agency", agency_options)
+            
+            category_options = ["All"] + [category[0] for category in filter_options['categories']]
+            selected_category = st.selectbox("Category", category_options)
+            
+            vendor_options = ["All"] + [vendor[0] for vendor in filter_options['vendors']]
+            selected_vendor = st.selectbox("Vendor", vendor_options)
+            
+            procurement_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
+            selected_procurement = st.selectbox("Procurement Method", procurement_options)
+            
+            status_options = ["All"] + [status[0] for status in filter_options['statuses']]
+            selected_status = st.selectbox("Status", status_options)
+            
+            subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
+            selected_subject = st.selectbox("Subject", subject_options)
+            
+            # Store Contract Information filters
+            st.session_state.filters.update({
+                'agency': next((agency[1] for agency in filter_options['agencies'] if agency[0] == selected_agency), None) if selected_agency != "All" else None,
+                'category': next((category[1] for category in filter_options['categories'] if category[0] == selected_category), None) if selected_category != "All" else None,
+                'vendor': next((vendor[1] for vendor in filter_options['vendors'] if vendor[0] == selected_vendor), None) if selected_vendor != "All" else None,
+                'procurement_method': next((method[1] for method in filter_options['procurement_methods'] if method[0] == selected_procurement), None) if selected_procurement != "All" else None,
+                'status': next((status[1] for status in filter_options['statuses'] if status[0] == selected_status), None) if selected_status != "All" else None,
+                'subject': next((subject[1] for subject in filter_options['subjects'] if subject[0] == selected_subject), None) if selected_subject != "All" else None
+            })
 
     with col2:
         logger.info("Setting up query actions")
