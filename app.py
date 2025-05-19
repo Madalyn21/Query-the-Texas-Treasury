@@ -560,8 +560,19 @@ def load_filter_options(table_choice):
                             chunk_size = 1000  # Smaller chunk size
                             total_chunks = 0
                             
-                            for chunk in pd.read_csv(file_path, chunksize=chunk_size, usecols=['Ven_NAME']):
-                                unique_vendors.update(chunk['Ven_NAME'].unique())
+                            # Read with specific encoding and quote handling
+                            for chunk in pd.read_csv(
+                                file_path,
+                                chunksize=chunk_size,
+                                usecols=['Ven_NAME'],
+                                encoding='utf-8',
+                                quoting=1,  # QUOTE_ALL
+                                quotechar='"',
+                                escapechar='\\'
+                            ):
+                                # Clean the vendor names
+                                cleaned_vendors = chunk['Ven_NAME'].str.replace('"', '').str.strip()
+                                unique_vendors.update(cleaned_vendors.dropna().unique())
                                 total_chunks += 1
                                 logger.info(f"Processed chunk {total_chunks} of vendor file")
                             
@@ -644,8 +655,19 @@ def load_filter_options(table_choice):
                             chunk_size = 1000  # Smaller chunk size
                             total_chunks = 0
                             
-                            for chunk in pd.read_csv(file_path, chunksize=chunk_size, usecols=['Vendor']):
-                                unique_vendors.update(chunk['Vendor'].unique())
+                            # Read with specific encoding and quote handling
+                            for chunk in pd.read_csv(
+                                file_path,
+                                chunksize=chunk_size,
+                                usecols=['Vendor'],
+                                encoding='utf-8',
+                                quoting=1,  # QUOTE_ALL
+                                quotechar='"',
+                                escapechar='\\'
+                            ):
+                                # Clean the vendor names
+                                cleaned_vendors = chunk['Vendor'].str.replace('"', '').str.strip()
+                                unique_vendors.update(cleaned_vendors.dropna().unique())
                                 total_chunks += 1
                                 logger.info(f"Processed chunk {total_chunks} of vendor file")
                             
