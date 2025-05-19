@@ -21,3 +21,4 @@ plotly
 python-dateutil
 certifi
 urllib3
+backports.zoneinfo
