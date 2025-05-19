@@ -7,7 +7,7 @@ import secrets
 import sys
 import time
 import zipfile
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 # Import pandas configuration
 from pandas_config import pd
@@ -32,7 +32,6 @@ from query_utils import get_filtered_data
 # Additional imports for visualizations
 import numpy as np
 import altair as alt
-from datetime import datetime
 import streamlit.components.v1 as components
 import base64
 
@@ -70,6 +69,14 @@ logger = get_logger('app')
 # Load environment variables
 load_dotenv()
 logger.info("Environment variables loaded")
+
+def get_current_time():
+    """Get current time without timezone information"""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def get_current_time_iso():
+    """Get current time in ISO format without timezone information"""
+    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 # Add caching decorator at the top of the file after imports
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -341,7 +348,7 @@ def get_system_status():
     try:
         status = {
             'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': get_current_time_iso(),
             'version': '1.0.0',  # Update this with your app version
             'system': {
                 'platform': platform.platform(),
@@ -362,7 +369,7 @@ def get_system_status():
         return {
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.now().isoformat()
+            'timestamp': get_current_time_iso()
         }
 
 def check_deployment_health():
@@ -403,14 +410,14 @@ def check_deployment_health():
                 'disk': disk_status,
                 'memory': memory_status
             },
-            'timestamp': datetime.now().isoformat()
+            'timestamp': get_current_time_iso()
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}", exc_info=True)
         return {
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': datetime.now().isoformat()
+            'timestamp': get_current_time_iso()
         }
 
 def get_table_columns():
