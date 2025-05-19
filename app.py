@@ -557,7 +557,7 @@ def load_filter_options(table_choice):
                             # Use chunking for the large vendor file with smaller chunks
                             logger.info(f"Loading large vendor file: {file_path}")
                             unique_vendors = set()
-                            chunk_size = 1000  # Smaller chunk size
+                            chunk_size = 5000  # Increased chunk size since we're only keeping unique values
                             total_chunks = 0
                             
                             try:
@@ -581,11 +581,15 @@ def load_filter_options(table_choice):
                                     )
                                     unique_vendors.update(cleaned_vendors.dropna().unique())
                                     total_chunks += 1
-                                    logger.info(f"Processed chunk {total_chunks} of vendor file")
+                                    logger.info(f"Processed chunk {total_chunks}, current unique vendors: {len(unique_vendors)}")
                                 
                                 # Convert set to DataFrame
                                 data_dict[file_path] = pd.DataFrame({'Ven_NAME': list(unique_vendors)})
                                 logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                                
+                                # Verify the number of unique vendors
+                                if len(unique_vendors) > 50000:
+                                    logger.warning(f"Number of unique vendors ({len(unique_vendors)}) is higher than expected (45k)")
                             except Exception as e:
                                 import traceback
                                 error_details = traceback.format_exc()
@@ -685,33 +689,38 @@ def load_filter_options(table_choice):
                             # Use chunking for the large vendor file with smaller chunks
                             logger.info(f"Loading large vendor file: {file_path}")
                             unique_vendors = set()
-                            chunk_size = 1000  # Smaller chunk size
+                            chunk_size = 5000  # Increased chunk size since we're only keeping unique values
                             total_chunks = 0
                             
                             try:
-                                # First try to read the file header to check structure
-                                header_df = pd.read_csv(file_path, nrows=0)
-                                logger.info(f"File header columns: {header_df.columns.tolist()}")
-                                
                                 # Read with specific encoding and quote handling
                                 for chunk in pd.read_csv(
                                     file_path,
                                     chunksize=chunk_size,
                                     usecols=['Vendor'],
-                                    encoding='utf-8',
-                                    quoting=1,  # QUOTE_ALL
-                                    quotechar='"',
-                                    escapechar='\\'
+                                    encoding='latin1',  # Use latin1 which can handle all byte values
+                                    quoting=3,  # QUOTE_NONE
+                                    quotechar=None,
+                                    escapechar='\\',
+                                    on_bad_lines='skip'  # Skip problematic lines
                                 ):
                                     # Clean the vendor names
-                                    cleaned_vendors = chunk['Vendor'].str.replace('"', '').str.strip()
+                                    cleaned_vendors = (
+                                        chunk['Vendor']
+                                        .str.replace('"', '')    # Remove double quotes
+                                        .str.strip()             # Remove whitespace
+                                    )
                                     unique_vendors.update(cleaned_vendors.dropna().unique())
                                     total_chunks += 1
-                                    logger.info(f"Processed chunk {total_chunks} of vendor file")
+                                    logger.info(f"Processed chunk {total_chunks}, current unique vendors: {len(unique_vendors)}")
                                 
                                 # Convert set to DataFrame
                                 data_dict[file_path] = pd.DataFrame({'Vendor': list(unique_vendors)})
                                 logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
+                                
+                                # Verify the number of unique vendors
+                                if len(unique_vendors) > 50000:
+                                    logger.warning(f"Number of unique vendors ({len(unique_vendors)}) is higher than expected (45k)")
                             except Exception as e:
                                 import traceback
                                 error_details = traceback.format_exc()
