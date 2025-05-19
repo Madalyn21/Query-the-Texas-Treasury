@@ -260,85 +260,20 @@ def get_filtered_data(filters, table_choice):
         from db_config import get_db_connection
         engine = get_db_connection()
         
-        # Determine which table to query based on selection
-        main_table = "paymentinformation" if table_choice == "Payment Information" else "contractinfo"
+        # Get filtered data using the new query utilities
+        df = get_filtered_data(filter_payload, table_choice)
         
-        # Build the base query
-        query = text(f"""
-            SELECT p.*, c.*, m.*
-            FROM {main_table} p
-            LEFT JOIN contractinfo c ON p.payment_id = c.payment_id
-            LEFT JOIN mergedinfo m ON p.payment_id = m.payment_id
-            WHERE 1=1
-        """)
-        
-        params = {}
-        
-        # Add filters to query
-        if filters.get('Agency'):
-            query = text(str(query) + " AND p.agency_name = :agency")
-            params['agency'] = filters['agency']
-        
-        if filters.get('vendor'):
-            query = text(str(query) + " AND p.vendor_name = :vendor")
-            params['vendor'] = filters['vendor']
-        
-        if filters.get('appropriation_title'):
-            query = text(str(query) + " AND p.appropriation_title = :appropriation_title")
-            params['appropriation_title'] = filters['appropriation_title']
-        
-        if filters.get('fiscal_year'):
-            query = text(str(query) + " AND p.fiscal_year = :fiscal_year")
-            params['fiscal_year'] = filters['fiscal_year']
-        
-        if filters.get('date_start'):
-            query = text(str(query) + " AND p.payment_date >= :date_start")
-            params['date_start'] = filters['date_start']
-        
-        if filters.get('date_end'):
-            query = text(str(query) + " AND p.payment_date <= :date_end")
-            params['date_end'] = filters['date_end']
-        
-        if filters.get('min_price'):
-            query = text(str(query) + " AND p.amount >= :min_price")
-            params['min_price'] = filters['min_price']
-        
-        if filters.get('max_price'):
-            query = text(str(query) + " AND p.amount <= :max_price")
-            params['max_price'] = filters['max_price']
-        
-        # Execute query with chunking
-        all_data = []
-        chunk_size = 100
-        offset = 0
-        
-        with engine.connect() as connection:
-            while True:
-                # Add LIMIT and OFFSET to the query
-                chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
-                result = connection.execute(chunk_query, params)
-                chunk_data = [dict(row) for row in result]
-                
-                if not chunk_data:
-                    break
-                    
-                all_data.extend(chunk_data)
-                offset += chunk_size
-                
-                # Log progress
-                logger.info(f"Retrieved {len(all_data)} records so far")
-                
-                # If we got less than chunk_size records, we've reached the end
-                if len(chunk_data) < chunk_size:
-                    break
+        if not df.empty:
+            logger.info(f"Retrieved {len(df)} records")
+            return df
+        else:
+            logger.info("No data returned from query")
+            return pd.DataFrame()
             
-        logger.info(f"Total records retrieved: {len(all_data)}")
-        return all_data
-        
     except Exception as e:
         logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
         st.error(f"Error retrieving data: {str(e)}")
-        return []
+        return pd.DataFrame()
 
 def df_to_zip(df):
     csv_bytes = df.to_csv(index=False).encode('utf-8')
