@@ -29,4 +29,3 @@ python-dateutil
 pytz
 certifi
 urllib3
-backports.zoneinfo
