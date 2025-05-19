@@ -554,16 +554,25 @@ def load_filter_options(table_choice):
                 for i, file_path in enumerate(file_paths):
                     try:
                         if file_path.endswith('payments_ven_namelist.csv'):
-                            # Use chunking for the large vendor file
-                            chunks = []
-                            for chunk in pd.read_csv(file_path, chunksize=10000):
-                                chunks.append(chunk)
-                            data_dict[file_path] = pd.concat(chunks)
+                            # Use chunking for the large vendor file with smaller chunks
+                            logger.info(f"Loading large vendor file: {file_path}")
+                            unique_vendors = set()
+                            chunk_size = 1000  # Smaller chunk size
+                            total_chunks = 0
+                            
+                            for chunk in pd.read_csv(file_path, chunksize=chunk_size, usecols=['Ven_NAME']):
+                                unique_vendors.update(chunk['Ven_NAME'].unique())
+                                total_chunks += 1
+                                logger.info(f"Processed chunk {total_chunks} of vendor file")
+                            
+                            # Convert set to DataFrame
+                            data_dict[file_path] = pd.DataFrame({'Ven_NAME': list(unique_vendors)})
+                            logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
                         else:
                             data_dict[file_path] = load_csv_data(file_path)
                         progress_bar.progress((i + 1) / len(file_paths))
                     except Exception as e:
-                        logger.error(f"Error loading {file_path}: {str(e)}")
+                        logger.error(f"Error loading {file_path}: {str(e)}", exc_info=True)
                         st.error(f"Error loading {file_path}. Using empty data.")
                         data_dict[file_path] = pd.DataFrame()
                 
@@ -629,16 +638,25 @@ def load_filter_options(table_choice):
                 for i, file_path in enumerate(file_paths):
                     try:
                         if file_path.endswith('contract_vendor_list.csv'):
-                            # Use chunking for the large vendor file
-                            chunks = []
-                            for chunk in pd.read_csv(file_path, chunksize=10000):
-                                chunks.append(chunk)
-                            data_dict[file_path] = pd.concat(chunks)
+                            # Use chunking for the large vendor file with smaller chunks
+                            logger.info(f"Loading large vendor file: {file_path}")
+                            unique_vendors = set()
+                            chunk_size = 1000  # Smaller chunk size
+                            total_chunks = 0
+                            
+                            for chunk in pd.read_csv(file_path, chunksize=chunk_size, usecols=['Vendor']):
+                                unique_vendors.update(chunk['Vendor'].unique())
+                                total_chunks += 1
+                                logger.info(f"Processed chunk {total_chunks} of vendor file")
+                            
+                            # Convert set to DataFrame
+                            data_dict[file_path] = pd.DataFrame({'Vendor': list(unique_vendors)})
+                            logger.info(f"Successfully loaded {len(unique_vendors)} unique vendors")
                         else:
                             data_dict[file_path] = load_csv_data(file_path)
                         progress_bar.progress((i + 1) / len(file_paths))
                     except Exception as e:
-                        logger.error(f"Error loading {file_path}: {str(e)}")
+                        logger.error(f"Error loading {file_path}: {str(e)}", exc_info=True)
                         st.error(f"Error loading {file_path}. Using empty data.")
                         data_dict[file_path] = pd.DataFrame()
                 
