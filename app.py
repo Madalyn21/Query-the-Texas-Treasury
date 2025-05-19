@@ -9,13 +9,15 @@ import time
 import zipfile
 from datetime import timedelta
 
+# Import pandas configuration
+from pandas_config import pd
+
 # Configure pandas to not use timezone features
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
 os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '') + ':/home/ubuntu/Query-the-Texas-Treasury/venv/lib/python3.8/site-packages'
 
 # Third-party imports
-import pandas as pd
 import psutil
 import requests
 import streamlit as st
