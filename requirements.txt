@@ -1,6 +1,6 @@
 # Core Application Dependencies
 streamlit
-pandas
+pandas==1.3.5
 numpy
 altair
 requests
@@ -21,4 +21,3 @@ plotly
 python-dateutil
 certifi
 urllib3
-backports.zoneinfo
