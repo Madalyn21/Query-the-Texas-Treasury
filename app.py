@@ -1105,13 +1105,23 @@ def main():
             logger.info("Added test query for WPI agency")
         
         logger.info(f"Filter payload: {filter_payload}")
+        logger.info(f"Table choice: {table_choice}")
         
         try:
             # Get database connection
             engine = get_db_connection()
+            logger.info("Database connection established")
             
             # Get filtered data using the query utilities
+            logger.info("Calling get_filtered_data with:")
+            logger.info(f"- filters: {filter_payload}")
+            logger.info(f"- table_choice: {table_choice}")
+            logger.info(f"- engine: {engine}")
+            
             df = get_filtered_data(filter_payload, table_choice, engine)
+            
+            logger.info(f"Query result type: {type(df)}")
+            logger.info(f"Query result shape: {df.shape if hasattr(df, 'shape') else 'No shape attribute'}")
             
             if not df.empty:
                 st.session_state['df'] = df
@@ -1141,8 +1151,27 @@ def main():
                 st.info("No data returned.")
                 
         except Exception as e:
-            logger.error(f"Error processing query: {str(e)}", exc_info=True)
-            st.error(f"Error retrieving data: {str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Error processing query: {str(e)}")
+            logger.error(f"Full error traceback:\n{error_details}")
+            
+            # Display detailed error information to the user
+            st.error(f"""
+            Error retrieving data:
+            
+            Error type: {type(e).__name__}
+            Error message: {str(e)}
+            
+            Full error details have been logged.
+            """)
+            
+            # If it's a database error, show more details
+            if hasattr(e, 'orig'):
+                st.error(f"""
+                Database error details:
+                {str(e.orig)}
+                """)
 
     # Add visualization section
     logger.info("Adding visualization section")
