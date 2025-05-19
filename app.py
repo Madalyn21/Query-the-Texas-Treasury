@@ -549,18 +549,54 @@ def load_filter_options(table_choice):
                     'Dropdown_Menu/payments_ven_namelist.csv'
                 ]
                 
-                # Load files sequentially
+                # Load files sequentially with chunking for large files
                 data_dict = {}
                 for i, file_path in enumerate(file_paths):
-                    data_dict[file_path] = load_csv_data(file_path)
-                    progress_bar.progress((i + 1) / len(file_paths))
+                    try:
+                        if file_path.endswith('payments_ven_namelist.csv'):
+                            # Use chunking for the large vendor file
+                            chunks = []
+                            for chunk in pd.read_csv(file_path, chunksize=10000):
+                                chunks.append(chunk)
+                            data_dict[file_path] = pd.concat(chunks)
+                        else:
+                            data_dict[file_path] = load_csv_data(file_path)
+                        progress_bar.progress((i + 1) / len(file_paths))
+                    except Exception as e:
+                        logger.error(f"Error loading {file_path}: {str(e)}")
+                        st.error(f"Error loading {file_path}. Using empty data.")
+                        data_dict[file_path] = pd.DataFrame()
                 
-                # Process the data
-                agencies = process_dropdown_data(data_dict[file_paths[0]], 'AGY_TITLE')
-                appropriation_titles = process_dropdown_data(data_dict[file_paths[1]], 'APRO_TITLE')
-                payment_sources = process_dropdown_data(data_dict[file_paths[2]], 'FUND_TITLE')
-                appropriation_objects = process_dropdown_data(data_dict[file_paths[3]], 'OBJ_TITLE')
-                vendors = process_dropdown_data(data_dict[file_paths[4]], 'Ven_NAME')
+                # Process the data with error handling
+                try:
+                    agencies = process_dropdown_data(data_dict[file_paths[0]], 'AGY_TITLE')
+                except Exception as e:
+                    logger.error(f"Error processing agencies: {str(e)}")
+                    agencies = []
+                
+                try:
+                    appropriation_titles = process_dropdown_data(data_dict[file_paths[1]], 'APRO_TITLE')
+                except Exception as e:
+                    logger.error(f"Error processing appropriation titles: {str(e)}")
+                    appropriation_titles = []
+                
+                try:
+                    payment_sources = process_dropdown_data(data_dict[file_paths[2]], 'FUND_TITLE')
+                except Exception as e:
+                    logger.error(f"Error processing payment sources: {str(e)}")
+                    payment_sources = []
+                
+                try:
+                    appropriation_objects = process_dropdown_data(data_dict[file_paths[3]], 'OBJ_TITLE')
+                except Exception as e:
+                    logger.error(f"Error processing appropriation objects: {str(e)}")
+                    appropriation_objects = []
+                
+                try:
+                    vendors = process_dropdown_data(data_dict[file_paths[4]], 'Ven_NAME')
+                except Exception as e:
+                    logger.error(f"Error processing vendors: {str(e)}")
+                    vendors = []
                 
                 result = {
                     'agencies': agencies,
@@ -588,19 +624,60 @@ def load_filter_options(table_choice):
                     'Dropdown_Menu/contract_subject_list.csv'
                 ]
                 
-                # Load files sequentially
+                # Load files sequentially with chunking for large files
                 data_dict = {}
                 for i, file_path in enumerate(file_paths):
-                    data_dict[file_path] = load_csv_data(file_path)
-                    progress_bar.progress((i + 1) / len(file_paths))
+                    try:
+                        if file_path.endswith('contract_vendor_list.csv'):
+                            # Use chunking for the large vendor file
+                            chunks = []
+                            for chunk in pd.read_csv(file_path, chunksize=10000):
+                                chunks.append(chunk)
+                            data_dict[file_path] = pd.concat(chunks)
+                        else:
+                            data_dict[file_path] = load_csv_data(file_path)
+                        progress_bar.progress((i + 1) / len(file_paths))
+                    except Exception as e:
+                        logger.error(f"Error loading {file_path}: {str(e)}")
+                        st.error(f"Error loading {file_path}. Using empty data.")
+                        data_dict[file_path] = pd.DataFrame()
                 
-                # Process the data
-                agencies = process_dropdown_data(data_dict[file_paths[0]], 'Agency')
-                categories = process_dropdown_data(data_dict[file_paths[1]], 'Category')
-                vendors = process_dropdown_data(data_dict[file_paths[2]], 'Vendor')
-                procurement_methods = process_dropdown_data(data_dict[file_paths[3]], 'Procurement Method')
-                statuses = process_dropdown_data(data_dict[file_paths[4]], 'Status')
-                subjects = process_dropdown_data(data_dict[file_paths[5]], 'Subject')
+                # Process the data with error handling
+                try:
+                    agencies = process_dropdown_data(data_dict[file_paths[0]], 'Agency')
+                except Exception as e:
+                    logger.error(f"Error processing agencies: {str(e)}")
+                    agencies = []
+                
+                try:
+                    categories = process_dropdown_data(data_dict[file_paths[1]], 'Category')
+                except Exception as e:
+                    logger.error(f"Error processing categories: {str(e)}")
+                    categories = []
+                
+                try:
+                    vendors = process_dropdown_data(data_dict[file_paths[2]], 'Vendor')
+                except Exception as e:
+                    logger.error(f"Error processing vendors: {str(e)}")
+                    vendors = []
+                
+                try:
+                    procurement_methods = process_dropdown_data(data_dict[file_paths[3]], 'Procurement Method')
+                except Exception as e:
+                    logger.error(f"Error processing procurement methods: {str(e)}")
+                    procurement_methods = []
+                
+                try:
+                    statuses = process_dropdown_data(data_dict[file_paths[4]], 'Status')
+                except Exception as e:
+                    logger.error(f"Error processing statuses: {str(e)}")
+                    statuses = []
+                
+                try:
+                    subjects = process_dropdown_data(data_dict[file_paths[5]], 'Subject')
+                except Exception as e:
+                    logger.error(f"Error processing subjects: {str(e)}")
+                    subjects = []
                 
                 result = {
                     'agencies': agencies,
