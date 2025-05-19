@@ -127,13 +127,44 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             
             # Let's check if we have any data for the agency
             if params.get('agency'):
+                # First check exact match
                 agency_check = text(f"""
                     SELECT COUNT(*) 
                     FROM {table_name} 
                     WHERE agency_title = :agency
                 """)
                 agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
-                logger.info(f"Found {agency_count} records for agency: {params['agency']}")
+                logger.info(f"Found {agency_count} records for exact agency match: {params['agency']}")
+                
+                # Then check case-insensitive match
+                agency_check_ci = text(f"""
+                    SELECT COUNT(*) 
+                    FROM {table_name} 
+                    WHERE LOWER(agency_title) = LOWER(:agency)
+                """)
+                agency_count_ci = connection.execute(agency_check_ci, {'agency': params['agency']}).scalar()
+                logger.info(f"Found {agency_count_ci} records for case-insensitive agency match: {params['agency']}")
+                
+                # If no matches, let's see what agencies are similar
+                if agency_count_ci == 0:
+                    similar_agencies = text(f"""
+                        SELECT DISTINCT agency_title 
+                        FROM {table_name} 
+                        WHERE agency_title ILIKE :agency_pattern
+                        LIMIT 5
+                    """)
+                    similar = connection.execute(similar_agencies, {'agency_pattern': f'%{params["agency"]}%'}).fetchall()
+                    logger.info(f"Similar agencies found: {[row[0] for row in similar]}")
+            
+            # Check if we have any data for the fiscal year
+            if params.get('fiscal_year'):
+                year_check = text(f"""
+                    SELECT COUNT(*) 
+                    FROM {table_name} 
+                    WHERE fiscal_year = :fiscal_year
+                """)
+                year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
+                logger.info(f"Found {year_count} records for fiscal year: {params['fiscal_year']}")
             
             while True:
                 # Add LIMIT and OFFSET to the query

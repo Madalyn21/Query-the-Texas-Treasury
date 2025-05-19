@@ -621,13 +621,13 @@ def load_filter_options(table_choice):
                 # Process the data with error handling
                 try:
                     agency_df = pd.read_csv('Dropdown_Menu/contract_agency_list.csv')
-                    logger.info(f"Found columns in contract_agency_list.csv: {agency_df.columns.tolist()}")
+                    logger.info(f"Found columns in agency list: {agency_df.columns.tolist()}")
                     if 'Agency' not in agency_df.columns:
                         raise Exception(f"Column 'Agency' not found. Available columns: {agency_df.columns.tolist()}")
                     agencies = [(str(row['Agency']), str(row['Agency'])) for _, row in agency_df.iterrows()]
-                    agencies.sort(key=lambda x: x[0])
+                    agencies.sort()
                 except Exception as e:
-                    logger.error(f"Error loading agency data: {str(e)}", exc_info=True)
+                    logger.error(f"Error loading agency list: {str(e)}", exc_info=True)
                     agencies = []
                 
                 try:
@@ -861,6 +861,8 @@ def main():
                     raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
                 fiscal_years = fiscal_years_df['fiscal_year'].tolist()
                 fiscal_years.sort()
+                logger.info(f"Found fiscal years: {fiscal_years}")
+                logger.info(f"Setting fiscal year range from {fiscal_years[0]} to {fiscal_years[-1]}")
             except Exception as e:
                 logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
                 fiscal_years = []
