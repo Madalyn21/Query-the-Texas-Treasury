@@ -339,7 +339,7 @@ def get_system_status():
     try:
         status = {
             'status': 'healthy',
-            'timestamp': pd.Timestamp.now().isoformat(),
+            'timestamp': datetime.now().isoformat(),
             'version': '1.0.0',  # Update this with your app version
             'system': {
                 'platform': platform.platform(),
@@ -360,7 +360,7 @@ def get_system_status():
         return {
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': pd.Timestamp.now().isoformat()
+            'timestamp': datetime.now().isoformat()
         }
 
 def check_deployment_health():
@@ -401,14 +401,14 @@ def check_deployment_health():
                 'disk': disk_status,
                 'memory': memory_status
             },
-            'timestamp': pd.Timestamp.now().isoformat()
+            'timestamp': datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}", exc_info=True)
         return {
             'status': 'unhealthy',
             'error': str(e),
-            'timestamp': pd.Timestamp.now().isoformat()
+            'timestamp': datetime.now().isoformat()
         }
 
 def get_table_columns():
@@ -655,15 +655,15 @@ def main():
     
     # Set session expiry (24 hours)
     if 'session_start' not in st.session_state:
-        st.session_state.session_start = pd.Timestamp.now()
+        st.session_state.session_start = datetime.now()
         logger.info("Session start time set")
     
     # Check session expiry
-    if pd.Timestamp.now() - st.session_state.session_start > timedelta(hours=24):
+    if datetime.now() - st.session_state.session_start > timedelta(hours=24):
         logger.warning("Session expired, clearing session state")
         st.session_state.clear()
         st.session_state.session_id = secrets.token_urlsafe(32)
-        st.session_state.session_start = pd.Timestamp.now()
+        st.session_state.session_start = datetime.now()
     
     # Add security headers
     logger.info("Adding security headers")
