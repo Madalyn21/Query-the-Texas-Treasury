@@ -860,7 +860,7 @@ def main():
                 if 'fiscal_year' not in fiscal_years_df.columns:
                     raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
                 fiscal_years = fiscal_years_df['fiscal_year'].tolist()
-                fiscal_years.sort(reverse=True)
+                fiscal_years.sort()
             except Exception as e:
                 logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
                 fiscal_years = []
@@ -870,7 +870,7 @@ def main():
                 selected_fiscal_year = st.select_slider(
                     "Fiscal Year",
                     options=fiscal_years,
-                    value=(fiscal_years[-1], fiscal_years[0]),
+                    value=(fiscal_years[0], fiscal_years[-1]),
                     help="Select a range of fiscal years"
                 )
                 

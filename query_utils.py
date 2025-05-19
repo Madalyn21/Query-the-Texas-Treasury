@@ -34,102 +34,49 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     return query, {}
 
-def add_filters_to_query(query: text, params: Dict, filters: Dict, table_choice: str) -> Tuple[text, Dict]:
+def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice: str) -> Tuple[text, Dict]:
     """
-    Add filter conditions to the query based on the provided filters.
-    
-    Args:
-        query (text): The base SQLAlchemy query
-        params (Dict): The parameters dictionary
-        filters (Dict): Dictionary containing filter values
-        table_choice (str): Either "Payment Information" or "Contract Information"
-        
-    Returns:
-        Tuple[text, Dict]: The modified query and parameters dictionary
+    Add filters to the query based on the selected table.
     """
-    logger.info(f"Adding filters to query: {filters}")
+    logger.info(f"Adding filters for {table_choice}")
+    logger.info(f"Filters received: {filters}")
     
-    # Add common filters
     if table_choice == "Payment Information":
-        if filters.get('fiscal_year_start'):
-            query = text(str(query) + " AND p.fiscal_year >= :fiscal_year_start")
-            params['fiscal_year_start'] = filters['fiscal_year_start']
-        
-        if filters.get('fiscal_year_end'):
-            query = text(str(query) + " AND p.fiscal_year <= :fiscal_year_end")
-            params['fiscal_year_end'] = filters['fiscal_year_end']
-        
-        if filters.get('fiscal_month_start'):
-            query = text(str(query) + " AND p.fiscal_month >= :fiscal_month_start")
-            params['fiscal_month_start'] = filters['fiscal_month_start']
-        
-        if filters.get('fiscal_month_end'):
-            query = text(str(query) + " AND p.fiscal_month <= :fiscal_month_end")
-            params['fiscal_month_end'] = filters['fiscal_month_end']
-    else:  # Contract Information
-        if filters.get('fiscal_year_start'):
-            query = text(str(query) + " AND EXTRACT(YEAR FROM c.completion_date_date) >= :fiscal_year_start")
-            params['fiscal_year_start'] = filters['fiscal_year_start']
-        
-        if filters.get('fiscal_year_end'):
-            query = text(str(query) + " AND EXTRACT(YEAR FROM c.completion_date_date) <= :fiscal_year_end")
-            params['fiscal_year_end'] = filters['fiscal_year_end']
-        
-        if filters.get('fiscal_month_start'):
-            query = text(str(query) + " AND EXTRACT(MONTH FROM c.completion_date_date) >= :fiscal_month_start")
-            params['fiscal_month_start'] = filters['fiscal_month_start']
-        
-        if filters.get('fiscal_month_end'):
-            query = text(str(query) + " AND EXTRACT(MONTH FROM c.completion_date_date) <= :fiscal_month_end")
-            params['fiscal_month_end'] = filters['fiscal_month_end']
-    
-    # Add table-specific filters
-    if table_choice == "Payment Information":
+        if filters.get('fiscal_year'):
+            query = text(str(query) + " AND p.fiscal_year = :fiscal_year")
+            params['fiscal_year'] = filters['fiscal_year']
+            logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
+            
         if filters.get('agency'):
-            query = text(str(query) + " AND p.agency_title = :agency")
+            # Make agency filter case-insensitive
+            query = text(str(query) + " AND LOWER(p.agency_title) = LOWER(:agency)")
             params['agency'] = filters['agency']
-        
-        if filters.get('vendor'):
-            query = text(str(query) + " AND p.vendor_name = :vendor")
-            params['vendor'] = filters['vendor']
-        
-        if filters.get('appropriation_title'):
-            query = text(str(query) + " AND p.appropriation_title = :appropriation_title")
-            params['appropriation_title'] = filters['appropriation_title']
-        
-        if filters.get('payment_source'):
-            query = text(str(query) + " AND p.fund_title = :payment_source")
-            params['payment_source'] = filters['payment_source']
-        
+            logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
+            
         if filters.get('appropriation_object'):
             query = text(str(query) + " AND p.object_title = :appropriation_object")
             params['appropriation_object'] = filters['appropriation_object']
-    
-    else:  # Contract Information
+            logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
+            
+    elif table_choice == "Contract Information":
+        if filters.get('fiscal_year'):
+            query = text(str(query) + " AND c.fiscal_year = :fiscal_year")
+            params['fiscal_year'] = filters['fiscal_year']
+            logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
+            
         if filters.get('agency'):
-            query = text(str(query) + " AND c.agency_name = :agency")
+            # Make agency filter case-insensitive
+            query = text(str(query) + " AND LOWER(c.agency_title) = LOWER(:agency)")
             params['agency'] = filters['agency']
-        
-        if filters.get('category'):
-            query = text(str(query) + " AND c.category = :category")
-            params['category'] = filters['category']
-        
-        if filters.get('vendor'):
-            query = text(str(query) + " AND c.vendor_name = :vendor")
-            params['vendor'] = filters['vendor']
-        
-        if filters.get('procurement_method'):
-            query = text(str(query) + " AND c.procurement_method = :procurement_method")
-            params['procurement_method'] = filters['procurement_method']
-        
-        if filters.get('status'):
-            query = text(str(query) + " AND c.status = :status")
-            params['status'] = filters['status']
-        
-        if filters.get('subject'):
-            query = text(str(query) + " AND c.subject = :subject")
-            params['subject'] = filters['subject']
+            logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
+            
+        if filters.get('appropriation_object'):
+            query = text(str(query) + " AND c.object_title = :appropriation_object")
+            params['appropriation_object'] = filters['appropriation_object']
+            logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
     
+    logger.info(f"Final query: {str(query)}")
+    logger.info(f"Query parameters: {params}")
     return query, params
 
 def execute_query(query: text, params: Dict, engine) -> List[Dict]:
@@ -178,6 +125,16 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             columns = [row[0] for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
+            # Let's check if we have any data for the agency
+            if params.get('agency'):
+                agency_check = text(f"""
+                    SELECT COUNT(*) 
+                    FROM {table_name} 
+                    WHERE agency_title = :agency
+                """)
+                agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
+                logger.info(f"Found {agency_count} records for agency: {params['agency']}")
+            
             while True:
                 # Add LIMIT and OFFSET to the query
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
@@ -200,10 +157,10 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                 # If we got less than chunk_size records, we've reached the end
                 if len(chunk_data) < chunk_size:
                     break
-        
-        logger.info(f"Total records retrieved: {len(all_data)}")
-        return all_data
-        
+            
+            logger.info(f"Total records retrieved: {len(all_data)}")
+            return all_data
+            
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}", exc_info=True)
         raise
@@ -229,7 +186,7 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
         logger.info(f"Base query built: {str(query)}")
         
         # Add filters to the query
-        query, params = add_filters_to_query(query, params, filters, table_choice)
+        query, params = add_filters_to_query(query, filters, params, table_choice)
         logger.info(f"Query after adding filters: {str(query)}")
         logger.info(f"Parameters after adding filters: {params}")
         
