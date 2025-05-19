@@ -79,6 +79,51 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     logger.info(f"Query parameters: {params}")
     return query, params
 
+def check_table_accessibility(engine) -> Dict[str, bool]:
+    """
+    Check if both paymentinformation and contractinfo tables are accessible.
+    
+    Args:
+        engine: SQLAlchemy engine instance
+        
+    Returns:
+        Dict[str, bool]: Dictionary with table names as keys and accessibility status as values
+    """
+    logger.info("Checking table accessibility")
+    tables = {
+        'paymentinformation': False,
+        'contractinfo': False
+    }
+    
+    try:
+        with engine.connect() as connection:
+            for table in tables.keys():
+                # Check if table exists
+                check_table = text(f"""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = '{table}'
+                    );
+                """)
+                table_exists = connection.execute(check_table).scalar()
+                
+                if table_exists:
+                    # Check if we can query the table
+                    try:
+                        test_query = text(f"SELECT 1 FROM {table} LIMIT 1")
+                        connection.execute(test_query).scalar()
+                        tables[table] = True
+                        logger.info(f"Table {table} is accessible")
+                    except Exception as e:
+                        logger.error(f"Table {table} exists but is not accessible: {str(e)}")
+                else:
+                    logger.error(f"Table {table} does not exist")
+    
+    except Exception as e:
+        logger.error(f"Error checking table accessibility: {str(e)}")
+    
+    return tables
+
 def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     """
     Execute the query with chunking to handle large result sets.
@@ -95,6 +140,12 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     logger.info(f"Query: {str(query)}")
     logger.info(f"Parameters: {params}")
     
+    # First check if tables are accessible
+    table_access = check_table_accessibility(engine)
+    if not any(table_access.values()):
+        logger.error("No tables are accessible")
+        return []
+    
     all_data = []
     chunk_size = 100
     offset = 0
@@ -105,17 +156,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             table_name = "paymentinformation" if "paymentinformation" in str(query).lower() else "contractinfo"
             logger.info(f"Checking for table: {table_name}")
             
-            check_table = text(f"""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_name = '{table_name}'
-                );
-            """)
-            table_exists = connection.execute(check_table).scalar()
-            logger.info(f"Table {table_name} exists: {table_exists}")
-            
-            if not table_exists:
-                logger.error(f"Table {table_name} does not exist in the database")
+            if not table_access.get(table_name, False):
+                logger.error(f"Table {table_name} is not accessible")
                 return []
             
             # Let's also check the columns
