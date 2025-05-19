@@ -470,51 +470,127 @@ def download_csv(df):
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
 
+# Add these new functions after the existing imports
+from concurrent.futures import ThreadPoolExecutor
+import threading
+
+# Add a lock for thread-safe operations
+data_lock = threading.Lock()
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_csv_data_parallel(file_paths):
+    """Load multiple CSV files in parallel"""
+    def load_single_file(file_path):
+        try:
+            return load_csv_data(file_path)
+        except Exception as e:
+            logger.error(f"Error loading {file_path}: {str(e)}")
+            return None
+
+    with ThreadPoolExecutor(max_workers=min(len(file_paths), 4)) as executor:
+        results = list(executor.map(load_single_file, file_paths))
+    return {path: df for path, df in zip(file_paths, results) if df is not None}
+
+def initialize_session_state():
+    """Initialize session state variables"""
+    if 'filter_options' not in st.session_state:
+        st.session_state.filter_options = {
+            'Payment Information': None,
+            'Contract Information': None
+        }
+    if 'data_loaded' not in st.session_state:
+        st.session_state.data_loaded = False
+    if 'filters' not in st.session_state:
+        st.session_state.filters = {
+            'agency': None,
+            'vendor': None,
+            'appropriation_title': None,
+            'payment_source': None,
+            'appropriation_object': None,
+            'fiscal_year_start': None,
+            'fiscal_year_end': None,
+            'fiscal_month_start': None,
+            'fiscal_month_end': None,
+            'category': None,
+            'procurement_method': None,
+            'status': None,
+            'subject': None
+        }
+
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
+    # Check if we already have the data cached in session state
+    if st.session_state.filter_options[table_choice] is not None:
+        return st.session_state.filter_options[table_choice]
+
     try:
         if table_choice == "Payment Information":
             with st.spinner('Loading payment information filters...'):
-                # Load all payment CSV files in parallel
-                agencies_df = load_csv_data('Dropdown_Menu/payments_agy_titlelist.csv')
-                appropriation_df = load_csv_data('Dropdown_Menu/payments_apro_titlelist.csv')
-                payment_source_df = load_csv_data('Dropdown_Menu/payments_fund_titlelist.csv')
-                appropriation_obj_df = load_csv_data('Dropdown_Menu/payments_obj_titlelist.csv')
-                vendor_df = load_csv_data('Dropdown_Menu/payments_ven_namelist.csv')
-
+                progress_bar = st.progress(0)
+                
+                # Define file paths
+                file_paths = [
+                    'Dropdown_Menu/payments_agy_titlelist.csv',
+                    'Dropdown_Menu/payments_apro_titlelist.csv',
+                    'Dropdown_Menu/payments_fund_titlelist.csv',
+                    'Dropdown_Menu/payments_obj_titlelist.csv',
+                    'Dropdown_Menu/payments_ven_namelist.csv'
+                ]
+                
+                # Load all files in parallel
+                data_dict = load_csv_data_parallel(file_paths)
+                progress_bar.progress(50)
+                
                 # Process the data
-                agencies = process_dropdown_data(agencies_df, 'AGY_TITLE')
-                appropriation_titles = process_dropdown_data(appropriation_df, 'APRO_TITLE')
-                payment_sources = process_dropdown_data(payment_source_df, 'FUND_TITLE')
-                appropriation_objects = process_dropdown_data(appropriation_obj_df, 'OBJ_TITLE')
-                vendors = process_dropdown_data(vendor_df, 'Ven_NAME')
-
-                return {
+                agencies = process_dropdown_data(data_dict[file_paths[0]], 'AGY_TITLE')
+                appropriation_titles = process_dropdown_data(data_dict[file_paths[1]], 'APRO_TITLE')
+                payment_sources = process_dropdown_data(data_dict[file_paths[2]], 'FUND_TITLE')
+                appropriation_objects = process_dropdown_data(data_dict[file_paths[3]], 'OBJ_TITLE')
+                vendors = process_dropdown_data(data_dict[file_paths[4]], 'Ven_NAME')
+                
+                progress_bar.progress(100)
+                
+                result = {
                     'agencies': agencies,
                     'appropriation_titles': appropriation_titles,
                     'payment_sources': payment_sources,
                     'appropriation_objects': appropriation_objects,
                     'vendors': vendors
                 }
+                
+                # Cache the result in session state
+                st.session_state.filter_options[table_choice] = result
+                return result
+                
         else:
             with st.spinner('Loading contract information filters...'):
-                # Load all contract CSV files in parallel
-                agency_df = load_csv_data('Dropdown_Menu/contract_agency_list.csv')
-                category_df = load_csv_data('Dropdown_Menu/contract_category_list.csv')
-                vendor_df = load_csv_data('Dropdown_Menu/contract_vendor_list.csv')
-                procurement_df = load_csv_data('Dropdown_Menu/contract_procurement_method_list.csv')
-                status_df = load_csv_data('Dropdown_Menu/contract_status_list.csv')
-                subject_df = load_csv_data('Dropdown_Menu/contract_subject_list.csv')
-
+                progress_bar = st.progress(0)
+                
+                # Define file paths
+                file_paths = [
+                    'Dropdown_Menu/contract_agency_list.csv',
+                    'Dropdown_Menu/contract_category_list.csv',
+                    'Dropdown_Menu/contract_vendor_list.csv',
+                    'Dropdown_Menu/contract_procurement_method_list.csv',
+                    'Dropdown_Menu/contract_status_list.csv',
+                    'Dropdown_Menu/contract_subject_list.csv'
+                ]
+                
+                # Load all files in parallel
+                data_dict = load_csv_data_parallel(file_paths)
+                progress_bar.progress(50)
+                
                 # Process the data
-                agencies = process_dropdown_data(agency_df, 'Agency')
-                categories = process_dropdown_data(category_df, 'Category')
-                vendors = process_dropdown_data(vendor_df, 'Vendor')
-                procurement_methods = process_dropdown_data(procurement_df, 'Procurement Method')
-                statuses = process_dropdown_data(status_df, 'Status')
-                subjects = process_dropdown_data(subject_df, 'Subject')
-
-                return {
+                agencies = process_dropdown_data(data_dict[file_paths[0]], 'Agency')
+                categories = process_dropdown_data(data_dict[file_paths[1]], 'Category')
+                vendors = process_dropdown_data(data_dict[file_paths[2]], 'Vendor')
+                procurement_methods = process_dropdown_data(data_dict[file_paths[3]], 'Procurement Method')
+                statuses = process_dropdown_data(data_dict[file_paths[4]], 'Status')
+                subjects = process_dropdown_data(data_dict[file_paths[5]], 'Subject')
+                
+                progress_bar.progress(100)
+                
+                result = {
                     'agencies': agencies,
                     'categories': categories,
                     'vendors': vendors,
@@ -522,12 +598,20 @@ def load_filter_options(table_choice):
                     'statuses': statuses,
                     'subjects': subjects
                 }
+                
+                # Cache the result in session state
+                st.session_state.filter_options[table_choice] = result
+                return result
+                
     except Exception as e:
         logger.error(f"Error loading filter options: {str(e)}", exc_info=True)
         st.error(f"Error loading filter options: {str(e)}")
         return None
 
 def main():
+    # Initialize session state at the start
+    initialize_session_state()
+    
     # Configure Streamlit security settings first
     logger.info("Starting main function")
     st.set_page_config(
@@ -619,16 +703,6 @@ def main():
     with col1:
         logger.info("Setting up filter criteria")
         st.subheader("Filter Criteria")
-        
-        # Initialize session state for filters if not exists
-        if 'filters' not in st.session_state:
-            st.session_state.filters = {
-                'agency': None,
-                'vendor': None,
-                'appropriation_title': None,
-                'fiscal_year': None
-            }
-            logger.info("Initialized filter session state")
         
         # Add table selection
         table_choice = st.radio(
@@ -781,11 +855,26 @@ def main():
                 3. Click 'Submit Query' to view the results
                 4. Download the results using the download button
                 
-                ### Data Fields
+                ### Understanding the Dropdown Categories
+                
+                #### Payment Information Categories
                 - **Agency**: The government agency making the payment
                 - **Vendor**: The recipient of the payment
-                - **Appropriation**: The appropriation number for the payment
-                - **Fiscal Year**: The fiscal year of the payment
+                - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget (e.g., "Highway Maintenance" or "School Nutrition Program"). Think of it as the label on a line in the government's spending plan.
+                - **Payment Source (Fund Title)**: The name of the account that actually holds the money. Different funds keep different revenue sources separate, like a "General Fund" for tax revenues or a "Highway Trust Fund" for fuel-tax money, so officials can track where dollars come from and where they should go.
+                - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy, that is, salaries, office supplies, construction services, travel reimbursements, etc. It's the budget's "line-item" level.
+                
+                #### Contract Information Categories
+                - **Agency**: The government agency managing the contract
+                - **Vendor**: The company or entity providing the goods or services
+                - **Category**: The general type or classification of the contract
+                - **Procurement Method**: How the government chose the vendor for a contract, such as competitive bidding, non-competitive, and whether it is a contract between state agencies. It tells you how the deal was struck.
+                - **Status**: The current state of the contract (e.g., active, completed, terminated)
+                - **Subject**: A short description of what the contract covers: e.g., repairing a bridge, providing IT support, supplying textbooks, etc. It's the plain-language summary of the job the vendor has been hired to do.
+                
+                ### Data Fields
+                - **Fiscal Year**: The fiscal year of the payment or contract
+                - **Fiscal Month**: The month within the fiscal year
                 """)
 
     if submit_clicked:
