@@ -145,6 +145,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
         List[Dict]: List of dictionaries containing the query results
     """
     logger.info("Executing query with chunking")
+    logger.info(f"Query: {str(query)}")
+    logger.info(f"Parameters: {params}")
     
     all_data = []
     chunk_size = 100
@@ -152,11 +154,39 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     
     try:
         with engine.connect() as connection:
+            # First, let's check if the table exists
+            table_name = "paymentinformation" if "paymentinformation" in str(query).lower() else "contractinfo"
+            check_table = text(f"""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = '{table_name}'
+                );
+            """)
+            table_exists = connection.execute(check_table).scalar()
+            logger.info(f"Table {table_name} exists: {table_exists}")
+            
+            if not table_exists:
+                logger.error(f"Table {table_name} does not exist in the database")
+                return []
+            
+            # Let's also check the columns
+            columns_query = text(f"""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = '{table_name}';
+            """)
+            columns = [row[0] for row in connection.execute(columns_query)]
+            logger.info(f"Available columns in {table_name}: {columns}")
+            
             while True:
                 # Add LIMIT and OFFSET to the query
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
+                logger.info(f"Executing chunk query: {str(chunk_query)}")
+                
                 result = connection.execute(chunk_query, params)
                 chunk_data = [dict(row) for row in result]
+                
+                logger.info(f"Chunk returned {len(chunk_data)} records")
                 
                 if not chunk_data:
                     break
@@ -191,24 +221,32 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
         pd.DataFrame: DataFrame containing the filtered data
     """
     logger.info(f"Getting filtered data for {table_choice}")
+    logger.info(f"Filters received: {filters}")
     
     try:
         # Build the base query
         query, params = build_base_query(table_choice)
+        logger.info(f"Base query built: {str(query)}")
         
         # Add filters to the query
         query, params = add_filters_to_query(query, params, filters, table_choice)
+        logger.info(f"Query after adding filters: {str(query)}")
+        logger.info(f"Parameters after adding filters: {params}")
         
         # Execute the query
         data = execute_query(query, params, engine)
+        logger.info(f"Query execution returned {len(data)} records")
         
         # Convert to DataFrame
         if data:
             df = pd.DataFrame(data)
             # Sanitize column names
             df.columns = [col.lower().replace(' ', '_') for col in df.columns]
+            logger.info(f"DataFrame created with shape: {df.shape}")
+            logger.info(f"DataFrame columns: {df.columns.tolist()}")
             return df
         else:
+            logger.warning("No data returned from query")
             return pd.DataFrame()  # Return empty DataFrame if no data
             
     except Exception as e:
