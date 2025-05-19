@@ -23,10 +23,8 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     # Build the base query
     query = text(f"""
-        SELECT p.*, c.*, m.*
+        SELECT p.*
         FROM {main_table} p
-        LEFT JOIN contractinfo c ON p.payment_id = c.payment_id
-        LEFT JOIN mergedinfo m ON p.payment_id = m.payment_id
         WHERE 1=1
     """)
     
@@ -84,7 +82,7 @@ def add_filters_to_query(query: text, params: Dict, filters: Dict, table_choice:
     # Add table-specific filters
     if table_choice == "Payment Information":
         if filters.get('agency'):
-            query = text(str(query) + " AND p.agency_name = :agency")
+            query = text(str(query) + " AND p.agency_title = :agency")
             params['agency'] = filters['agency']
         
         if filters.get('vendor'):
@@ -100,7 +98,7 @@ def add_filters_to_query(query: text, params: Dict, filters: Dict, table_choice:
             params['payment_source'] = filters['payment_source']
         
         if filters.get('appropriation_object'):
-            query = text(str(query) + " AND p.obj_title = :appropriation_object")
+            query = text(str(query) + " AND p.object_title = :appropriation_object")
             params['appropriation_object'] = filters['appropriation_object']
     
     else:  # Contract Information
@@ -207,8 +205,8 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
             df.columns = [col.lower().replace(' ', '_') for col in df.columns]
             return df
         else:
-            return pd.DataFrame()
+            return pd.DataFrame()  # Return empty DataFrame if no data
             
     except Exception as e:
         logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
-        raise 
+        return pd.DataFrame()  # Return empty DataFrame on error 
