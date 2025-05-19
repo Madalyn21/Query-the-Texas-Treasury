@@ -30,7 +30,7 @@ import streamlit.components.v1 as components
 import base64
 
 # Version identifier
-APP_VERSION = "1.1.2-DB-TEST-2024-05-16"
+APP_VERSION = "1.1.3-DB-TEST-2024-05-16"
 
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
