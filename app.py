@@ -503,6 +503,32 @@ def download_csv(df):
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
 
+def initialize_session_state():
+    """Initialize session state variables"""
+    if 'filter_options' not in st.session_state:
+        st.session_state.filter_options = {
+            'Payment Information': None,
+            'Contract Information': None
+        }
+    if 'data_loaded' not in st.session_state:
+        st.session_state.data_loaded = False
+    if 'filters' not in st.session_state:
+        st.session_state.filters = {
+            'agency': None,
+            'vendor': None,
+            'appropriation_title': None,
+            'payment_source': None,
+            'appropriation_object': None,
+            'fiscal_year_start': None,
+            'fiscal_year_end': None,
+            'fiscal_month_start': None,
+            'fiscal_month_end': None,
+            'category': None,
+            'procurement_method': None,
+            'status': None,
+            'subject': None
+        }
+
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
     # Check if we already have the data cached in session state
