@@ -1217,6 +1217,26 @@ def main():
                         st.subheader("Visualizations")
                         
                         try:
+                            # Log data information for debugging
+                            logger.info(f"DataFrame shape: {st.session_state.queried_data.shape}")
+                            logger.info(f"DataFrame columns: {st.session_state.queried_data.columns.tolist()}")
+                            logger.info(f"DataFrame dtypes: {st.session_state.queried_data.dtypes}")
+                            
+                            # Check for required columns
+                            required_columns = {
+                                'payment_distribution': ['amount', 'fiscal_year'],
+                                'vendor_analysis': ['vendor_name', 'amount'],
+                                'trend_analysis': ['fiscal_year', 'amount'],
+                                'category_analysis': ['category', 'amount']
+                            }
+                            
+                            # Verify data format before generating visualizations
+                            for viz_name, cols in required_columns.items():
+                                missing_cols = [col for col in cols if col not in st.session_state.queried_data.columns]
+                                if missing_cols:
+                                    logger.error(f"Missing columns for {viz_name}: {missing_cols}")
+                                    raise ValueError(f"Missing required columns for {viz_name}: {missing_cols}")
+                            
                             # Generate all visualizations
                             visualizations = generate_all_visualizations(st.session_state.queried_data)
                             
@@ -1239,7 +1259,17 @@ def main():
                                 
                         except Exception as e:
                             logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
-                            st.error("Error generating visualizations. Please check the data format.")
+                            st.error(f"""
+                            Error generating visualizations: {str(e)}
+                            
+                            Please check that your query includes the following columns:
+                            - amount
+                            - fiscal_year
+                            - vendor_name
+                            - category
+                            
+                            If any of these columns are missing, the visualizations cannot be generated.
+                            """)
                     else:
                         st.info("Run a query to see the data and visualizations.")
 
