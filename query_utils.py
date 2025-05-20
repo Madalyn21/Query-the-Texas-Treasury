@@ -27,12 +27,14 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     alias, table_name = table_info.get(table_choice, ("p", "paymentinformation"))
     
+    # Build a more detailed base query
     query = text(f"""
-        SELECT {alias}.*
+        SELECT DISTINCT {alias}.*
         FROM {table_name} {alias}
         WHERE 1=1
     """)
     
+    logger.info(f"Base query built: {str(query)}")
     return query, {}
 
 def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice: str) -> Tuple[text, Dict]:
@@ -61,54 +63,54 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     
     # Add vendor filter
     if filters.get('vendor') and len(filters['vendor']) > 0:
-        query = text(str(query) + f" AND LOWER({alias}.vendor_name) = LOWER(:vendor)")
-        params['vendor'] = str(filters['vendor'][0]).strip()  # Take the first vendor from the list and clean it
+        query = text(str(query) + f" AND LOWER(TRIM({alias}.vendor_name)) = LOWER(TRIM(:vendor))")
+        params['vendor'] = str(filters['vendor'][0]).strip()
         logger.info(f"Added vendor filter: {filters['vendor'][0]}")
     
     # Add other filters based on table choice
     if table_choice == "Payment Information":
         if filters.get('agency'):
-            query = text(str(query) + f" AND {alias}.agency_number = :agency")
+            query = text(str(query) + f" AND TRIM({alias}.agency_number) = TRIM(:agency)")
             params['agency'] = str(filters['agency']).strip()
             logger.info(f"Added agency filter: {filters['agency']}")
         
         if filters.get('appropriation_title'):
-            query = text(str(query) + f" AND {alias}.appropriation_number = :appropriation_title")
+            query = text(str(query) + f" AND TRIM({alias}.appropriation_number) = TRIM(:appropriation_title)")
             params['appropriation_title'] = str(filters['appropriation_title']).strip()
             logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
         
         if filters.get('payment_source'):
-            query = text(str(query) + f" AND {alias}.fund_number = :payment_source")
+            query = text(str(query) + f" AND TRIM({alias}.fund_number) = TRIM(:payment_source)")
             params['payment_source'] = str(filters['payment_source']).strip()
             logger.info(f"Added payment source filter: {filters['payment_source']}")
         
         if filters.get('appropriation_object'):
-            query = text(str(query) + f" AND {alias}.object_number = :appropriation_object")
+            query = text(str(query) + f" AND TRIM({alias}.object_number) = TRIM(:appropriation_object)")
             params['appropriation_object'] = str(filters['appropriation_object']).strip()
             logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
     else:
         if filters.get('agency'):
-            query = text(str(query) + f" AND {alias}.agency_number = :agency")
+            query = text(str(query) + f" AND TRIM({alias}.agency_number) = TRIM(:agency)")
             params['agency'] = str(filters['agency']).strip()
             logger.info(f"Added agency filter: {filters['agency']}")
         
         if filters.get('category'):
-            query = text(str(query) + f" AND LOWER({alias}.category) = LOWER(:category)")
+            query = text(str(query) + f" AND LOWER(TRIM({alias}.category)) = LOWER(TRIM(:category))")
             params['category'] = str(filters['category']).strip()
             logger.info(f"Added category filter: {filters['category']}")
         
         if filters.get('procurement_method'):
-            query = text(str(query) + f" AND LOWER({alias}.procurement_method) = LOWER(:procurement_method)")
+            query = text(str(query) + f" AND LOWER(TRIM({alias}.procurement_method)) = LOWER(TRIM(:procurement_method))")
             params['procurement_method'] = str(filters['procurement_method']).strip()
             logger.info(f"Added procurement method filter: {filters['procurement_method']}")
         
         if filters.get('status'):
-            query = text(str(query) + f" AND LOWER({alias}.status) = LOWER(:status)")
+            query = text(str(query) + f" AND LOWER(TRIM({alias}.status)) = LOWER(TRIM(:status))")
             params['status'] = str(filters['status']).strip()
             logger.info(f"Added status filter: {filters['status']}")
         
         if filters.get('subject'):
-            query = text(str(query) + f" AND LOWER({alias}.subject) = LOWER(:subject)")
+            query = text(str(query) + f" AND LOWER(TRIM({alias}.subject)) = LOWER(TRIM(:subject))")
             params['subject'] = str(filters['subject']).strip()
             logger.info(f"Added subject filter: {filters['subject']}")
     
@@ -119,14 +121,6 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
 def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     """
     Execute the query with chunking to handle large result sets.
-    
-    Args:
-        query (text): The SQLAlchemy query
-        params (Dict): The parameters dictionary
-        engine: SQLAlchemy engine instance
-        
-    Returns:
-        List[Dict]: List of dictionaries containing the query results
     """
     logger.info("Executing query with chunking")
     logger.info(f"Query: {str(query)}")
@@ -151,20 +145,30 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                 logger.error(f"Table {table_name} is not accessible")
                 return []
             
+            # First, let's check if there's any data in the table at all
+            count_query = text(f"SELECT COUNT(*) as count FROM {table_name}")
+            count_result = execute_safe_query(connection, count_query, {})
+            total_count = count_result[0]['count'] if count_result else 0
+            logger.info(f"Total records in {table_name}: {total_count}")
+            
             # Execute query with chunking
             while True:
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
+                logger.info(f"Executing chunk query: {str(chunk_query)}")
                 chunk_data = execute_safe_query(connection, chunk_query, params)
                 
                 if not chunk_data:
+                    logger.info(f"No more data found at offset {offset}")
                     break
                     
+                logger.info(f"Found {len(chunk_data)} records in chunk")
                 all_data.extend(chunk_data)
                 offset += chunk_size
                 
                 if len(chunk_data) < chunk_size:
                     break
             
+            logger.info(f"Total records found after filtering: {len(all_data)}")
             return all_data
             
     except Exception as e:
@@ -174,14 +178,6 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
 def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     """
     Main function to get filtered data from the database.
-    
-    Args:
-        filters (Dict): Dictionary containing filter values
-        table_choice (str): Either "Payment Information" or "Contract Information"
-        engine: SQLAlchemy engine instance
-        
-    Returns:
-        pd.DataFrame: DataFrame containing the filtered data
     """
     logger.info(f"Getting filtered data for {table_choice}")
     logger.info(f"Filters received: {filters}")
@@ -189,12 +185,20 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     try:
         # Build and execute query
         query, params = build_base_query(table_choice)
+        logger.info(f"Base query: {str(query)}")
+        
         query, params = add_filters_to_query(query, filters, params, table_choice)
+        logger.info(f"Query after adding filters: {str(query)}")
+        logger.info(f"Parameters after adding filters: {params}")
+        
         results = execute_query(query, params, engine)
         
         # Convert to DataFrame
         if results:
-            return pd.DataFrame(results)
+            df = pd.DataFrame(results)
+            logger.info(f"DataFrame created with {len(df)} rows and columns: {df.columns.tolist()}")
+            return df
+        logger.info("No results found, returning empty DataFrame")
         return pd.DataFrame()
         
     except Exception as e:
