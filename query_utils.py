@@ -48,68 +48,68 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     # Add fiscal year range filter
     if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
         query = text(str(query) + f" AND {alias}.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-        params['fiscal_year_start'] = filters['fiscal_year_start']
-        params['fiscal_year_end'] = filters['fiscal_year_end']
+        params['fiscal_year_start'] = int(filters['fiscal_year_start'])
+        params['fiscal_year_end'] = int(filters['fiscal_year_end'])
         logger.info(f"Added fiscal year range filter: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
     
     # Add fiscal month range filter
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
         query = text(str(query) + f" AND {alias}.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
-        params['fiscal_month_start'] = filters['fiscal_month_start']
-        params['fiscal_month_end'] = filters['fiscal_month_end']
+        params['fiscal_month_start'] = int(filters['fiscal_month_start'])
+        params['fiscal_month_end'] = int(filters['fiscal_month_end'])
         logger.info(f"Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
     
     # Add vendor filter
     if filters.get('vendor') and len(filters['vendor']) > 0:
-        query = text(str(query) + f" AND {alias}.vendor_name = :vendor")
-        params['vendor'] = filters['vendor'][0]  # Take the first vendor from the list
+        query = text(str(query) + f" AND LOWER({alias}.vendor_name) = LOWER(:vendor)")
+        params['vendor'] = str(filters['vendor'][0]).strip()  # Take the first vendor from the list and clean it
         logger.info(f"Added vendor filter: {filters['vendor'][0]}")
     
     # Add other filters based on table choice
     if table_choice == "Payment Information":
         if filters.get('agency'):
-            query = text(str(query) + f" AND {alias}.agency_title = :agency")
-            params['agency'] = filters['agency']
+            query = text(str(query) + f" AND {alias}.agency_number = :agency")
+            params['agency'] = str(filters['agency']).strip()
             logger.info(f"Added agency filter: {filters['agency']}")
         
         if filters.get('appropriation_title'):
-            query = text(str(query) + f" AND {alias}.appropriation_title = :appropriation_title")
-            params['appropriation_title'] = filters['appropriation_title']
+            query = text(str(query) + f" AND {alias}.appropriation_number = :appropriation_title")
+            params['appropriation_title'] = str(filters['appropriation_title']).strip()
             logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
         
         if filters.get('payment_source'):
-            query = text(str(query) + f" AND {alias}.payment_source = :payment_source")
-            params['payment_source'] = filters['payment_source']
+            query = text(str(query) + f" AND {alias}.fund_number = :payment_source")
+            params['payment_source'] = str(filters['payment_source']).strip()
             logger.info(f"Added payment source filter: {filters['payment_source']}")
         
         if filters.get('appropriation_object'):
-            query = text(str(query) + f" AND {alias}.object_title = :appropriation_object")
-            params['appropriation_object'] = filters['appropriation_object']
+            query = text(str(query) + f" AND {alias}.object_number = :appropriation_object")
+            params['appropriation_object'] = str(filters['appropriation_object']).strip()
             logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
     else:
         if filters.get('agency'):
-            query = text(str(query) + f" AND {alias}.agency = :agency")
-            params['agency'] = filters['agency']
+            query = text(str(query) + f" AND {alias}.agency_number = :agency")
+            params['agency'] = str(filters['agency']).strip()
             logger.info(f"Added agency filter: {filters['agency']}")
         
         if filters.get('category'):
-            query = text(str(query) + f" AND {alias}.category = :category")
-            params['category'] = filters['category']
+            query = text(str(query) + f" AND LOWER({alias}.category) = LOWER(:category)")
+            params['category'] = str(filters['category']).strip()
             logger.info(f"Added category filter: {filters['category']}")
         
         if filters.get('procurement_method'):
-            query = text(str(query) + f" AND {alias}.procurement_method = :procurement_method")
-            params['procurement_method'] = filters['procurement_method']
+            query = text(str(query) + f" AND LOWER({alias}.procurement_method) = LOWER(:procurement_method)")
+            params['procurement_method'] = str(filters['procurement_method']).strip()
             logger.info(f"Added procurement method filter: {filters['procurement_method']}")
         
         if filters.get('status'):
-            query = text(str(query) + f" AND {alias}.status = :status")
-            params['status'] = filters['status']
+            query = text(str(query) + f" AND LOWER({alias}.status) = LOWER(:status)")
+            params['status'] = str(filters['status']).strip()
             logger.info(f"Added status filter: {filters['status']}")
         
         if filters.get('subject'):
-            query = text(str(query) + f" AND {alias}.subject = :subject")
-            params['subject'] = filters['subject']
+            query = text(str(query) + f" AND LOWER({alias}.subject) = LOWER(:subject)")
+            params['subject'] = str(filters['subject']).strip()
             logger.info(f"Added subject filter: {filters['subject']}")
     
     logger.info(f"Final query: {str(query)}")
