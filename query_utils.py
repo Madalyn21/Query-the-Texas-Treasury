@@ -214,7 +214,7 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                 except Exception as e:
                     logger.error(f"Error checking exact agency match: {str(e)}")
                     # Try with different column names
-                    for col in ['agency', 'agency_name', 'agency_title', 'agency_number']:
+                    for col in ['agency', 'agency_name', 'agency_title']:
                         try:
                             agency_check = text(f"""
                                 SELECT COUNT(*) 
@@ -298,8 +298,9 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     if not chunk_data:
                         break
                     
-                    # Convert to list of dicts
-                    chunk_dicts = [dict(row) for row in chunk_data]
+                    # Convert to list of dicts using column names
+                    columns = chunk_data[0].keys()
+                    chunk_dicts = [dict(zip(columns, row)) for row in chunk_data]
                     all_data.extend(chunk_dicts)
                     logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
                     
