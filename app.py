@@ -1214,235 +1214,122 @@ def main():
                         st.dataframe(st.session_state.queried_data)
                         
                         # Display visualizations
-                        st.subheader("Visualizations")
+                        st.subheader("Data Visualizations")
                         
+                        # Display visualizations in a flexbox layout
+                        if 'visualizations' in st.session_state and st.session_state.visualizations:
+                            cols = st.columns(2)  # Create 2 columns for the grid
+                            
+                            # Display visualizations in a grid layout
+                            with cols[0]:
+                                st.altair_chart(st.session_state.visualizations['payment_distribution'], use_container_width=True)
+                                st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
+                            
+                            with cols[1]:
+                                st.altair_chart(st.session_state.visualizations['vendor_analysis'], use_container_width=True)
+                                st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+
+                        # AI Analysis section
+                        st.subheader("AI Analysis")
+                        st.info("AI-powered analysis and insights will appear here.")
+                        st.markdown("---")
+
+                        # Add logos section
+                        logger.info("Adding logos section")
                         try:
-                            # Log data information for debugging
-                            logger.info(f"DataFrame shape: {st.session_state.queried_data.shape}")
-                            logger.info(f"DataFrame columns: {st.session_state.queried_data.columns.tolist()}")
-                            logger.info(f"DataFrame dtypes: {st.session_state.queried_data.dtypes}")
-                            
-                            # Display column information for debugging
-                            st.write("Available columns:", st.session_state.queried_data.columns.tolist())
-                            
-                            # Define column mappings for each dataset
-                            payment_info_mapping = {
-                                'amount_payed': 'amount',
-                                'fiscal_year': 'fiscal_year',
-                                'vendor_name': 'vendor_name',
-                                'agency_title': 'agency',
-                                'appropriation_title': 'appropriation_title',
-                                'object_title': 'category'
-                            }
-                            
-                            contract_info_mapping = {
-                                'curvalue': 'amount',
-                                'award_date_date': 'fiscal_year',
-                                'vendor': 'vendor_name',
-                                'agency': 'agency',
-                                'category': 'category'
-                            }
-                            
-                            # Define required columns for each dataset
-                            payment_info_required = {
-                                'payment_distribution': ['amount', 'fiscal_year'],
-                                'vendor_analysis': ['vendor_name', 'amount'],
-                                'trend_analysis': ['fiscal_year', 'amount'],
-                                'category_analysis': ['category', 'amount']
-                            }
-                            
-                            contract_info_required = {
-                                'contract_distribution': ['amount', 'fiscal_year'],
-                                'vendor_analysis': ['vendor_name', 'amount'],
-                                'trend_analysis': ['fiscal_year', 'amount'],
-                                'category_analysis': ['category', 'amount']
-                            }
-                            
-                            # Select mapping based on table choice
-                            column_mapping = payment_info_mapping if table_choice == "Payment Information" else contract_info_mapping
-                            required_columns = payment_info_required if table_choice == "Payment Information" else contract_info_required
-                            
-                            # Create a copy of the DataFrame with mapped column names
-                            viz_df = st.session_state.queried_data.copy()
-                            
-                            # Log the mapping process
-                            logger.info(f"Using column mapping for {table_choice}:")
-                            for old_col, new_col in column_mapping.items():
-                                logger.info(f"  {old_col} -> {new_col}")
-                            
-                            # Map columns and log which ones were found
-                            mapped_columns = set()
-                            for old_col, new_col in column_mapping.items():
-                                if old_col in viz_df.columns:
-                                    viz_df[new_col] = viz_df[old_col]
-                                    mapped_columns.add(new_col)
-                                    logger.info(f"Successfully mapped {old_col} to {new_col}")
-                                else:
-                                    logger.warning(f"Column {old_col} not found in DataFrame")
-                            
-                            # Log the final columns after mapping
-                            logger.info(f"Final columns after mapping: {viz_df.columns.tolist()}")
-                            logger.info(f"Successfully mapped columns: {mapped_columns}")
-                            
-                            # Verify data format before generating visualizations
-                            for viz_name, cols in required_columns.items():
-                                missing_cols = [col for col in cols if col not in viz_df.columns]
-                                if missing_cols:
-                                    logger.error(f"Missing columns for {viz_name}: {missing_cols}")
-                                    st.error(f"""
-                                    Missing columns for {viz_name}: {missing_cols}
-                                    
-                                    Available columns in your data:
-                                    {viz_df.columns.tolist()}
-                                    
-                                    Required columns for {table_choice}:
-                                    - amount (or {', '.join([k for k, v in column_mapping.items() if v == 'amount'])})
-                                    - fiscal_year (or {', '.join([k for k, v in column_mapping.items() if v == 'fiscal_year'])})
-                                    - vendor_name (or {', '.join([k for k, v in column_mapping.items() if v == 'vendor_name'])})
-                                    - category (or {', '.join([k for k, v in column_mapping.items() if v == 'category'])})
-                                    
-                                    Note: The agency column should be 'agency_title' in the database.
-                                    """)
-                                    raise ValueError(f"Missing required columns for {viz_name}: {missing_cols}")
-                            
-                            # Generate all visualizations with mapped DataFrame
-                            visualizations = generate_all_visualizations(viz_df)
-                            
-                            # Create two columns for visualizations
-                            viz_col1, viz_col2 = st.columns(2)
-                            
-                            with viz_col1:
-                                st.subheader(f"{table_choice} Distribution")
-                                st.altair_chart(visualizations['payment_distribution' if table_choice == "Payment Information" else 'contract_distribution'], use_container_width=True)
-                                
-                                st.subheader("Top Vendors")
-                                st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-                                
-                            with viz_col2:
-                                st.subheader("Trend Analysis")
-                                st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-                                
-                                st.subheader("Category Distribution")
-                                st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-                                
+                            # Responsive side-by-side clickable logos with improved flexbox layout
+                            logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+                            doge_img_html = ""
+                            if os.path.exists(logo_path):
+                                with open(logo_path, "rb") as image_file:
+                                    encoded = base64.b64encode(image_file.read()).decode()
+                                doge_img_html = (
+                                    f'<div class="logo-item">'
+                                    f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                                    f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                                )
+                            svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
+                            svg_img_html = ""
+                            if os.path.exists(svg_path):
+                                with open(svg_path, "r") as svg_file:
+                                    svg_content = svg_file.read()
+                                svg_img_html = (
+                                    f'<div class="logo-item">'
+                                    f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                                )
+                            if doge_img_html or svg_img_html:
+                                st.markdown(
+                                    f"""
+                                    <style>
+                                    .logo-flex-container {{
+                                        display: flex;
+                                        justify-content: center;
+                                        align-items: center;
+                                        gap: 2vw;
+                                        flex-wrap: wrap;
+                                        margin-top: 2em;
+                                    }}
+                                    .logo-item {{
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        min-width: 120px;
+                                        max-width: 25vw;
+                                    }}
+                                    .logo-item img, .logo-item svg {{
+                                        width: 100%;
+                                        height: auto;
+                                        max-width: 200px;
+                                    }}
+                                    @media (max-width: 600px) {{
+                                        .logo-flex-container {{
+                                            flex-direction: column;
+                                        }}
+                                        .logo-item {{
+                                            max-width: 60vw;
+                                        }}
+                                    }}
+                                    .find-x-container {{
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        gap: 0.5em;
+                                        margin-top: 2em;
+                                        font-size: 1.2em;
+                                    }}
+                                    .x-logo-img {{
+                                        width: 32px;
+                                        height: 32px;
+                                        vertical-align: middle;
+                                    }}
+                                    </style>
+                                    <div class="logo-flex-container">
+                                        {doge_img_html}
+                                        {svg_img_html}
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                # Add Find us on X section
+                                x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                                x_logo_html = ""
+                                if os.path.exists(x_logo_path):
+                                    with open(x_logo_path, "rb") as x_img_file:
+                                        x_encoded = base64.b64encode(x_img_file.read()).decode()
+                                    x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                                st.markdown(
+                                    f'<div class="find-x-container">Find us on {x_logo_html}</div>',
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.markdown("---")
+                                st.markdown("### Texas Department of Government Efficiency")
+                                st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
                         except Exception as e:
-                            logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
-                            st.error(f"""
-                            Error generating visualizations: {str(e)}
-                            
-                            Please check that your query includes the required columns for {table_choice}:
-                            - amount (or {', '.join([k for k, v in column_mapping.items() if v == 'amount'])})
-                            - fiscal_year (or {', '.join([k for k, v in column_mapping.items() if v == 'fiscal_year'])})
-                            - vendor_name (or {', '.join([k for k, v in column_mapping.items() if v == 'vendor_name'])})
-                            - category (or {', '.join([k for k, v in column_mapping.items() if v == 'category'])})
-                            
-                            If any of these columns are missing, the visualizations cannot be generated.
-                            """)
-                    else:
-                        st.info("Run a query to see the data and visualizations.")
-
-            # Add AI Analysis section
-            logger.info("Adding AI Analysis section")
-            st.header("AI Analysis")
-            st.info("AI-powered analysis and insights will appear here.")
-            st.markdown("---")
-
-            # Add logos section
-            logger.info("Adding logos section")
-            try:
-                # Responsive side-by-side clickable logos with improved flexbox layout
-                logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
-                doge_img_html = ""
-                if os.path.exists(logo_path):
-                    with open(logo_path, "rb") as image_file:
-                        encoded = base64.b64encode(image_file.read()).decode()
-                    doge_img_html = (
-                        f'<div class="logo-item">'
-                        f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
-                        f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
-                    )
-                svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
-                svg_img_html = ""
-                if os.path.exists(svg_path):
-                    with open(svg_path, "r") as svg_file:
-                        svg_content = svg_file.read()
-                    svg_img_html = (
-                        f'<div class="logo-item">'
-                        f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
-                    )
-                if doge_img_html or svg_img_html:
-                    st.markdown(
-                        f"""
-                        <style>
-                        .logo-flex-container {{
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            gap: 2vw;
-                            flex-wrap: wrap;
-                            margin-top: 2em;
-                        }}
-                        .logo-item {{
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            min-width: 120px;
-                            max-width: 25vw;
-                        }}
-                        .logo-item img, .logo-item svg {{
-                            width: 100%;
-                            height: auto;
-                            max-width: 200px;
-                        }}
-                        @media (max-width: 600px) {{
-                            .logo-flex-container {{
-                                flex-direction: column;
-                            }}
-                            .logo-item {{
-                                max-width: 60vw;
-                            }}
-                        }}
-                        .find-x-container {{
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            gap: 0.5em;
-                            margin-top: 2em;
-                            font-size: 1.2em;
-                        }}
-                        .x-logo-img {{
-                            width: 32px;
-                            height: 32px;
-                            vertical-align: middle;
-                        }}
-                        </style>
-                        <div class="logo-flex-container">
-                            {doge_img_html}
-                            {svg_img_html}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    # Add Find us on X section
-                    x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
-                    x_logo_html = ""
-                    if os.path.exists(x_logo_path):
-                        with open(x_logo_path, "rb") as x_img_file:
-                            x_encoded = base64.b64encode(x_img_file.read()).decode()
-                        x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
-                    st.markdown(
-                        f'<div class="find-x-container">Find us on {x_logo_html}</div>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown("---")
-                    st.markdown("### Texas Department of Government Efficiency")
-                    st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
-            except Exception as e:
-                st.markdown("---")
-                st.markdown("### Texas Department of Government Efficiency")
-                st.error(f"Error loading logo: {str(e)}")
-                logger.error(f"Error in logos section: {str(e)}", exc_info=True)
+                            st.markdown("---")
+                            st.markdown("### Texas Department of Government Efficiency")
+                            st.error(f"Error loading logo: {str(e)}")
+                            logger.error(f"Error in logos section: {str(e)}", exc_info=True)
             
         except Exception as e:
             logger.error(f"Error in main content: {str(e)}")
