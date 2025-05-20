@@ -1135,6 +1135,9 @@ def main():
                             if st.button("Run Query", type="primary"):
                                 with st.spinner("Executing query... This may take a few moments."):
                                     try:
+                                        # Get database connection
+                                        engine = get_db_connection()
+                                        
                                         # Get filtered data
                                         df = get_filtered_data(st.session_state.filters, table_choice, engine)
                                         
@@ -1149,6 +1152,7 @@ def main():
                                             st.warning("No data found matching your criteria.")
                                     except Exception as e:
                                         st.error(f"Error executing query: {str(e)}")
+                                        logger.error(f"Error executing query: {str(e)}", exc_info=True)
                         
                         with col2:
                             st.session_state.download_format = st.radio(
