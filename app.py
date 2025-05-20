@@ -1222,6 +1222,27 @@ def main():
                             logger.info(f"DataFrame columns: {st.session_state.queried_data.columns.tolist()}")
                             logger.info(f"DataFrame dtypes: {st.session_state.queried_data.dtypes}")
                             
+                            # Map database column names to visualization column names
+                            column_mapping = {
+                                'payment_amount': 'amount',
+                                'payment_amt': 'amount',
+                                'amount': 'amount',
+                                'fiscal_year': 'fiscal_year',
+                                'fiscal_yr': 'fiscal_year',
+                                'vendor_name': 'vendor_name',
+                                'vendor': 'vendor_name',
+                                'vendor_title': 'vendor_name',
+                                'category': 'category',
+                                'category_title': 'category',
+                                'object_title': 'category'
+                            }
+                            
+                            # Create a copy of the DataFrame with mapped column names
+                            viz_df = st.session_state.queried_data.copy()
+                            for old_col, new_col in column_mapping.items():
+                                if old_col in viz_df.columns:
+                                    viz_df[new_col] = viz_df[old_col]
+                            
                             # Check for required columns
                             required_columns = {
                                 'payment_distribution': ['amount', 'fiscal_year'],
@@ -1232,13 +1253,13 @@ def main():
                             
                             # Verify data format before generating visualizations
                             for viz_name, cols in required_columns.items():
-                                missing_cols = [col for col in cols if col not in st.session_state.queried_data.columns]
+                                missing_cols = [col for col in cols if col not in viz_df.columns]
                                 if missing_cols:
                                     logger.error(f"Missing columns for {viz_name}: {missing_cols}")
                                     raise ValueError(f"Missing required columns for {viz_name}: {missing_cols}")
                             
-                            # Generate all visualizations
-                            visualizations = generate_all_visualizations(st.session_state.queried_data)
+                            # Generate all visualizations with mapped DataFrame
+                            visualizations = generate_all_visualizations(viz_df)
                             
                             # Create two columns for visualizations
                             viz_col1, viz_col2 = st.columns(2)
@@ -1263,10 +1284,10 @@ def main():
                             Error generating visualizations: {str(e)}
                             
                             Please check that your query includes the following columns:
-                            - amount
-                            - fiscal_year
-                            - vendor_name
-                            - category
+                            - amount (or payment_amount, payment_amt)
+                            - fiscal_year (or fiscal_yr)
+                            - vendor_name (or vendor, vendor_title)
+                            - category (or category_title, object_title)
                             
                             If any of these columns are missing, the visualizations cannot be generated.
                             """)
