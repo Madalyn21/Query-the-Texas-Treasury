@@ -304,8 +304,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     for row in chunk_data:
                         # Convert each value to string with proper encoding
                         row_dict = {}
-                        for col in columns:
-                            value = row[col]
+                        for i, col in enumerate(columns):
+                            value = row[i]  # Access by index instead of column name
                             if isinstance(value, str):
                                 # Handle string encoding
                                 try:
