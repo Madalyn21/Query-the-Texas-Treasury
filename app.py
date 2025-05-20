@@ -1230,7 +1230,7 @@ def main():
                                 'amount_payed': 'amount',
                                 'fiscal_year': 'fiscal_year',
                                 'vendor_name': 'vendor_name',
-                                'agency': 'agency',
+                                'agency_title': 'agency',
                                 'appropriation_title': 'appropriation_title',
                                 'object_title': 'category'
                             }
@@ -1239,7 +1239,7 @@ def main():
                                 'curvalue': 'amount',
                                 'award_date_date': 'fiscal_year',
                                 'vendor': 'vendor_name',
-                                'agency': 'agency',
+                                'agency_title': 'agency',
                                 'category': 'category'
                             }
                             
@@ -1300,6 +1300,8 @@ def main():
                                     - fiscal_year (or {', '.join([k for k, v in column_mapping.items() if v == 'fiscal_year'])})
                                     - vendor_name (or {', '.join([k for k, v in column_mapping.items() if v == 'vendor_name'])})
                                     - category (or {', '.join([k for k, v in column_mapping.items() if v == 'category'])})
+                                    
+                                    Note: The agency column should be 'agency_title' in the database.
                                     """)
                                     raise ValueError(f"Missing required columns for {viz_name}: {missing_cols}")
                             
