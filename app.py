@@ -1133,20 +1133,32 @@ def display_main_content():
                                     
                                     # Update filters with selected values
                                     if table_choice == "Payment Information":
-                                        st.session_state.filters.update({
+                                        new_filters = {
                                             'agency': selected_agency if selected_agency != "All" else None,
                                             'appropriation_title': selected_appropriation if selected_appropriation != "All" else None,
                                             'payment_source': selected_payment_source if selected_payment_source != "All" else None,
-                                            'appropriation_object': selected_appropriation_object if selected_appropriation_object != "All" else None
-                                        })
+                                            'appropriation_object': selected_appropriation_object if selected_appropriation_object != "All" else None,
+                                            'fiscal_year_start': st.session_state.filters.get('fiscal_year_start'),
+                                            'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
+                                            'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
+                                            'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
+                                            'vendor': st.session_state.filters.get('vendor')
+                                        }
+                                        st.session_state.filters = new_filters
                                     else:
-                                        st.session_state.filters.update({
+                                        new_filters = {
                                             'agency': selected_agency if selected_agency != "All" else None,
                                             'category': selected_category if selected_category != "All" else None,
                                             'procurement_method': selected_procurement_method if selected_procurement_method != "All" else None,
                                             'status': selected_status if selected_status != "All" else None,
-                                            'subject': selected_subject if selected_subject != "All" else None
-                                        })
+                                            'subject': selected_subject if selected_subject != "All" else None,
+                                            'fiscal_year_start': st.session_state.filters.get('fiscal_year_start'),
+                                            'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
+                                            'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
+                                            'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
+                                            'vendor': st.session_state.filters.get('vendor')
+                                        }
+                                        st.session_state.filters = new_filters
                                     
                                     # Get filtered data
                                     df = get_filtered_data(st.session_state.filters, table_choice, engine)
