@@ -1163,11 +1163,6 @@ def main():
                     if v != 'All' and v is not None
                 }
                 
-                # Add test query for WPI agency
-                if table_choice == "Payment Information":
-                    filter_payload['agency'] = "WPI"
-                    logger.info("Added test query for WPI agency")
-                
                 logger.info(f"Filter payload: {filter_payload}")
                 logger.info(f"Table choice: {table_choice}")
                 
