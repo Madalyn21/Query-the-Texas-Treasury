@@ -1142,7 +1142,7 @@ def display_main_content():
                                             'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
                                             'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
                                             'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
-                                            'vendor': st.session_state.filters.get('vendor')
+                                            'vendor': [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
                                         }
                                         st.session_state.filters = new_filters
                                     else:
@@ -1156,7 +1156,7 @@ def display_main_content():
                                             'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
                                             'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
                                             'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
-                                            'vendor': st.session_state.filters.get('vendor')
+                                            'vendor': [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
                                         }
                                         st.session_state.filters = new_filters
                                     
