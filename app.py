@@ -1216,25 +1216,36 @@ def main():
                         # Display visualizations
                         st.subheader("Data Visualizations")
                         
-                        # Display visualizations in a flexbox layout
+                        # Display visualizations in a full-width layout
                         if 'visualizations' in st.session_state and st.session_state.visualizations:
-                            cols = st.columns(2)  # Create 2 columns for the grid
-                            
-                            # Display visualizations in a grid layout
-                            with cols[0]:
-                                st.altair_chart(st.session_state.visualizations['payment_distribution'], use_container_width=True)
-                                st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
-                            
-                            with cols[1]:
-                                st.altair_chart(st.session_state.visualizations['vendor_analysis'], use_container_width=True)
-                                st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+                            # Create a container for visualizations with full width
+                            viz_container = st.container()
+                            with viz_container:
+                                # First row of visualizations
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.altair_chart(st.session_state.visualizations['payment_distribution'], use_container_width=True)
+                                with col2:
+                                    st.altair_chart(st.session_state.visualizations['vendor_analysis'], use_container_width=True)
+                                
+                                # Second row of visualizations
+                                col3, col4 = st.columns(2)
+                                with col3:
+                                    st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
+                                with col4:
+                                    st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
 
-                        # AI Analysis section
+                        # Add some spacing
+                        st.markdown("<br><br>", unsafe_allow_html=True)
+
+                        # AI Analysis section in a full-width container
                         st.subheader("AI Analysis")
                         st.info("AI-powered analysis and insights will appear here.")
-                        st.markdown("---")
+                        
+                        # Add more spacing
+                        st.markdown("<br><br>", unsafe_allow_html=True)
 
-                        # Add logos section
+                        # Add logos section in a full-width container
                         logger.info("Adding logos section")
                         try:
                             # Responsive side-by-side clickable logos with improved flexbox layout
@@ -1268,6 +1279,7 @@ def main():
                                         gap: 2vw;
                                         flex-wrap: wrap;
                                         margin-top: 2em;
+                                        width: 100%;
                                     }}
                                     .logo-item {{
                                         display: flex;
@@ -1296,6 +1308,7 @@ def main():
                                         gap: 0.5em;
                                         margin-top: 2em;
                                         font-size: 1.2em;
+                                        width: 100%;
                                     }}
                                     .x-logo-img {{
                                         width: 32px;
