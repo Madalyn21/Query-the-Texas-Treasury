@@ -1222,40 +1222,85 @@ def main():
                             logger.info(f"DataFrame columns: {st.session_state.queried_data.columns.tolist()}")
                             logger.info(f"DataFrame dtypes: {st.session_state.queried_data.dtypes}")
                             
-                            # Map database column names to visualization column names
-                            column_mapping = {
-                                'payment_amount': 'amount',
-                                'payment_amt': 'amount',
-                                'amount': 'amount',
+                            # Display column information for debugging
+                            st.write("Available columns:", st.session_state.queried_data.columns.tolist())
+                            
+                            # Define column mappings for each dataset
+                            payment_info_mapping = {
+                                'amount_payed': 'amount',
                                 'fiscal_year': 'fiscal_year',
-                                'fiscal_yr': 'fiscal_year',
                                 'vendor_name': 'vendor_name',
-                                'vendor': 'vendor_name',
-                                'vendor_title': 'vendor_name',
-                                'category': 'category',
-                                'category_title': 'category',
+                                'agency': 'agency',
+                                'appropriation_title': 'appropriation_title',
                                 'object_title': 'category'
                             }
                             
-                            # Create a copy of the DataFrame with mapped column names
-                            viz_df = st.session_state.queried_data.copy()
-                            for old_col, new_col in column_mapping.items():
-                                if old_col in viz_df.columns:
-                                    viz_df[new_col] = viz_df[old_col]
+                            contract_info_mapping = {
+                                'curvalue': 'amount',
+                                'award_date_date': 'fiscal_year',
+                                'vendor': 'vendor_name',
+                                'agency': 'agency',
+                                'category': 'category'
+                            }
                             
-                            # Check for required columns
-                            required_columns = {
+                            # Define required columns for each dataset
+                            payment_info_required = {
                                 'payment_distribution': ['amount', 'fiscal_year'],
                                 'vendor_analysis': ['vendor_name', 'amount'],
                                 'trend_analysis': ['fiscal_year', 'amount'],
                                 'category_analysis': ['category', 'amount']
                             }
                             
+                            contract_info_required = {
+                                'contract_distribution': ['amount', 'fiscal_year'],
+                                'vendor_analysis': ['vendor_name', 'amount'],
+                                'trend_analysis': ['fiscal_year', 'amount'],
+                                'category_analysis': ['category', 'amount']
+                            }
+                            
+                            # Select mapping based on table choice
+                            column_mapping = payment_info_mapping if table_choice == "Payment Information" else contract_info_mapping
+                            required_columns = payment_info_required if table_choice == "Payment Information" else contract_info_required
+                            
+                            # Create a copy of the DataFrame with mapped column names
+                            viz_df = st.session_state.queried_data.copy()
+                            
+                            # Log the mapping process
+                            logger.info(f"Using column mapping for {table_choice}:")
+                            for old_col, new_col in column_mapping.items():
+                                logger.info(f"  {old_col} -> {new_col}")
+                            
+                            # Map columns and log which ones were found
+                            mapped_columns = set()
+                            for old_col, new_col in column_mapping.items():
+                                if old_col in viz_df.columns:
+                                    viz_df[new_col] = viz_df[old_col]
+                                    mapped_columns.add(new_col)
+                                    logger.info(f"Successfully mapped {old_col} to {new_col}")
+                                else:
+                                    logger.warning(f"Column {old_col} not found in DataFrame")
+                            
+                            # Log the final columns after mapping
+                            logger.info(f"Final columns after mapping: {viz_df.columns.tolist()}")
+                            logger.info(f"Successfully mapped columns: {mapped_columns}")
+                            
                             # Verify data format before generating visualizations
                             for viz_name, cols in required_columns.items():
                                 missing_cols = [col for col in cols if col not in viz_df.columns]
                                 if missing_cols:
                                     logger.error(f"Missing columns for {viz_name}: {missing_cols}")
+                                    st.error(f"""
+                                    Missing columns for {viz_name}: {missing_cols}
+                                    
+                                    Available columns in your data:
+                                    {viz_df.columns.tolist()}
+                                    
+                                    Required columns for {table_choice}:
+                                    - amount (or {', '.join([k for k, v in column_mapping.items() if v == 'amount'])})
+                                    - fiscal_year (or {', '.join([k for k, v in column_mapping.items() if v == 'fiscal_year'])})
+                                    - vendor_name (or {', '.join([k for k, v in column_mapping.items() if v == 'vendor_name'])})
+                                    - category (or {', '.join([k for k, v in column_mapping.items() if v == 'category'])})
+                                    """)
                                     raise ValueError(f"Missing required columns for {viz_name}: {missing_cols}")
                             
                             # Generate all visualizations with mapped DataFrame
@@ -1265,8 +1310,8 @@ def main():
                             viz_col1, viz_col2 = st.columns(2)
                             
                             with viz_col1:
-                                st.subheader("Payment Distribution")
-                                st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                                st.subheader(f"{table_choice} Distribution")
+                                st.altair_chart(visualizations['payment_distribution' if table_choice == "Payment Information" else 'contract_distribution'], use_container_width=True)
                                 
                                 st.subheader("Top Vendors")
                                 st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
@@ -1283,11 +1328,11 @@ def main():
                             st.error(f"""
                             Error generating visualizations: {str(e)}
                             
-                            Please check that your query includes the following columns:
-                            - amount (or payment_amount, payment_amt)
-                            - fiscal_year (or fiscal_yr)
-                            - vendor_name (or vendor, vendor_title)
-                            - category (or category_title, object_title)
+                            Please check that your query includes the required columns for {table_choice}:
+                            - amount (or {', '.join([k for k, v in column_mapping.items() if v == 'amount'])})
+                            - fiscal_year (or {', '.join([k for k, v in column_mapping.items() if v == 'fiscal_year'])})
+                            - vendor_name (or {', '.join([k for k, v in column_mapping.items() if v == 'vendor_name'])})
+                            - category (or {', '.join([k for k, v in column_mapping.items() if v == 'category'])})
                             
                             If any of these columns are missing, the visualizations cannot be generated.
                             """)
