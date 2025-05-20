@@ -1433,6 +1433,7 @@ def main():
                 if st.session_state.last_query_time:
                     st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 st.dataframe(st.session_state.queried_data)
+
         except Exception as e:
             logger.error(f"Error in main content: {str(e)}")
             st.error("Error displaying main content. Please refresh the page.")
