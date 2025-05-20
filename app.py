@@ -1239,7 +1239,7 @@ def main():
                                 'curvalue': 'amount',
                                 'award_date_date': 'fiscal_year',
                                 'vendor': 'vendor_name',
-                                'agency_title': 'agency',
+                                'agency': 'agency',
                                 'category': 'category'
                             }
                             

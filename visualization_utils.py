@@ -21,14 +21,14 @@ def create_payment_distribution_chart(df: pd.DataFrame) -> alt.Chart:
         logger.info("Creating payment distribution chart")
         
         # Group by agency and sum the amounts
-        agency_totals = df.groupby('agency_name')['amount'].sum().reset_index()
+        agency_totals = df.groupby('agency')['amount'].sum().reset_index()
         
         # Create the chart
         chart = alt.Chart(agency_totals).mark_bar().encode(
-            x=alt.X('agency_name:N', title='Agency', sort='-y'),
+            x=alt.X('agency:N', title='Agency', sort='-y'),
             y=alt.Y('amount:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
             tooltip=[
-                alt.Tooltip('agency_name:N', title='Agency'),
+                alt.Tooltip('agency:N', title='Agency'),
                 alt.Tooltip('amount:Q', title='Total Amount', format='$,.2f')
             ]
         ).properties(
