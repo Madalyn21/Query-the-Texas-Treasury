@@ -299,7 +299,7 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                         break
                     
                     # Convert to list of dicts using column names
-                    columns = chunk_data[0].keys()
+                    columns = chunk_data[0]._mapping.keys()
                     chunk_dicts = [dict(zip(columns, row)) for row in chunk_data]
                     all_data.extend(chunk_dicts)
                     logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
