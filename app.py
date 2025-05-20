@@ -1133,31 +1133,92 @@ def display_main_content():
                                     
                                     # Update filters with selected values
                                     if table_choice == "Payment Information":
-                                        new_filters = {
-                                            'agency': selected_agency if selected_agency != "All" else None,
-                                            'appropriation_title': selected_appropriation if selected_appropriation != "All" else None,
-                                            'payment_source': selected_payment_source if selected_payment_source != "All" else None,
-                                            'appropriation_object': selected_appropriation_object if selected_appropriation_object != "All" else None,
-                                            'fiscal_year_start': st.session_state.filters.get('fiscal_year_start'),
-                                            'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
-                                            'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
-                                            'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
-                                            'vendor': [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
-                                        }
+                                        # Create a new dictionary with validated values
+                                        new_filters = {}
+                                        
+                                        # Add agency if not "All"
+                                        if selected_agency and selected_agency != "All":
+                                            new_filters['agency'] = str(selected_agency)
+                                        
+                                        # Add appropriation title if not "All"
+                                        if selected_appropriation and selected_appropriation != "All":
+                                            new_filters['appropriation_title'] = str(selected_appropriation)
+                                        
+                                        # Add payment source if not "All"
+                                        if selected_payment_source and selected_payment_source != "All":
+                                            new_filters['payment_source'] = str(selected_payment_source)
+                                        
+                                        # Add appropriation object if not "All"
+                                        if selected_appropriation_object and selected_appropriation_object != "All":
+                                            new_filters['appropriation_object'] = str(selected_appropriation_object)
+                                        
+                                        # Add fiscal year range if available
+                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                        if fiscal_year_start is not None and fiscal_year_end is not None:
+                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
+                                        
+                                        # Add fiscal month range if available
+                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                        if fiscal_month_start is not None and fiscal_month_end is not None:
+                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
+                                        
+                                        # Add vendor if selected
+                                        if st.session_state.selected_vendor:
+                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                        else:
+                                            new_filters['vendor'] = []
+                                        
+                                        # Update session state with validated filters
                                         st.session_state.filters = new_filters
                                     else:
-                                        new_filters = {
-                                            'agency': selected_agency if selected_agency != "All" else None,
-                                            'category': selected_category if selected_category != "All" else None,
-                                            'procurement_method': selected_procurement_method if selected_procurement_method != "All" else None,
-                                            'status': selected_status if selected_status != "All" else None,
-                                            'subject': selected_subject if selected_subject != "All" else None,
-                                            'fiscal_year_start': st.session_state.filters.get('fiscal_year_start'),
-                                            'fiscal_year_end': st.session_state.filters.get('fiscal_year_end'),
-                                            'fiscal_month_start': st.session_state.filters.get('fiscal_month_start'),
-                                            'fiscal_month_end': st.session_state.filters.get('fiscal_month_end'),
-                                            'vendor': [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
-                                        }
+                                        # Create a new dictionary with validated values
+                                        new_filters = {}
+                                        
+                                        # Add agency if not "All"
+                                        if selected_agency and selected_agency != "All":
+                                            new_filters['agency'] = str(selected_agency)
+                                        
+                                        # Add category if not "All"
+                                        if selected_category and selected_category != "All":
+                                            new_filters['category'] = str(selected_category)
+                                        
+                                        # Add procurement method if not "All"
+                                        if selected_procurement_method and selected_procurement_method != "All":
+                                            new_filters['procurement_method'] = str(selected_procurement_method)
+                                        
+                                        # Add status if not "All"
+                                        if selected_status and selected_status != "All":
+                                            new_filters['status'] = str(selected_status)
+                                        
+                                        # Add subject if not "All"
+                                        if selected_subject and selected_subject != "All":
+                                            new_filters['subject'] = str(selected_subject)
+                                        
+                                        # Add fiscal year range if available
+                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                        if fiscal_year_start is not None and fiscal_year_end is not None:
+                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
+                                        
+                                        # Add fiscal month range if available
+                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                        if fiscal_month_start is not None and fiscal_month_end is not None:
+                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
+                                        
+                                        # Add vendor if selected
+                                        if st.session_state.selected_vendor:
+                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                        else:
+                                            new_filters['vendor'] = []
+                                        
+                                        # Update session state with validated filters
                                         st.session_state.filters = new_filters
                                     
                                     # Get filtered data
@@ -1317,7 +1378,7 @@ def display_main_content():
                     - Best practices
                     """)
             else:
-                st.info("Run a query to see AI-powered analysis of your results.")
+                st.info("Functionality coming soon!")
 
         # Add logos section after AI Analysis
         st.markdown("<br><br>", unsafe_allow_html=True)
