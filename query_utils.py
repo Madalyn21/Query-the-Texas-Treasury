@@ -70,29 +70,69 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     # Add other filters based on table choice
     if table_choice == "Payment Information":
         if filters.get('agency'):
-            query = text(str(query) + f" AND TRIM({alias}.agency_number) = TRIM(:agency)")
-            params['agency'] = str(filters['agency']).strip()
-            logger.info(f"Added agency filter: {filters['agency']}")
+            # Agency number is numeric, so we'll cast the input to integer
+            try:
+                agency_number = int(filters['agency'])
+                query = text(str(query) + f" AND {alias}.agency_number = :agency")
+                params['agency'] = agency_number
+                logger.info(f"Added agency filter: {agency_number}")
+            except ValueError:
+                # If agency is not a number, try to match by agency name
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.agency_name)) = LOWER(TRIM(:agency))")
+                params['agency'] = str(filters['agency']).strip()
+                logger.info(f"Added agency name filter: {filters['agency']}")
         
         if filters.get('appropriation_title'):
-            query = text(str(query) + f" AND TRIM({alias}.appropriation_number) = TRIM(:appropriation_title)")
-            params['appropriation_title'] = str(filters['appropriation_title']).strip()
-            logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
+            # Appropriation number is numeric
+            try:
+                appropriation_number = int(filters['appropriation_title'])
+                query = text(str(query) + f" AND {alias}.appropriation_number = :appropriation_title")
+                params['appropriation_title'] = appropriation_number
+                logger.info(f"Added appropriation number filter: {appropriation_number}")
+            except ValueError:
+                # If not a number, try to match by title
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.appropriation_title)) = LOWER(TRIM(:appropriation_title))")
+                params['appropriation_title'] = str(filters['appropriation_title']).strip()
+                logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
         
         if filters.get('payment_source'):
-            query = text(str(query) + f" AND TRIM({alias}.fund_number) = TRIM(:payment_source)")
-            params['payment_source'] = str(filters['payment_source']).strip()
-            logger.info(f"Added payment source filter: {filters['payment_source']}")
+            # Fund number is numeric
+            try:
+                fund_number = int(filters['payment_source'])
+                query = text(str(query) + f" AND {alias}.fund_number = :payment_source")
+                params['payment_source'] = fund_number
+                logger.info(f"Added fund number filter: {fund_number}")
+            except ValueError:
+                # If not a number, try to match by name
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.fund_name)) = LOWER(TRIM(:payment_source))")
+                params['payment_source'] = str(filters['payment_source']).strip()
+                logger.info(f"Added fund name filter: {filters['payment_source']}")
         
         if filters.get('appropriation_object'):
-            query = text(str(query) + f" AND TRIM({alias}.object_number) = TRIM(:appropriation_object)")
-            params['appropriation_object'] = str(filters['appropriation_object']).strip()
-            logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
+            # Object number is numeric
+            try:
+                object_number = int(filters['appropriation_object'])
+                query = text(str(query) + f" AND {alias}.object_number = :appropriation_object")
+                params['appropriation_object'] = object_number
+                logger.info(f"Added object number filter: {object_number}")
+            except ValueError:
+                # If not a number, try to match by title
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.object_title)) = LOWER(TRIM(:appropriation_object))")
+                params['appropriation_object'] = str(filters['appropriation_object']).strip()
+                logger.info(f"Added object title filter: {filters['appropriation_object']}")
     else:
         if filters.get('agency'):
-            query = text(str(query) + f" AND TRIM({alias}.agency_number) = TRIM(:agency)")
-            params['agency'] = str(filters['agency']).strip()
-            logger.info(f"Added agency filter: {filters['agency']}")
+            # Agency number is numeric
+            try:
+                agency_number = int(filters['agency'])
+                query = text(str(query) + f" AND {alias}.agency_number = :agency")
+                params['agency'] = agency_number
+                logger.info(f"Added agency filter: {agency_number}")
+            except ValueError:
+                # If agency is not a number, try to match by agency name
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.agency_name)) = LOWER(TRIM(:agency))")
+                params['agency'] = str(filters['agency']).strip()
+                logger.info(f"Added agency name filter: {filters['agency']}")
         
         if filters.get('category'):
             query = text(str(query) + f" AND LOWER(TRIM({alias}.category)) = LOWER(TRIM(:category))")
