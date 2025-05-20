@@ -298,9 +298,28 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     if not chunk_data:
                         break
                     
-                    # Convert to list of dicts using column names
+                    # Convert to list of dicts using column names with proper encoding
                     columns = chunk_data[0]._mapping.keys()
-                    chunk_dicts = [dict(zip(columns, row)) for row in chunk_data]
+                    chunk_dicts = []
+                    for row in chunk_data:
+                        # Convert each value to string with proper encoding
+                        row_dict = {}
+                        for col in columns:
+                            value = row[col]
+                            if isinstance(value, str):
+                                # Handle string encoding
+                                try:
+                                    # Try to decode if it's bytes
+                                    if isinstance(value, bytes):
+                                        value = value.decode('utf-8')
+                                    # Ensure it's properly encoded
+                                    value = value.encode('utf-8', errors='replace').decode('utf-8')
+                                except Exception as e:
+                                    logger.warning(f"Error encoding value for column {col}: {str(e)}")
+                                    value = str(value)
+                            row_dict[col] = value
+                        chunk_dicts.append(row_dict)
+                    
                     all_data.extend(chunk_dicts)
                     logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
                     
