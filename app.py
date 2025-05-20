@@ -373,33 +373,63 @@ def test_database_connection():
         from db_config import get_db_connection
         from query_utils import check_table_accessibility
         
-        engine = get_db_connection()
-        print("Database connection established successfully!")
+        # Add loading spinner for database connection
+        with st.spinner('Connecting to database...'):
+            engine = get_db_connection()
+            print("Database connection established successfully!")
         
-        # Test basic connection
+        # Test basic connection with spinner
         query = "SELECT current_timestamp;"
         print(f"Executing test query: {query}")
-        with engine.connect() as connection:
-            result = connection.execute(text(query))
-            timestamp = result.scalar()
-            st.success(f"Database connection successful! Current timestamp: {timestamp}")
+        with st.spinner('Testing database connection...'):
+            with engine.connect() as connection:
+                result = connection.execute(text(query))
+                timestamp = result.scalar()
+                st.success(f"Database connection successful! Current timestamp: {timestamp}")
         
-        # Check table accessibility
+        # Check table accessibility with spinner
         st.subheader("Database Table Structure")
-        accessibility = check_table_accessibility(engine)
+        with st.spinner('Checking table accessibility...'):
+            accessibility = check_table_accessibility(engine)
         
-        # Display table status
+        # Display table status and columns
         col1, col2 = st.columns(2)
         
         with col1:
+            st.subheader("Payment Information Table")
             if accessibility['paymentinformation']:
                 st.success("✅ Payment Information table is accessible")
+                # Get and display columns
+                with engine.connect() as connection:
+                    columns_query = text("""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'paymentinformation'
+                        ORDER BY ordinal_position;
+                    """)
+                    columns = connection.execute(columns_query).fetchall()
+                    st.write("Columns:")
+                    for col in columns:
+                        st.write(f"- {col[0]} ({col[1]})")
             else:
                 st.error("❌ Payment Information table is not accessible")
                 
         with col2:
+            st.subheader("Contract Information Table")
             if accessibility['contractinfo']:
                 st.success("✅ Contract Information table is accessible")
+                # Get and display columns
+                with engine.connect() as connection:
+                    columns_query = text("""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'contractinfo'
+                        ORDER BY ordinal_position;
+                    """)
+                    columns = connection.execute(columns_query).fetchall()
+                    st.write("Columns:")
+                    for col in columns:
+                        st.write(f"- {col[0]} ({col[1]})")
             else:
                 st.error("❌ Contract Information table is not accessible")
         
@@ -417,7 +447,7 @@ def test_database_connection():
         error_msg = f"Database connection failed: {str(e)}"
         st.error(error_msg)
         logger.error(f"Database connection error: {str(e)}", exc_info=True)
-        print("=== End of Database Connection Test ===\n")
+    print("=== End of Database Connection Test ===\n")
 
 def download_csv(df):
     """Convert DataFrame to CSV and create download button"""
@@ -1117,17 +1147,27 @@ def main():
         logger.info(f"Table choice: {table_choice}")
         
         try:
-            # Get database connection
-            engine = get_db_connection()
-            logger.info("Database connection established")
+            # Create a container for the loading animation
+            loading_container = st.empty()
             
-            # Get filtered data using the query utilities
-            logger.info("Calling get_filtered_data with:")
-            logger.info(f"- filters: {filter_payload}")
-            logger.info(f"- table_choice: {table_choice}")
-            logger.info(f"- engine: {engine}")
+            # Get database connection with spinner
+            with loading_container.container():
+                with st.spinner('Connecting to database...'):
+                    engine = get_db_connection()
+                    logger.info("Database connection established")
             
-            df = get_filtered_data(filter_payload, table_choice, engine)
+            # Get filtered data using the query utilities with spinner
+            with loading_container.container():
+                with st.spinner('Executing query... This may take a few moments.'):
+                    logger.info("Calling get_filtered_data with:")
+                    logger.info(f"- filters: {filter_payload}")
+                    logger.info(f"- table_choice: {table_choice}")
+                    logger.info(f"- engine: {engine}")
+                    
+                    df = get_filtered_data(filter_payload, table_choice, engine)
+            
+            # Clear the loading container
+            loading_container.empty()
             
             logger.info(f"Query result type: {type(df)}")
             logger.info(f"Query result shape: {df.shape if hasattr(df, 'shape') else 'No shape attribute'}")
@@ -1136,25 +1176,27 @@ def main():
                 st.session_state['df'] = df
                 logger.info(f"Retrieved {len(df)} records")
                 
-                # Display results count
+                # Display results count with a nice animation
                 st.success(f"Found {len(df)} matching records")
                 
-                # Display the dataframe
-                st.dataframe(df)
+                # Display the dataframe with a loading animation
+                with st.spinner('Loading data...'):
+                    st.dataframe(df)
                 
                 # Add CSV download button
                 download_csv(df)
                 
                 # Download button for zip file
-                zip_file = df_to_zip(df)
-                logger.info("Generated zip file for download")
-                st.download_button(
-                    label="Download ZIP",
-                    data=zip_file,
-                    file_name="queried_data.zip",
-                    mime="application/zip",
-                    help="Click to download the queried data as a ZIP file"
-                )
+                with st.spinner('Preparing download...'):
+                    zip_file = df_to_zip(df)
+                    logger.info("Generated zip file for download")
+                    st.download_button(
+                        label="Download ZIP",
+                        data=zip_file,
+                        file_name="queried_data.zip",
+                        mime="application/zip",
+                        help="Click to download the queried data as a ZIP file"
+                    )
             else:
                 logger.info("No data returned from query")
                 st.info("No data returned.")
