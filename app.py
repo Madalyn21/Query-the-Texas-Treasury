@@ -817,6 +817,10 @@ def main():
                 'last_updated': None
             }
         
+        # Add visualizations to session state if not exists
+        if 'visualizations' not in st.session_state:
+            st.session_state.visualizations = None
+        
         # Configure Streamlit security settings first
         logger.info("Starting main function")
         st.set_page_config(
@@ -1147,6 +1151,23 @@ def main():
                                             # Get database connection
                                             engine = get_db_connection()
                                             
+                                            # Update filters with selected values
+                                            if table_choice == "Payment Information":
+                                                st.session_state.filters.update({
+                                                    'agency': selected_agency if selected_agency != "All" else None,
+                                                    'appropriation_title': selected_appropriation if selected_appropriation != "All" else None,
+                                                    'payment_source': selected_payment_source if selected_payment_source != "All" else None,
+                                                    'appropriation_object': selected_appropriation_object if selected_appropriation_object != "All" else None
+                                                })
+                                            else:
+                                                st.session_state.filters.update({
+                                                    'agency': selected_agency if selected_agency != "All" else None,
+                                                    'category': selected_category if selected_category != "All" else None,
+                                                    'procurement_method': selected_procurement_method if selected_procurement_method != "All" else None,
+                                                    'status': selected_status if selected_status != "All" else None,
+                                                    'subject': selected_subject if selected_subject != "All" else None
+                                                })
+                                            
                                             # Get filtered data
                                             df = get_filtered_data(st.session_state.filters, table_choice, engine)
                                             
@@ -1154,6 +1175,9 @@ def main():
                                                 # Store the queried data in session state
                                                 st.session_state.queried_data = df
                                                 st.session_state.last_query_time = datetime.now()
+                                                
+                                                # Generate visualizations
+                                                st.session_state.visualizations = generate_all_visualizations(df)
                                                 
                                                 # Display success message
                                                 st.success(f"Query completed successfully! Retrieved {len(df)} records.")
@@ -1211,63 +1235,208 @@ def main():
                                     else:
                                         st.warning("Please run a query first to download data.")
 
-                        # Display Data
-                        if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-                            st.subheader("Query Results")
+                # Add Visualizations section after query section
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.subheader("Data Visualizations")
+                
+                # Create a container for visualizations
+                viz_container = st.container()
+                with viz_container:
+                    if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                        # Display visualizations in a full-width layout
+                        if st.session_state.visualizations:
+                            # First row of visualizations
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.altair_chart(st.session_state.visualizations['payment_distribution'], use_container_width=True)
+                            with col2:
+                                st.altair_chart(st.session_state.visualizations['vendor_analysis'], use_container_width=True)
                             
-                            # Display last query time
-                            if st.session_state.last_query_time:
-                                st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                            # Second row of visualizations
+                            col3, col4 = st.columns(2)
+                            with col3:
+                                st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
+                            with col4:
+                                st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+                    else:
+                        # Show placeholder when no query has been submitted
+                        st.info("Submit a Query to see Visualizations")
+                        with st.expander("Available Visualizations", expanded=False):
+                            st.markdown("""
+                            ### Visualization Types:
                             
-                            # Display data
-                            st.dataframe(st.session_state.queried_data)
+                            #### 1. Payment Distribution
+                            - Distribution of payments across different categories
+                            - Payment amount ranges and frequencies
                             
-                            # Add Visualizations section after query section
-                            st.markdown("<br><br>", unsafe_allow_html=True)
-                            st.subheader("Data Visualizations")
+                            #### 2. Vendor Analysis
+                            - Top vendors by payment amount
+                            - Vendor payment patterns
                             
-                            # Create a container for visualizations
-                            viz_container = st.container()
-                            with viz_container:
-                                if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-                                    # Display visualizations in a full-width layout
-                                    if 'visualizations' in st.session_state and st.session_state.visualizations:
-                                        # First row of visualizations
-                                        col1, col2 = st.columns(2)
-                                        with col1:
-                                            st.altair_chart(st.session_state.visualizations['payment_distribution'], use_container_width=True)
-                                        with col2:
-                                            st.altair_chart(st.session_state.visualizations['vendor_analysis'], use_container_width=True)
-                                        
-                                        # Second row of visualizations
-                                        col3, col4 = st.columns(2)
-                                        with col3:
-                                            st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
-                                        with col4:
-                                            st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
-                                else:
-                                    # Show placeholder when no query has been submitted
-                                    st.info("Submit a Query to see Visualizations")
-                                    with st.expander("Available Visualizations", expanded=False):
-                                        st.markdown("""
-                                        ### Visualization Types:
-                                        
-                                        #### 1. Payment Distribution
-                                        - Distribution of payments across different categories
-                                        - Payment amount ranges and frequencies
-                                        
-                                        #### 2. Vendor Analysis
-                                        - Top vendors by payment amount
-                                        - Vendor payment patterns
-                                        
-                                        #### 3. Trend Analysis
-                                        - Payment trends over time
-                                        - Seasonal patterns
-                                        
-                                        #### 4. Category Analysis
-                                        - Payment distribution by category
-                                        - Category-wise spending patterns
-                                        """)
+                            #### 3. Trend Analysis
+                            - Payment trends over time
+                            - Seasonal patterns
+                            
+                            #### 4. Category Analysis
+                            - Payment distribution by category
+                            - Category-wise spending patterns
+                            """)
+
+            # Add AI Analysis section after visualizations
+            st.markdown("<br><br>", unsafe_allow_html=True)
+            st.subheader("AI Analysis")
+            
+            # Create a container for AI Analysis that will be populated later
+            ai_container = st.container()
+            with ai_container:
+                if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                    # Placeholder for future AI analysis
+                    st.info("""
+                    AI analysis will be available here once implemented. The analysis will include:
+                    - Key insights from the query results
+                    - Trend analysis and patterns
+                    - Anomaly detection
+                    - Recommendations and observations
+                    """)
+                    
+                    # Add a placeholder for future analysis results
+                    with st.expander("Future AI Analysis Features", expanded=False):
+                        st.markdown("""
+                        ### Planned Analysis Features:
+                        
+                        #### 1. Data Insights
+                        - Summary statistics and key metrics
+                        - Distribution analysis
+                        - Correlation analysis
+                        
+                        #### 2. Trend Analysis
+                        - Temporal patterns
+                        - Seasonal variations
+                        - Growth trends
+                        
+                        #### 3. Anomaly Detection
+                        - Unusual patterns
+                        - Outlier identification
+                        - Potential data quality issues
+                        
+                        #### 4. Recommendations
+                        - Data-driven insights
+                        - Actionable observations
+                        - Best practices
+                        """)
+                else:
+                    st.info("Run a query to see AI-powered analysis of your results.")
+
+            # Add logos section after AI Analysis
+            st.markdown("<br><br>", unsafe_allow_html=True)
+            logger.info("Adding logos section")
+            try:
+                # Responsive side-by-side clickable logos with improved flexbox layout
+                logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+                doge_img_html = ""
+                if os.path.exists(logo_path):
+                    with open(logo_path, "rb") as image_file:
+                        encoded = base64.b64encode(image_file.read()).decode()
+                    doge_img_html = (
+                        f'<div class="logo-item">'
+                        f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                        f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                    )
+                svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
+                svg_img_html = ""
+                if os.path.exists(svg_path):
+                    with open(svg_path, "r") as svg_file:
+                        svg_content = svg_file.read()
+                    svg_img_html = (
+                        f'<div class="logo-item">'
+                        f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                    )
+                if doge_img_html or svg_img_html:
+                    st.markdown(
+                        f"""
+                        <style>
+                        .logo-flex-container {{
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            gap: 2vw;
+                            flex-wrap: wrap;
+                            margin-top: 2em;
+                            width: 100%;
+                        }}
+                        .logo-item {{
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            min-width: 120px;
+                            max-width: 25vw;
+                        }}
+                        .logo-item img, .logo-item svg {{
+                            width: 100%;
+                            height: auto;
+                            max-width: 200px;
+                        }}
+                        @media (max-width: 600px) {{
+                            .logo-flex-container {{
+                                flex-direction: column;
+                            }}
+                            .logo-item {{
+                                max-width: 60vw;
+                            }}
+                        }}
+                        .find-x-container {{
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 0.5em;
+                            margin-top: 2em;
+                            font-size: 1.2em;
+                            width: 100%;
+                        }}
+                        .x-logo-img {{
+                            width: 32px;
+                            height: 32px;
+                            vertical-align: middle;
+                        }}
+                        </style>
+                        <div class="logo-flex-container">
+                            {doge_img_html}
+                            {svg_img_html}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    # Add Find us on X section
+                    x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                    x_logo_html = ""
+                    if os.path.exists(x_logo_path):
+                        with open(x_logo_path, "rb") as x_img_file:
+                            x_encoded = base64.b64encode(x_img_file.read()).decode()
+                        x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                    st.markdown(
+                        f'<div class="find-x-container">Find us on {x_logo_html}</div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown("---")
+                    st.markdown("### Texas Department of Government Efficiency")
+                    st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
+            except Exception as e:
+                st.markdown("---")
+                st.markdown("### Texas Department of Government Efficiency")
+                st.error(f"Error loading logo: {str(e)}")
+                logger.error(f"Error in logos section: {str(e)}", exc_info=True)
+
+            # Display Data
+            if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                st.subheader("Query Results")
+                
+                # Display last query time
+                if st.session_state.last_query_time:
+                    st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                
+                # Display data
+                st.dataframe(st.session_state.queried_data)
 
             except Exception as e:
                 logger.error(f"Error in main content: {str(e)}")
