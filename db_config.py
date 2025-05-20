@@ -1,8 +1,9 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from logger_config import get_logger
+from typing import Dict, List, Tuple, Optional
 
 # Initialize logger
 logger = get_logger('db_config')
@@ -11,29 +12,88 @@ logger = get_logger('db_config')
 load_dotenv()
 
 def get_db_connection():
-    """Create and return a database connection"""
+    """Get database connection"""
     try:
         # Get database credentials from environment variables
-        DB_HOST = os.getenv('DB_HOST', 'localhost')
-        DB_PORT = os.getenv('DB_PORT', '5432')
-        DB_NAME = os.getenv('DB_NAME')
-        DB_USER = os.getenv('DB_USER')
-        DB_PASSWORD = os.getenv('DB_PASSWORD')
-
-        # Construct database URL
-        DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+        db_user = os.getenv('DB_USER')
+        db_password = os.getenv('DB_PASSWORD')
+        db_host = os.getenv('DB_HOST')
+        db_port = os.getenv('DB_PORT')
+        db_name = os.getenv('DB_NAME')
         
-        # Create SQLAlchemy engine
-        engine = create_engine(DATABASE_URL)
+        # Create database URL
+        db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         
-        # Test the connection
-        with engine.connect() as connection:
-            logger.info("Successfully connected to the database")
-            return engine
-            
+        # Create engine
+        engine = create_engine(db_url)
+        return engine
     except Exception as e:
-        logger.error(f"Error connecting to database: {str(e)}")
+        logger.error(f"Error creating database connection: {str(e)}")
         raise
+
+def check_table_exists(connection, table_name: str) -> bool:
+    """Check if a table exists in the database"""
+    try:
+        query = text(f"""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = '{table_name}'
+            );
+        """)
+        return connection.execute(query).scalar()
+    except Exception as e:
+        logger.error(f"Error checking if table {table_name} exists: {str(e)}")
+        return False
+
+def get_table_columns(connection, table_name: str) -> List[Tuple[str, str]]:
+    """Get column information for a table"""
+    try:
+        query = text(f"""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}'
+            ORDER BY ordinal_position;
+        """)
+        return [(row[0], row[1]) for row in connection.execute(query)]
+    except Exception as e:
+        logger.error(f"Error getting columns for table {table_name}: {str(e)}")
+        return []
+
+def check_table_accessibility(engine) -> Dict[str, bool]:
+    """Check if tables are accessible"""
+    accessibility = {
+        'paymentinformation': False,
+        'contractinfo': False
+    }
+    
+    try:
+        with engine.connect() as connection:
+            for table_name in accessibility.keys():
+                if check_table_exists(connection, table_name):
+                    # Try to execute a simple query
+                    test_query = text(f"SELECT COUNT(*) FROM {table_name} LIMIT 1")
+                    try:
+                        count = connection.execute(test_query).scalar()
+                        logger.info(f"{table_name} table is accessible. Sample count: {count}")
+                        accessibility[table_name] = True
+                    except Exception as e:
+                        logger.error(f"{table_name} table exists but is not accessible: {str(e)}")
+                else:
+                    logger.warning(f"{table_name} table does not exist")
+            
+            return accessibility
+    except Exception as e:
+        logger.error(f"Error checking table accessibility: {str(e)}")
+        return accessibility
+
+def execute_safe_query(connection, query: text, params: Dict = None) -> Optional[List[Dict]]:
+    """Execute a query safely with error handling"""
+    try:
+        result = connection.execute(query, params or {})
+        return [dict(row) for row in result]
+    except Exception as e:
+        logger.error(f"Error executing query: {str(e)}")
+        return None
 
 def get_db_session():
     """Create and return a database session"""
