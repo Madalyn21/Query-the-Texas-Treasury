@@ -1430,24 +1430,13 @@ def main():
             # Display Data
             if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
                 st.subheader("Query Results")
-                
-                # Display last query time
                 if st.session_state.last_query_time:
                     st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                
-                # Display data
                 st.dataframe(st.session_state.queried_data)
-
-            except Exception as e:
-                logger.error(f"Error in main content: {str(e)}")
-                st.error("Error displaying main content. Please refresh the page.")
-                return
-            
         except Exception as e:
             logger.error(f"Error in main content: {str(e)}")
             st.error("Error displaying main content. Please refresh the page.")
             return
-            
     except Exception as e:
         logger.critical(f"Critical error in main function: {str(e)}", exc_info=True)
         st.error("A critical error occurred. Please refresh the page or contact support.")
