@@ -915,7 +915,475 @@ def main():
                 # Create columns for the filter interface with adjusted widths
                 col1, col2 = st.columns([2, 1])
             
-            # Rest of your main content code...
+                with col1:
+                    logger.info("Setting up filter criteria")
+                    st.subheader("Filter Criteria")
+                    
+                    # Add table selection
+                    table_choice = st.radio(
+                        "Select Data Source",
+                        ["Payment Information", "Contract Information"],
+                        help="Choose which table to query data from"
+                    )
+                    logger.info(f"Table choice selected: {table_choice}")
+                    
+                    # Add fiscal year and month sliders
+                    st.subheader("Fiscal Year and Month")
+                    
+                    # Load fiscal years
+                    try:
+                        fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
+                        logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
+                        if 'fiscal_year' not in fiscal_years_df.columns:
+                            raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+                        fiscal_years = fiscal_years_df['fiscal_year'].tolist()
+                        fiscal_years.sort()
+                        logger.info(f"Found fiscal years: {fiscal_years}")
+                        logger.info(f"Setting fiscal year range from {fiscal_years[0]} to {fiscal_years[-1]}")
+                    except Exception as e:
+                        logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
+                        fiscal_years = []
+                    
+                    # Fiscal Year Slider
+                    if fiscal_years:
+                        selected_fiscal_year = st.select_slider(
+                            "Fiscal Year",
+                            options=fiscal_years,
+                            value=(fiscal_years[0], fiscal_years[-1]),
+                            help="Select a range of fiscal years"
+                        )
+                        
+                        # Store the selected fiscal year range
+                        st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
+                        st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
+                    
+                    # Fiscal Month Slider with month names
+                    month_names = [
+                        "January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                    ]
+                    
+                    selected_fiscal_month = st.select_slider(
+                        "Fiscal Month",
+                        options=month_names,
+                        value=("January", "December"),
+                        help="Select a range of fiscal months"
+                    )
+                    
+                    # Convert month names to numbers for storage
+                    month_to_number = {name: i+1 for i, name in enumerate(month_names)}
+                    st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
+                    st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
+                    
+                    # Add a separator
+                    st.markdown("---")
+                    
+                    # Load filter options
+                    filter_options = load_filter_options(table_choice)
+                    if filter_options is None:
+                        return
+
+                    # Display dropdowns based on table choice
+                    if table_choice == "Payment Information":
+                        # Display Payment Information dropdowns
+                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                        selected_agency = st.selectbox("Agency", agency_options)
+                        
+                        appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
+                        selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
+                        
+                        payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
+                        selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+                        
+                        appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
+                        selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+                        
+                        # Add vendor file path for payment information
+                        vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
+                    else:
+                        # Display Contract Information dropdowns
+                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                        selected_agency = st.selectbox("Agency", agency_options)
+                        
+                        category_options = ["All"] + [category[0] for category in filter_options['categories']]
+                        selected_category = st.selectbox("Category", category_options)
+                        
+                        procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
+                        selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
+                        
+                        status_options = ["All"] + [status[0] for status in filter_options['statuses']]
+                        selected_status = st.selectbox("Status", status_options)
+                        
+                        subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
+                        selected_subject = st.selectbox("Subject", subject_options)
+                        
+                        # Add vendor file path for contract information
+                        vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
+                    
+                    # Add a searchable vendor selection
+                    # Initialize debounce state
+                    if 'last_search_time' not in st.session_state:
+                        st.session_state.last_search_time = time.time()
+                    if 'search_term' not in st.session_state:
+                        st.session_state.search_term = ""
+                    
+                    # Get the current search input
+                    current_search = st.text_input(
+                        "Search Vendors",
+                        help="Type at least 2 characters to search for vendors",
+                        placeholder="Type at least 2 characters to search",
+                        key="vendor_search"
+                    )
+                    
+                    # Check if we should update the search
+                    current_time = time.time()
+                    if (current_search != st.session_state.search_term and 
+                        len(current_search) >= 2 and 
+                        current_time - st.session_state.last_search_time > 0.3):  # 300ms debounce
+                        st.session_state.search_term = current_search
+                        st.session_state.last_search_time = current_time
+                        st.rerun()
+                    
+                    # Initialize vendor state
+                    if 'selected_vendor' not in st.session_state:
+                        st.session_state.selected_vendor = None
+                    if 'vendor_limit' not in st.session_state:
+                        st.session_state.vendor_limit = 50
+                    
+                    # Get matching vendors based on search input
+                    matching_vendors = search_vendors(
+                        st.session_state.search_term, 
+                        vendor_file_path, 
+                        limit=st.session_state.vendor_limit
+                    )
+                    
+                    # Display matching vendors in a selectbox if there are results
+                    if matching_vendors:
+                        # Create a container for the vendor selection
+                        vendor_container = st.container()
+                        
+                        with vendor_container:
+                            # Create the selectbox with current vendors
+                            selected_vendor = st.selectbox(
+                                "Select Vendor",
+                                options=[""] + matching_vendors,  # Add empty option at start
+                                index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                                key="vendor_select",
+                                help="Select a vendor from the search results"
+                            )
+                            
+                            # Add "Load More" button if there are enough results
+                            if len(matching_vendors) >= st.session_state.vendor_limit:
+                                if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
+                                    # Store current selection before loading more
+                                    st.session_state.selected_vendor = selected_vendor
+                                    # Increase the limit
+                                    st.session_state.vendor_limit += 50
+                                    # Force a rerun to update the UI with more vendors
+                                    st.rerun()
+                            
+                            # Update session state with selected vendor
+                            if selected_vendor != st.session_state.selected_vendor:
+                                st.session_state.selected_vendor = selected_vendor
+                    
+                    # Store the selected vendor in the filters
+                    st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
+
+                with col2:
+                    # Create a fixed position container for query actions
+                    st.markdown("""
+                        <style>
+                        .fixed-query-container {
+                            position: sticky;
+                            top: 2rem;
+                            padding: 1rem;
+                            border-radius: 0.5rem;
+                            z-index: 100;
+                        }
+                        .query-content {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 1rem;
+                        }
+                        div[data-testid="stButton"] {
+                            display: flex;
+                            justify-content: center;
+                            margin: 0.5rem 0;
+                        }
+                        </style>
+                        <div class="fixed-query-container">
+                            <div class="query-content">
+                    """, unsafe_allow_html=True)
+                    
+                    logger.info("Setting up query actions")
+                    st.subheader("Query Actions")
+                    
+                    submit_clicked = st.button("Submit Query", use_container_width=True)
+                    readme_clicked = st.button("About", use_container_width=True)
+                    
+                    if readme_clicked:
+                        with st.expander("**About the Data and How to Use**", expanded=True):
+                            st.markdown("""
+                            ### Data Overview
+                            This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
+                            provided and managed by the Texas Comptroller of Public Accounts.
+                            
+                            ### How to Use
+                            1. Select your desired filters from the dropdown menus
+                            2. Use 'All' to include all values for that field
+                            3. Click 'Submit Query' to view the results
+                            4. Download the results using the download button
+                            
+                            ### Understanding the Dropdown Categories
+                            
+                            #### Payment Information Categories
+                            - **Agency**: The government agency making the payment
+                            - **Vendor**: The recipient of the payment
+                            - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
+                            - **Payment Source (Fund Title)**: The name of the account that actually holds the money
+                            - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
+                            
+                            #### Contract Information Categories
+                            - **Agency**: The government agency managing the contract
+                            - **Vendor**: The company or entity providing the goods or services
+                            - **Category**: The general type or classification of the contract
+                            - **Procurement Method**: How the government chose the vendor for a contract
+                            - **Status**: The current state of the contract
+                            - **Subject**: A short description of what the contract covers
+                            """)
+                    
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+
+            if submit_clicked:
+                logger.info("Query submitted")
+                # Prepare and validate the filter payload
+                filter_payload = {
+                    k: validate_input(v) 
+                    for k, v in st.session_state.filters.items() 
+                    if v != 'All' and v is not None
+                }
+                
+                # Add test query for WPI agency
+                if table_choice == "Payment Information":
+                    filter_payload['agency'] = "WPI"
+                    logger.info("Added test query for WPI agency")
+                
+                logger.info(f"Filter payload: {filter_payload}")
+                logger.info(f"Table choice: {table_choice}")
+                
+                try:
+                    # Create a container for the loading animation
+                    loading_container = st.empty()
+                    
+                    # Get database connection with spinner
+                    with loading_container.container():
+                        with st.spinner('Connecting to database...'):
+                            engine = get_db_connection()
+                            logger.info("Database connection established")
+                    
+                    # Get filtered data using the query utilities with spinner
+                    with loading_container.container():
+                        with st.spinner('Executing query... This may take a few moments.'):
+                            logger.info("Calling get_filtered_data with:")
+                            logger.info(f"- filters: {filter_payload}")
+                            logger.info(f"- table_choice: {table_choice}")
+                            logger.info(f"- engine: {engine}")
+                            
+                            df = get_filtered_data(filter_payload, table_choice, engine)
+                    
+                    # Clear the loading container
+                    loading_container.empty()
+                    
+                    logger.info(f"Query result type: {type(df)}")
+                    logger.info(f"Query result shape: {df.shape if hasattr(df, 'shape') else 'No shape attribute'}")
+                    
+                    if not df.empty:
+                        st.session_state['df'] = df
+                        logger.info(f"Retrieved {len(df)} records")
+                        
+                        # Display results count with a nice animation
+                        st.success(f"Found {len(df)} matching records")
+                        
+                        # Display the dataframe with a loading animation
+                        with st.spinner('Loading data...'):
+                            st.dataframe(df)
+                        
+                        # Add CSV download button
+                        download_csv(df)
+                        
+                        # Download button for zip file
+                        with st.spinner('Preparing download...'):
+                            zip_file = df_to_zip(df)
+                            logger.info("Generated zip file for download")
+                            st.download_button(
+                                label="Download ZIP",
+                                data=zip_file,
+                                file_name="queried_data.zip",
+                                mime="application/zip",
+                                help="Click to download the queried data as a ZIP file"
+                            )
+                    else:
+                        logger.info("No data returned from query")
+                        st.info("No data returned.")
+                        
+                except Exception as e:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    logger.error(f"Error processing query: {str(e)}")
+                    logger.error(f"Full error traceback:\n{error_details}")
+                    
+                    # Display detailed error information to the user
+                    st.error(f"""
+                    Error retrieving data:
+                    
+                    Error type: {type(e).__name__}
+                    Error message: {str(e)}
+                    
+                    Full error details have been logged.
+                    """)
+                    
+                    # If it's a database error, show more details
+                    if hasattr(e, 'orig'):
+                        st.error(f"""
+                        Database error details:
+                        {str(e.orig)}
+                        """)
+
+            # Add visualization section
+            logger.info("Adding visualization section")
+            st.markdown("---")  # Add a separator
+            st.header("Visualizations")
+            
+            if 'df' in st.session_state and not st.session_state['df'].empty:
+                try:
+                    # Generate all visualizations
+                    visualizations = generate_all_visualizations(st.session_state['df'])
+                    
+                    # Create two columns for visualizations
+                    viz_col1, viz_col2 = st.columns(2)
+                    
+                    with viz_col1:
+                        st.subheader("Payment Distribution")
+                        st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                        
+                        st.subheader("Top Vendors")
+                        st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                        
+                    with viz_col2:
+                        st.subheader("Trend Analysis")
+                        st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                        
+                        st.subheader("Category Distribution")
+                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                        
+                except Exception as e:
+                    logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
+                    st.error("Error generating visualizations. Please check the data format.")
+            else:
+                st.info("Submit a query to see visualizations of the data.")
+
+            # Add AI Analysis section
+            logger.info("Adding AI Analysis section")
+            st.header("AI Analysis")
+            st.info("AI-powered analysis and insights will appear here.")
+            st.markdown("---")
+
+            # Add logos section
+            logger.info("Adding logos section")
+            try:
+                # Responsive side-by-side clickable logos with improved flexbox layout
+                logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+                doge_img_html = ""
+                if os.path.exists(logo_path):
+                    with open(logo_path, "rb") as image_file:
+                        encoded = base64.b64encode(image_file.read()).decode()
+                    doge_img_html = (
+                        f'<div class="logo-item">'
+                        f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                        f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                    )
+                svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
+                svg_img_html = ""
+                if os.path.exists(svg_path):
+                    with open(svg_path, "r") as svg_file:
+                        svg_content = svg_file.read()
+                    svg_img_html = (
+                        f'<div class="logo-item">'
+                        f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                    )
+                if doge_img_html or svg_img_html:
+                    st.markdown(
+                        f"""
+                        <style>
+                        .logo-flex-container {{
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            gap: 2vw;
+                            flex-wrap: wrap;
+                            margin-top: 2em;
+                        }}
+                        .logo-item {{
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            min-width: 120px;
+                            max-width: 25vw;
+                        }}
+                        .logo-item img, .logo-item svg {{
+                            width: 100%;
+                            height: auto;
+                            max-width: 200px;
+                        }}
+                        @media (max-width: 600px) {{
+                            .logo-flex-container {{
+                                flex-direction: column;
+                            }}
+                            .logo-item {{
+                                max-width: 60vw;
+                            }}
+                        }}
+                        .find-x-container {{
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 0.5em;
+                            margin-top: 2em;
+                            font-size: 1.2em;
+                        }}
+                        .x-logo-img {{
+                            width: 32px;
+                            height: 32px;
+                            vertical-align: middle;
+                        }}
+                        </style>
+                        <div class="logo-flex-container">
+                            {doge_img_html}
+                            {svg_img_html}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    # Add Find us on X section
+                    x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                    x_logo_html = ""
+                    if os.path.exists(x_logo_path):
+                        with open(x_logo_path, "rb") as x_img_file:
+                            x_encoded = base64.b64encode(x_img_file.read()).decode()
+                        x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                    st.markdown(
+                        f'<div class="find-x-container">Find us on {x_logo_html}</div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown("---")
+                    st.markdown("### Texas Department of Government Efficiency")
+                    st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
+            except Exception as e:
+                st.markdown("---")
+                st.markdown("### Texas Department of Government Efficiency")
+                st.error(f"Error loading logo: {str(e)}")
+                logger.error(f"Error in logos section: {str(e)}", exc_info=True)
             
         except Exception as e:
             logger.error(f"Error in main content: {str(e)}")
