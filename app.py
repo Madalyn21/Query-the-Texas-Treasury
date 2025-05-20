@@ -1157,11 +1157,13 @@ def main():
             if submit_clicked:
                 logger.info("Query submitted")
                 # Prepare and validate the filter payload
-                filter_payload = {
-                    k: validate_input(v) 
-                    for k, v in st.session_state.filters.items() 
-                    if v != 'All' and v is not None
-                }
+                filter_payload = {}
+                for k, v in st.session_state.filters.items():
+                    if v != 'All' and v is not None:
+                        if isinstance(v, list):
+                            filter_payload[k] = [validate_input(item) for item in v]
+                        else:
+                            filter_payload[k] = validate_input(v)
                 
                 logger.info(f"Filter payload: {filter_payload}")
                 logger.info(f"Table choice: {table_choice}")
