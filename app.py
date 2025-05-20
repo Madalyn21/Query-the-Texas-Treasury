@@ -8,6 +8,7 @@ import sys
 import time
 import zipfile
 from datetime import datetime, timedelta
+import tempfile
 
 # Configure pandas before importing
 import warnings
@@ -493,6 +494,14 @@ def initialize_session_state():
             'status': None,
             'subject': None
         }
+    if 'privacy_accepted' not in st.session_state:
+        st.session_state.privacy_accepted = False
+    if 'queried_data' not in st.session_state:
+        st.session_state.queried_data = None
+    if 'last_query_time' not in st.session_state:
+        st.session_state.last_query_time = None
+    if 'download_format' not in st.session_state:
+        st.session_state.download_format = 'csv'
 
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
@@ -1118,166 +1127,117 @@ def main():
                     logger.info("Setting up query actions")
                     st.subheader("Query Actions")
                     
-                    submit_clicked = st.button("Submit Query", use_container_width=True)
-                    readme_clicked = st.button("About", use_container_width=True)
-                    
-                    if readme_clicked:
-                        with st.expander("**About the Data and How to Use**", expanded=True):
-                            st.markdown("""
-                            ### Data Overview
-                            This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
-                            provided and managed by the Texas Comptroller of Public Accounts.
-                            
-                            ### How to Use
-                            1. Select your desired filters from the dropdown menus
-                            2. Use 'All' to include all values for that field
-                            3. Click 'Submit Query' to view the results
-                            4. Download the results using the download button
-                            
-                            ### Understanding the Dropdown Categories
-                            
-                            #### Payment Information Categories
-                            - **Agency**: The government agency making the payment
-                            - **Vendor**: The recipient of the payment
-                            - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
-                            - **Payment Source (Fund Title)**: The name of the account that actually holds the money
-                            - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
-                            
-                            #### Contract Information Categories
-                            - **Agency**: The government agency managing the contract
-                            - **Vendor**: The company or entity providing the goods or services
-                            - **Category**: The general type or classification of the contract
-                            - **Procurement Method**: How the government chose the vendor for a contract
-                            - **Status**: The current state of the contract
-                            - **Subject**: A short description of what the contract covers
-                            """)
-                    
-                    st.markdown("</div></div>", unsafe_allow_html=True)
-
-            if submit_clicked:
-                logger.info("Query submitted")
-                # Prepare and validate the filter payload
-                filter_payload = {}
-                for k, v in st.session_state.filters.items():
-                    if v != 'All' and v is not None:
-                        if isinstance(v, list):
-                            filter_payload[k] = [validate_input(item) for item in v]
-                        else:
-                            filter_payload[k] = validate_input(v)
-                
-                logger.info(f"Filter payload: {filter_payload}")
-                logger.info(f"Table choice: {table_choice}")
-                
-                try:
-                    # Create a container for the loading animation
-                    loading_container = st.empty()
-                    
-                    # Get database connection with spinner
-                    with loading_container.container():
-                        with st.spinner('Connecting to database...'):
-                            engine = get_db_connection()
-                            logger.info("Database connection established")
-                    
-                    # Get filtered data using the query utilities with spinner
-                    with loading_container.container():
-                        with st.spinner('Executing query... This may take a few moments.'):
-                            logger.info("Calling get_filtered_data with:")
-                            logger.info(f"- filters: {filter_payload}")
-                            logger.info(f"- table_choice: {table_choice}")
-                            logger.info(f"- engine: {engine}")
-                            
-                            df = get_filtered_data(filter_payload, table_choice, engine)
-                    
-                    # Clear the loading container
-                    loading_container.empty()
-                    
-                    logger.info(f"Query result type: {type(df)}")
-                    logger.info(f"Query result shape: {df.shape if hasattr(df, 'shape') else 'No shape attribute'}")
-                    
-                    if not df.empty:
-                        st.session_state['df'] = df
-                        logger.info(f"Retrieved {len(df)} records")
+                    # Query Actions
+                    with st.expander("Query Actions", expanded=True):
+                        col1, col2 = st.columns(2)
                         
-                        # Display results count with a nice animation
-                        st.success(f"Found {len(df)} matching records")
+                        with col1:
+                            if st.button("Run Query", type="primary"):
+                                with st.spinner("Executing query... This may take a few moments."):
+                                    try:
+                                        # Get filtered data
+                                        df = get_filtered_data(st.session_state.filters, table_choice, engine)
+                                        
+                                        if not df.empty:
+                                            # Store the queried data in session state
+                                            st.session_state.queried_data = df
+                                            st.session_state.last_query_time = datetime.now()
+                                            
+                                            # Display success message
+                                            st.success(f"Query completed successfully! Retrieved {len(df)} records.")
+                                        else:
+                                            st.warning("No data found matching your criteria.")
+                                    except Exception as e:
+                                        st.error(f"Error executing query: {str(e)}")
                         
-                        # Display the dataframe with a loading animation
-                        with st.spinner('Loading data...'):
-                            st.dataframe(df)
-                        
-                        # Add CSV download button
-                        download_csv(df)
-                        
-                        # Download button for zip file
-                        with st.spinner('Preparing download...'):
-                            zip_file = df_to_zip(df)
-                            logger.info("Generated zip file for download")
-                            st.download_button(
-                                label="Download ZIP",
-                                data=zip_file,
-                                file_name="queried_data.zip",
-                                mime="application/zip",
-                                help="Click to download the queried data as a ZIP file"
+                        with col2:
+                            st.session_state.download_format = st.radio(
+                                "Download Format",
+                                ["csv", "zip"],
+                                horizontal=True,
+                                index=0 if st.session_state.download_format == 'csv' else 1
                             )
-                    else:
-                        logger.info("No data returned from query")
-                        st.info("No data returned.")
-                        
-                except Exception as e:
-                    import traceback
-                    error_details = traceback.format_exc()
-                    logger.error(f"Error processing query: {str(e)}")
-                    logger.error(f"Full error traceback:\n{error_details}")
-                    
-                    # Display detailed error information to the user
-                    st.error(f"""
-                    Error retrieving data:
-                    
-                    Error type: {type(e).__name__}
-                    Error message: {str(e)}
-                    
-                    Full error details have been logged.
-                    """)
-                    
-                    # If it's a database error, show more details
-                    if hasattr(e, 'orig'):
-                        st.error(f"""
-                        Database error details:
-                        {str(e.orig)}
-                        """)
+                            
+                            if st.button("Download Data"):
+                                if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                                    with st.spinner("Preparing download..."):
+                                        try:
+                                            if st.session_state.download_format == "csv":
+                                                csv = st.session_state.queried_data.to_csv(index=False)
+                                                st.download_button(
+                                                    label="Click to download CSV",
+                                                    data=csv,
+                                                    file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                                    mime="text/csv",
+                                                    key="download_csv"
+                                                )
+                                            else:  # zip format
+                                                # Create a temporary directory
+                                                with tempfile.TemporaryDirectory() as tmpdir:
+                                                    # Save CSV
+                                                    csv_path = os.path.join(tmpdir, "data.csv")
+                                                    st.session_state.queried_data.to_csv(csv_path, index=False)
+                                                    
+                                                    # Create ZIP file
+                                                    zip_path = os.path.join(tmpdir, "data.zip")
+                                                    with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                                        zipf.write(csv_path, "data.csv")
+                                                    
+                                                    # Read ZIP file and create download button
+                                                    with open(zip_path, 'rb') as f:
+                                                        zip_data = f.read()
+                                                        st.download_button(
+                                                            label="Click to download ZIP",
+                                                            data=zip_data,
+                                                            file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                                                            mime="application/zip",
+                                                            key="download_zip"
+                                                        )
+                                        except Exception as e:
+                                            st.error(f"Error preparing download: {str(e)}")
+                                else:
+                                    st.warning("Please run a query first to download data.")
 
-            # Add visualization section
-            logger.info("Adding visualization section")
-            st.markdown("---")  # Add a separator
-            st.header("Visualizations")
-            
-            if 'df' in st.session_state and not st.session_state['df'].empty:
-                try:
-                    # Generate all visualizations
-                    visualizations = generate_all_visualizations(st.session_state['df'])
-                    
-                    # Create two columns for visualizations
-                    viz_col1, viz_col2 = st.columns(2)
-                    
-                    with viz_col1:
-                        st.subheader("Payment Distribution")
-                        st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                    # Display Data
+                    if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                        st.subheader("Query Results")
                         
-                        st.subheader("Top Vendors")
-                        st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                        # Display last query time
+                        if st.session_state.last_query_time:
+                            st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
                         
-                    with viz_col2:
-                        st.subheader("Trend Analysis")
-                        st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                        # Display data
+                        st.dataframe(st.session_state.queried_data)
                         
-                        st.subheader("Category Distribution")
-                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                        # Display visualizations
+                        st.subheader("Visualizations")
                         
-                except Exception as e:
-                    logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
-                    st.error("Error generating visualizations. Please check the data format.")
-            else:
-                st.info("Submit a query to see visualizations of the data.")
+                        try:
+                            # Generate all visualizations
+                            visualizations = generate_all_visualizations(st.session_state.queried_data)
+                            
+                            # Create two columns for visualizations
+                            viz_col1, viz_col2 = st.columns(2)
+                            
+                            with viz_col1:
+                                st.subheader("Payment Distribution")
+                                st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                                
+                                st.subheader("Top Vendors")
+                                st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                                
+                            with viz_col2:
+                                st.subheader("Trend Analysis")
+                                st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                                
+                                st.subheader("Category Distribution")
+                                st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                                
+                        except Exception as e:
+                            logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
+                            st.error("Error generating visualizations. Please check the data format.")
+                    else:
+                        st.info("Run a query to see the data and visualizations.")
 
             # Add AI Analysis section
             logger.info("Adding AI Analysis section")
