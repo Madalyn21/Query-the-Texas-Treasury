@@ -167,6 +167,12 @@ def generate_all_visualizations(df: pd.DataFrame) -> Dict[str, alt.Chart]:
     try:
         logger.info("Generating all visualizations")
         
+        # Convert amount column to numeric, handling any non-numeric values
+        df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+        
+        # Log data types after conversion
+        logger.info(f"Data types after conversion: {df.dtypes}")
+        
         visualizations = {
             'payment_distribution': create_payment_distribution_chart(df),
             'trend_analysis': create_trend_analysis_chart(df),
