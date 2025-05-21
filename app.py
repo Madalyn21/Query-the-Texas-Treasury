@@ -1361,11 +1361,30 @@ def main():
                 justify-content: center;
                 min-width: 120px;
                 max-width: 25vw;
+                padding: 1rem;
+                border-radius: 0.5rem;
             }
             .logo-item img, .logo-item svg {
                 width: 100%;
                 height: auto;
                 max-width: 200px;
+            }
+            .doge-logo-box {
+                background-color: #000000;
+                padding: 1rem;
+                border-radius: 0.5rem;
+            }
+            .house-logo-box {
+                background-color: #000080;
+                padding: 1rem;
+                border-radius: 0.5rem;
+            }
+            .x-logo-box {
+                background-color: #000000;
+                padding: 0.5rem;
+                border-radius: 0.5rem;
+                display: inline-flex;
+                align-items: center;
             }
             @media (max-width: 600px) {
                 .logo-flex-container {
@@ -1401,7 +1420,8 @@ def main():
                 doge_img_html = (
                     f'<div class="logo-item">'
                     f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
-                    f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                    f'<div class="doge-logo-box">'
+                    f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></div></a></div>'
                 )
             
             svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
@@ -1411,7 +1431,8 @@ def main():
                     svg_content = svg_file.read()
                 svg_img_html = (
                     f'<div class="logo-item">'
-                    f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                    f'<a href="https://house.texas.gov/" target="_blank">'
+                    f'<div class="house-logo-box">{svg_content}</div></a></div>'
                 )
             
             if doge_img_html or svg_img_html:
@@ -1431,7 +1452,7 @@ def main():
                 if os.path.exists(x_logo_path):
                     with open(x_logo_path, "rb") as x_img_file:
                         x_encoded = base64.b64encode(x_img_file.read()).decode()
-                    x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                    x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><div class="x-logo-box"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></div></a>'
                 st.markdown(
                     f'<div class="find-x-container">Find us on {x_logo_html}</div>',
                     unsafe_allow_html=True
