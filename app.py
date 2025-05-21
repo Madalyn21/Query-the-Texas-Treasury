@@ -1256,9 +1256,8 @@ def main():
                     if st.session_state.has_more_results:
                         if st.button("Load 150 More"):
                             try:
-                                # Store current state before rerun
+                                # Store current state
                                 current_df = st.session_state['df']
-                                current_page = st.session_state.current_page
                                 current_filters = st.session_state.filters.copy()
                                 current_table_choice = table_choice
                                 
@@ -1279,6 +1278,7 @@ def main():
                                     # Append new results to existing dataframe
                                     st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
                                     st.success(f"Loaded {len(next_df)} more records!")
+                                    # Force a rerun to update the display
                                     st.rerun()
                                 else:
                                     st.warning("No more results to load.")
@@ -1344,7 +1344,7 @@ def main():
                     
                     try:
                         # Generate all visualizations
-                        visualizations = generate_all_visualizations(df)
+                        visualizations = generate_all_visualizations(df, table_choice)
                         
                         # Create two columns for visualizations
                         viz_col1, viz_col2 = st.columns(2)
