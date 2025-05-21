@@ -25,6 +25,7 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
             SELECT p.*
             FROM paymentinformation p
             WHERE 1=1
+            ORDER BY p.fiscal_year DESC, p.agency_title
             LIMIT 1000
         """)
         logger.info("Selected paymentinformation table for query")
@@ -33,7 +34,7 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
             SELECT c.*
             FROM contractinfo c
             WHERE 1=1
-            ORDER BY c.fiscal_year DESC, c.agency_title
+            ORDER BY c.fy DESC, c.agency_title
             LIMIT 1000
         """)
         logger.info("Selected contractinfo table for query")
@@ -224,6 +225,17 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             """)
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
+            
+            # Verify the columns we're trying to order by exist
+            if "ORDER BY" in str(query):
+                order_columns = [col.strip() for col in str(query).split("ORDER BY")[1].split("LIMIT")[0].split(",")]
+                order_columns = [col.split(".")[1] if "." in col else col for col in order_columns]
+                for col in order_columns:
+                    if col not in [c[0] for c in columns]:
+                        logger.error(f"Column {col} used in ORDER BY does not exist in table {table_name}")
+                        # Remove the ORDER BY clause if the column doesn't exist
+                        query = text(str(query).split("ORDER BY")[0] + "LIMIT 1000")
+                        logger.info(f"Modified query to remove invalid ORDER BY: {str(query)}")
             
             # Now execute the main query with chunking
             while True:
