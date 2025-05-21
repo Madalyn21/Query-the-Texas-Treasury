@@ -240,32 +240,22 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
         logger.error(f"Error checking table accessibility: {str(e)}")
         return accessibility
 
-def execute_query(query: text, params: Dict, engine) -> List[Dict]:
+def execute_query(query: text, params: Dict, engine, page_size: int = 150, page: int = 1) -> Tuple[List[Dict], bool]:
     """
-    Executes the SQL query with chunking to handle large result sets efficiently.
-    
-    This function:
-    1. Checks if the required tables are accessible
-    2. Retrieves and logs the table structure
-    3. Executes the query in chunks to prevent memory issues
-    4. Converts the results to a list of dictionaries
-    5. Logs detailed timing information for performance monitoring
-    
-    The chunking mechanism:
-    - Processes results in batches of 100 records
-    - Continues until no more records are found
-    - Combines all chunks into a single result set
+    Executes the SQL query with pagination to handle large result sets efficiently.
     
     Args:
         query (text): The SQLAlchemy query to execute
         params (Dict): Dictionary of parameters for the query
         engine: SQLAlchemy engine instance
+        page_size (int): Number of records to return per page
+        page (int): Current page number (1-based)
         
     Returns:
-        List[Dict]: List of dictionaries containing the query results
+        Tuple[List[Dict], bool]: List of dictionaries containing the query results and a boolean indicating if more results exist
     """
     start_time = time.time()
-    logger.info("Executing query with chunking")
+    logger.info(f"Executing query with pagination (page {page}, size {page_size})")
     logger.info(f"Query: {str(query)}")
     logger.info(f"Parameters: {params}")
     
@@ -273,11 +263,7 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     table_access = check_table_accessibility(engine)
     if not any(table_access.values()):
         logger.error("No tables are accessible")
-        return []
-    
-    all_data = []
-    chunk_size = 100
-    offset = 0
+        return [], False
     
     try:
         with engine.connect() as connection:
@@ -287,7 +273,7 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             
             if not table_access.get(table_name, False):
                 logger.error(f"Table {table_name} is not accessible")
-                return []
+                return [], False
             
             # Let's also check the columns
             columns_query = text(f"""
@@ -299,71 +285,64 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
-            # Now execute the main query with chunking
-            while True:
-                # Remove any existing LIMIT clause and add our chunking LIMIT
-                base_query = str(query)
-                if "LIMIT" in base_query:
-                    base_query = base_query.split("LIMIT")[0].strip()
-                
-                chunk_query = text(f"{base_query} LIMIT {chunk_size} OFFSET {offset}")
-                logger.info(f"Executing chunk query: {str(chunk_query)}")
-                logger.info(f"Chunk parameters: {params}")
-                
-                try:
-                    chunk_start_time = time.time()
-                    chunk_data = connection.execute(chunk_query, params).fetchall()
-                    chunk_time = time.time() - chunk_start_time
-                    logger.info(f"Chunk query took {chunk_time:.2f} seconds")
-                    
-                    if not chunk_data:
-                        break
-                    
-                    # Convert to list of dicts using column names from the result
-                    chunk_dicts = []
-                    for row in chunk_data:
-                        row_dict = {}
-                        for i, col in enumerate(row._mapping.keys()):
-                            row_dict[col] = row[i]
-                        chunk_dicts.append(row_dict)
-                    
-                    all_data.extend(chunk_dicts)
-                    logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
-                    
-                    offset += chunk_size
-                except Exception as e:
-                    logger.error(f"Error executing chunk query: {str(e)}")
-                    break
+            # Remove any existing LIMIT clause and add our pagination
+            base_query = str(query)
+            if "LIMIT" in base_query:
+                base_query = base_query.split("LIMIT")[0].strip()
             
-            total_time = time.time() - start_time
-            logger.info(f"Total query execution took {total_time:.2f} seconds")
-            logger.info(f"Query execution returned {len(all_data)} records")
-            return all_data
+            # Calculate offset
+            offset = (page - 1) * page_size
+            
+            # Execute the query with pagination
+            paginated_query = text(f"{base_query} LIMIT {page_size + 1} OFFSET {offset}")
+            logger.info(f"Executing paginated query: {str(paginated_query)}")
+            
+            try:
+                query_start_time = time.time()
+                results = connection.execute(paginated_query, params).fetchall()
+                query_time = time.time() - query_start_time
+                logger.info(f"Query took {query_time:.2f} seconds")
+                
+                # Check if there are more results
+                has_more = len(results) > page_size
+                if has_more:
+                    results = results[:-1]  # Remove the extra result we fetched
+                
+                # Convert to list of dicts using column names from the result
+                data = []
+                for row in results:
+                    row_dict = {}
+                    for i, col in enumerate(row._mapping.keys()):
+                        row_dict[col] = row[i]
+                    data.append(row_dict)
+                
+                total_time = time.time() - start_time
+                logger.info(f"Total query execution took {total_time:.2f} seconds")
+                logger.info(f"Query execution returned {len(data)} records")
+                return data, has_more
+                
+            except Exception as e:
+                logger.error(f"Error executing query: {str(e)}")
+                return [], False
             
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}", exc_info=True)
-        return []
+        return [], False
 
-def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
+def get_filtered_data(filters: Dict, table_choice: str, engine, page: int = 1) -> Tuple[pd.DataFrame, bool]:
     """
     Main function to get filtered data from the database and return it as a DataFrame.
-    
-    This function orchestrates the entire query process:
-    1. Builds the base query
-    2. Adds user-selected filters
-    3. Executes the query with chunking
-    4. Converts the results to a pandas DataFrame
-    5. Sanitizes column names for consistency
     
     Args:
         filters (Dict): Dictionary containing filter values selected by user
         table_choice (str): Either "Payment Information" or "Contract Information"
         engine: SQLAlchemy engine instance
+        page (int): Current page number (1-based)
         
     Returns:
-        pd.DataFrame: DataFrame containing the filtered data with sanitized column names
+        Tuple[pd.DataFrame, bool]: DataFrame containing the filtered data and a boolean indicating if more results exist
     """
-    logger.info(f"Getting filtered data for {table_choice}")
+    logger.info(f"Getting filtered data for {table_choice} (page {page})")
     logger.info(f"Filters received: {filters}")
     
     try:
@@ -376,8 +355,110 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
         logger.info(f"Query after adding filters: {str(query)}")
         logger.info(f"Parameters after adding filters: {params}")
         
-        # Execute the query
-        data = execute_query(query, params, engine)
+        # Execute the query with pagination
+        data, has_more = execute_query(query, params, engine, page_size=150, page=page)
+        logger.info(f"Query execution returned {len(data)} records")
+        
+        # Convert to DataFrame
+        if data:
+            df = pd.DataFrame(data)
+            # Sanitize column names
+            df.columns = [col.lower().replace(' ', '_') for col in df.columns]
+            logger.info(f"DataFrame created with shape: {df.shape}")
+            logger.info(f"DataFrame columns: {df.columns.tolist()}")
+            return df, has_more
+        else:
+            logger.warning("No data returned from query")
+            return pd.DataFrame(), False  # Return empty DataFrame if no data
+            
+    except Exception as e:
+        logger.error(f"Error getting filtered data: {str(e)}", exc_info=True)
+        return pd.DataFrame(), False  # Return empty DataFrame on error 
+
+def get_complete_data(query: text, params: Dict, engine) -> List[Dict]:
+    """
+    Executes the SQL query to get the complete dataset without pagination.
+    Used for downloading the full dataset.
+    
+    Args:
+        query (text): The SQLAlchemy query to execute
+        params (Dict): Dictionary of parameters for the query
+        engine: SQLAlchemy engine instance
+        
+    Returns:
+        List[Dict]: List of dictionaries containing all query results
+    """
+    start_time = time.time()
+    logger.info("Executing query for complete dataset")
+    logger.info(f"Query: {str(query)}")
+    logger.info(f"Parameters: {params}")
+    
+    try:
+        with engine.connect() as connection:
+            # Remove any existing LIMIT clause
+            base_query = str(query)
+            if "LIMIT" in base_query:
+                base_query = base_query.split("LIMIT")[0].strip()
+            
+            # Execute the query without pagination
+            complete_query = text(base_query)
+            logger.info(f"Executing complete query: {str(complete_query)}")
+            
+            try:
+                query_start_time = time.time()
+                results = connection.execute(complete_query, params).fetchall()
+                query_time = time.time() - query_start_time
+                logger.info(f"Query took {query_time:.2f} seconds")
+                
+                # Convert to list of dicts using column names from the result
+                data = []
+                for row in results:
+                    row_dict = {}
+                    for i, col in enumerate(row._mapping.keys()):
+                        row_dict[col] = row[i]
+                    data.append(row_dict)
+                
+                total_time = time.time() - start_time
+                logger.info(f"Total query execution took {total_time:.2f} seconds")
+                logger.info(f"Query execution returned {len(data)} records")
+                return data
+                
+            except Exception as e:
+                logger.error(f"Error executing query: {str(e)}")
+                return []
+            
+    except Exception as e:
+        logger.error(f"Error executing query: {str(e)}", exc_info=True)
+        return []
+
+def get_complete_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
+    """
+    Gets the complete filtered data from the database without pagination.
+    Used for downloading the full dataset.
+    
+    Args:
+        filters (Dict): Dictionary containing filter values selected by user
+        table_choice (str): Either "Payment Information" or "Contract Information"
+        engine: SQLAlchemy engine instance
+        
+    Returns:
+        pd.DataFrame: DataFrame containing all filtered data
+    """
+    logger.info(f"Getting complete filtered data for {table_choice}")
+    logger.info(f"Filters received: {filters}")
+    
+    try:
+        # Build the base query
+        query, params = build_base_query(table_choice)
+        logger.info(f"Base query built: {str(query)}")
+        
+        # Add filters to the query
+        query, params = add_filters_to_query(query, filters, params, table_choice)
+        logger.info(f"Query after adding filters: {str(query)}")
+        logger.info(f"Parameters after adding filters: {params}")
+        
+        # Execute the query without pagination
+        data = get_complete_data(query, params, engine)
         logger.info(f"Query execution returned {len(data)} records")
         
         # Convert to DataFrame

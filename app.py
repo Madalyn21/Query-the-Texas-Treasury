@@ -494,6 +494,12 @@ def initialize_session_state():
             'subject': None
         }
 
+    # Initialize session state for pagination if not exists
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 1
+    if 'has_more_results' not in st.session_state:
+        st.session_state.has_more_results = False
+
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
     # Check if we already have the data cached in session state
@@ -1167,38 +1173,37 @@ def main():
                 logger.info(f"Table choice: {table_choice}")
                 
                 try:
-                    # Create a container for the loading animation
-                    loading_container = st.empty()
+                    # Reset pagination when new query is submitted
+                    st.session_state.current_page = 1
+                    st.session_state.has_more_results = False
                     
                     # Get database connection with spinner
-                    with loading_container.container():
-                        with st.spinner('Connecting to database...'):
-                            engine = get_db_connection()
-                            logger.info("Database connection established")
+                    with st.spinner('Connecting to database...'):
+                        engine = get_db_connection()
+                        logger.info("Database connection established")
                     
                     # Get filtered data using the query utilities with spinner
-                    with loading_container.container():
-                        with st.spinner('Executing query... This may take a few moments.'):
-                            logger.info("Calling get_filtered_data with:")
-                            logger.info(f"- filters: {filter_payload}")
-                            logger.info(f"- table_choice: {table_choice}")
-                            logger.info(f"- engine: {engine}")
-                            
-                            df = get_filtered_data(filter_payload, table_choice, engine)
+                    with st.spinner('Executing query... This may take a few moments.'):
+                        logger.info("Calling get_filtered_data with:")
+                        logger.info(f"- filters: {filter_payload}")
+                        logger.info(f"- table_choice: {table_choice}")
+                        logger.info(f"- engine: {engine}")
+                        
+                        df, has_more = get_filtered_data(filter_payload, table_choice, engine)
                     
                     # Clear the loading container
-                    loading_container.empty()
+                    st.empty()
                     
                     logger.info(f"Query result type: {type(df)}")
                     logger.info(f"Query result shape: {df.shape if hasattr(df, 'shape') else 'No shape attribute'}")
                     
                     if not df.empty:
                         st.session_state['df'] = df
-                        logger.info(f"Retrieved {len(df)} records")
+                        st.session_state.has_more_results = has_more
+                        st.success(f"Query executed successfully! Found {len(df)} records.")
                     else:
-                        logger.info("No data returned from query")
-                        st.info("No data returned.")
-                        
+                        st.warning("No results found for the selected criteria.")
+                        st.session_state['df'] = pd.DataFrame()
                 except Exception as e:
                     import traceback
                     error_details = traceback.format_exc()
@@ -1222,30 +1227,58 @@ def main():
                         {str(e.orig)}
                         """)
 
-            # Display results if they exist in session state
+            # Display results if they exist
             if 'df' in st.session_state and not st.session_state['df'].empty:
                 df = st.session_state['df']
-                # Display results count with a nice animation
-                st.success(f"Found {len(df)} matching records")
                 
-                # Display the dataframe with a loading animation
-                with st.spinner('Loading data...'):
-                    st.dataframe(df)
+                # Display results count
+                st.write(f"Showing {len(df)} records")
                 
-                # Add CSV download button
-                download_csv(df)
+                # Display the dataframe
+                with st.spinner("Loading results..."):
+                    st.dataframe(df, use_container_width=True)
                 
-                # Download button for zip file
-                with st.spinner('Preparing download...'):
-                    zip_file = df_to_zip(df)
-                    logger.info("Generated zip file for download")
-                    st.download_button(
+                # Add Load More button if there are more results
+                if st.session_state.has_more_results:
+                    if st.button("Load 150 More"):
+                        try:
+                            # Increment page number
+                            st.session_state.current_page += 1
+                            
+                            # Get next page of results
+                            next_df, has_more = get_filtered_data(st.session_state.filters, table_choice, engine, page=st.session_state.current_page)
+                            st.session_state.has_more_results = has_more
+                            
+                            if not next_df.empty:
+                                # Append new results to existing dataframe
+                                st.session_state['df'] = pd.concat([st.session_state['df'], next_df], ignore_index=True)
+                                st.success(f"Loaded {len(next_df)} more records!")
+                                st.experimental_rerun()
+                            else:
+                                st.warning("No more results to load.")
+                                st.session_state.has_more_results = False
+                        except Exception as e:
+                            st.error(f"Error loading more results: {str(e)}")
+                
+                # Add download buttons
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.download_button(
+                        label="Download CSV",
+                        data=lambda: get_complete_filtered_data(st.session_state.filters, table_choice, engine).to_csv(index=False).encode('utf-8'),
+                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                        mime='text/csv',
+                    ):
+                        st.success("CSV file downloaded successfully!")
+                
+                with col2:
+                    if st.download_button(
                         label="Download ZIP",
-                        data=zip_file,
-                        file_name="queried_data.zip",
-                        mime="application/zip",
-                        help="Click to download the queried data as a ZIP file"
-                    )
+                        data=lambda: df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, engine)),
+                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                        mime='application/zip',
+                    ):
+                        st.success("ZIP file downloaded successfully!")
 
             # Add visualization section
             logger.info("Adding visualization section")
