@@ -95,8 +95,10 @@ def execute_safe_query(connection, query: text, params: Dict = None) -> Optional
         logger.info(f"Parameters being passed: {params}")
         logger.info(f"Parameter types: {[(k, type(v)) for k, v in params.items()]}")
         
-        # Convert params to a proper dictionary of key-value pairs
-        safe_params = dict(params.items())
+        # Create a new dictionary with the same key-value pairs
+        safe_params = {}
+        for key, value in params.items():
+            safe_params[key] = value
         logger.info(f"Safe parameters: {safe_params}")
         
         # Execute query with parameters as a dictionary
