@@ -829,7 +829,7 @@ def main():
         logger.error(f"Error during initial loading: {str(e)}")
         st.error("Error loading application. Please refresh the page.")
         return
-    
+
     # Configure other security settings with error handling
     try:
         if 'session_id' not in st.session_state:
@@ -861,6 +861,53 @@ def main():
             st.session_state.df = None
     except Exception as e:
         logger.error(f"Error in memory management: {str(e)}")
+
+    # Display version in sidebar
+    logger.info("Setting up sidebar")
+    st.sidebar.title("Database Status")
+    st.sidebar.info(f"App Version: {APP_VERSION}")
+    
+    # Add a button to clear session state
+    if st.sidebar.button("Clear Session Data"):
+        st.session_state.clear()
+        st.rerun()
+    
+    if st.sidebar.button("Test Database Connection"):
+        test_database_connection()
+
+    # Health check endpoint
+    if st.query_params.get('health') == 'check':
+        health_status = check_deployment_health()
+        st.json(health_status)
+        return
+
+    # System status endpoint
+    if st.query_params.get('status') == 'check':
+        system_status = get_system_status()
+        st.json(system_status)
+        return
+    
+    # Privacy statement modal/checkbox with error handling
+    try:
+        if 'privacy_accepted' not in st.session_state:
+            st.session_state['privacy_accepted'] = False
+            logger.info("Privacy statement not accepted yet")
+
+        if not st.session_state['privacy_accepted']:
+            logger.info("Displaying privacy statement")
+            st.markdown("""
+            ## Privacy Statement
+            By using this application, you acknowledge and accept that the queries you make may be recorded for research, quality assurance, or improvement purposes.
+            """)
+            if st.button("I Accept the Privacy Statement"):
+                st.session_state['privacy_accepted'] = True
+                logger.info("Privacy statement accepted")
+                st.rerun()  # Rerun the app after accepting
+            st.stop()  # Stop execution until privacy is accepted
+    except Exception as e:
+        logger.error(f"Error in privacy statement handling: {str(e)}")
+        st.error("Error displaying privacy statement. Please refresh the page.")
+        return
 
     # Title Container
     with st.container():
@@ -1069,6 +1116,104 @@ def main():
                     """)
             
             st.markdown("</div>", unsafe_allow_html=True)
+
+            # Handle query submission
+            if submit_clicked:
+                logger.info("Query submitted")
+                # Prepare and validate the filter payload
+                filter_payload = {
+                    k: validate_input(v) 
+                    for k, v in st.session_state.filters.items() 
+                    if v != 'All' and v is not None
+                }
+                
+                logger.info(f"Filter payload: {filter_payload}")
+                logger.info(f"Table choice: {table_choice}")
+                
+                try:
+                    # Reset pagination when new query is submitted
+                    st.session_state.current_page = 1
+                    st.session_state.has_more_results = False
+                    
+                    # Get database connection with spinner
+                    with st.spinner('Connecting to database...'):
+                        engine = get_db_connection()
+                        # Store the engine in session state
+                        st.session_state.db_engine = engine
+                        logger.info("Database connection established")
+                    
+                    # Get filtered data using the query utilities with spinner
+                    with st.spinner('Executing query... This may take a few moments.'):
+                        logger.info("Calling get_filtered_data with:")
+                        logger.info(f"- filters: {filter_payload}")
+                        logger.info(f"- table_choice: {table_choice}")
+                        logger.info(f"- engine: {engine}")
+                        
+                        df, has_more = get_filtered_data(filter_payload, table_choice, engine)
+                    
+                    # Clear the loading container
+                    st.empty()
+                    
+                    logger.info(f"Query result type: {type(df)}")
+                    logger.info(f"Query result shape: {df.shape if isinstance(df, pd.DataFrame) else 'Not a DataFrame'}")
+                    
+                    # Store the results in session state
+                    st.session_state['df'] = df
+                    st.session_state.has_more_results = has_more
+                    
+                    # Display results if they exist
+                    if 'df' in st.session_state and not st.session_state['df'].empty:
+                        try:
+                            # Display results count
+                            st.write(f"Showing {len(df)} records")
+                            
+                            # Display the dataframe
+                            with st.spinner("Loading results..."):
+                                st.dataframe(df, use_container_width=True)
+                            
+                            # Add Load More button if there are more results
+                            if st.session_state.has_more_results:
+                                if st.button("Load 150 More"):
+                                    try:
+                                        # Store current state
+                                        current_df = st.session_state['df']
+                                        current_filters = st.session_state.filters.copy()
+                                        current_table_choice = table_choice
+                                        
+                                        # Increment page number
+                                        st.session_state.current_page += 1
+                                        
+                                        # Get next page of results using the stored engine
+                                        with st.spinner('Loading more results...'):
+                                            next_df, has_more = get_filtered_data(
+                                                current_filters, 
+                                                current_table_choice, 
+                                                st.session_state.db_engine, 
+                                                page=st.session_state.current_page
+                                            )
+                                            st.session_state.has_more_results = has_more
+                                        
+                                        if not next_df.empty:
+                                            # Append new results to existing dataframe
+                                            st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
+                                            st.success(f"Loaded {len(next_df)} more records!")
+                                            # Force a rerun to update the display
+                                            st.rerun()
+                                        else:
+                                            st.warning("No more results to load.")
+                                            st.session_state.has_more_results = False
+                                    except Exception as e:
+                                        logger.error(f"Error loading more results: {str(e)}", exc_info=True)
+                                        st.error(f"Error loading more results: {str(e)}")
+                        except Exception as e:
+                            logger.error(f"Error displaying results: {str(e)}", exc_info=True)
+                            st.error("Error displaying results. Please try again.")
+                    else:
+                        st.info("No results found for the selected filters.")
+                        
+                except Exception as e:
+                    logger.error(f"Error executing query: {str(e)}", exc_info=True)
+                    st.error("Error executing query. Please try again.")
 
     # Results Container (only visible after query)
     if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:

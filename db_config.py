@@ -20,8 +20,16 @@ def get_db_connection():
         DB_USER = os.getenv('DB_USER')
         DB_PASSWORD = os.getenv('DB_PASSWORD')
 
-        # Construct database URL
-        DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+        # Check if we're in development mode
+        is_development = os.getenv('DEBUG', 'False').lower() == 'true'
+        
+        # Construct database URL based on environment
+        if is_development:
+            # Local development connection string
+            DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        else:
+            # Production connection string with SSL
+            DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
         
         # Create SQLAlchemy engine
         engine = create_engine(DATABASE_URL)
