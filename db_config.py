@@ -91,7 +91,7 @@ def execute_safe_query(connection, query: text, params: Dict = None) -> Optional
     try:
         # Ensure params is a dictionary
         params = params or {}
-        # Execute query with parameters
+        # Execute query with parameters as keyword arguments
         result = connection.execute(query, **params)
         return [dict(row) for row in result]
     except Exception as e:
