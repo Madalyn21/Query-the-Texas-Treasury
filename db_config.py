@@ -95,14 +95,8 @@ def execute_safe_query(connection, query: text, params: Dict = None) -> Optional
         logger.info(f"Parameters being passed: {params}")
         logger.info(f"Parameter types: {[(k, type(v)) for k, v in params.items()]}")
         
-        # Create a new dictionary with the same key-value pairs
-        safe_params = {}
-        for key, value in params.items():
-            safe_params[key] = value
-        logger.info(f"Safe parameters: {safe_params}")
-        
-        # Execute query with parameters as a dictionary
-        result = connection.execute(query, safe_params)
+        # Execute query with parameters directly
+        result = connection.execute(query, **params)
         return [dict(row) for row in result]
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")
