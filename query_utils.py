@@ -165,7 +165,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     """
     logger.info("Executing query with chunking")
     logger.info(f"Query: {str(query)}")
-    logger.info(f"Parameters: {params}")
+    logger.info(f"Original parameters: {params}")
+    logger.info(f"Original parameter types: {[(k, type(v)) for k, v in params.items()]}")
     
     # Check table accessibility
     table_access = check_table_accessibility(engine)
@@ -198,6 +199,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                 logger.info(f"Executing chunk query: {str(chunk_query)}")
                 # Ensure params is a dictionary and convert any non-string values to strings
                 safe_params = {k: str(v) if not isinstance(v, (int, float)) else v for k, v in params.items()}
+                logger.info(f"Safe parameters: {safe_params}")
+                logger.info(f"Safe parameter types: {[(k, type(v)) for k, v in safe_params.items()]}")
                 chunk_data = execute_safe_query(connection, chunk_query, safe_params)
                 
                 if not chunk_data:
@@ -214,6 +217,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {str(e)}")
         return []
 
 def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:

@@ -91,11 +91,21 @@ def execute_safe_query(connection, query: text, params: Dict = None) -> Optional
     try:
         # Ensure params is a dictionary
         params = params or {}
+        logger.info(f"Query being executed: {str(query)}")
+        logger.info(f"Parameters being passed: {params}")
+        logger.info(f"Parameter types: {[(k, type(v)) for k, v in params.items()]}")
+        
+        # Convert params to a proper dictionary of key-value pairs
+        safe_params = dict(params.items())
+        logger.info(f"Safe parameters: {safe_params}")
+        
         # Execute query with parameters as a dictionary
-        result = connection.execute(query, params)
+        result = connection.execute(query, safe_params)
         return [dict(row) for row in result]
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {str(e)}")
         return None
 
 def get_db_session():
