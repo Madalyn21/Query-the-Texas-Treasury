@@ -9,13 +9,20 @@ logger = get_logger('query_utils')
 
 def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     """
-    Build the base query based on the selected table.
+    Builds the initial SQL query based on which table the user wants to query.
+    
+    This function creates the foundation of the SQL query that will be used to fetch data.
+    It handles two different tables:
+    - Payment Information: Orders results by fiscal year (newest first) and agency title
+    - Contract Information: Orders results by fiscal year (newest first)
     
     Args:
         table_choice (str): Either "Payment Information" or "Contract Information"
         
     Returns:
-        Tuple[str, Dict]: The base query and parameters dictionary
+        Tuple[str, Dict]: A tuple containing:
+            - The SQL query as a SQLAlchemy text object
+            - An empty parameters dictionary (to be filled by add_filters_to_query)
     """
     logger.info(f"Building base query for table choice: '{table_choice}'")
     
@@ -44,7 +51,33 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
 
 def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice: str) -> Tuple[text, Dict]:
     """
-    Add filters to the query based on the selected table.
+    Adds user-selected filters to the base query.
+    
+    This function dynamically builds the WHERE clause of the SQL query based on
+    the filters selected by the user. Different filters are available depending
+    on which table is being queried:
+    
+    Payment Information filters:
+    - fiscal_year: Filter by specific fiscal year
+    - agency: Filter by agency name (case-insensitive)
+    - appropriation_object: Filter by object title
+    
+    Contract Information filters:
+    - fiscal_year: Filter by specific fiscal year
+    - agency: Filter by agency name (case-insensitive)
+    - category: Filter by contract category
+    - procurement_method: Filter by procurement method
+    - status: Filter by contract status
+    - subject: Filter by contract subject
+    
+    Args:
+        query (text): The base SQLAlchemy query
+        filters (Dict): Dictionary containing the filter values selected by user
+        params (Dict): Dictionary to store SQL parameters
+        table_choice (str): Either "Payment Information" or "Contract Information"
+        
+    Returns:
+        Tuple[text, Dict]: Updated query and parameters dictionary
     """
     logger.info(f"Adding filters for {table_choice}")
     logger.info(f"Filters received: {filters}")
@@ -104,13 +137,21 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
 
 def check_table_accessibility(engine) -> Dict[str, bool]:
     """
-    Check if both paymentinformation and contractinfo tables are accessible.
+    Verifies if the database tables exist and are accessible.
+    
+    This function performs several checks:
+    1. Checks if each table exists in the database
+    2. Retrieves and logs the table structure (column names and types)
+    3. Attempts to execute a simple query on each table
+    4. Logs detailed information about table accessibility
     
     Args:
-        engine: SQLAlchemy engine instance
+        engine: SQLAlchemy engine instance for database connection
         
     Returns:
-        Dict[str, bool]: Dictionary indicating which tables are accessible
+        Dict[str, bool]: Dictionary indicating which tables are accessible:
+            - 'paymentinformation': True if payment information table is accessible
+            - 'contractinfo': True if contract information table is accessible
     """
     accessibility = {
         'paymentinformation': False,
@@ -201,11 +242,23 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
 
 def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     """
-    Execute the query with chunking to handle large result sets.
+    Executes the SQL query with chunking to handle large result sets efficiently.
+    
+    This function:
+    1. Checks if the required tables are accessible
+    2. Retrieves and logs the table structure
+    3. Executes the query in chunks to prevent memory issues
+    4. Converts the results to a list of dictionaries
+    5. Logs detailed timing information for performance monitoring
+    
+    The chunking mechanism:
+    - Processes results in batches of 100 records
+    - Continues until no more records are found
+    - Combines all chunks into a single result set
     
     Args:
-        query (text): The SQLAlchemy query
-        params (Dict): The parameters dictionary
+        query (text): The SQLAlchemy query to execute
+        params (Dict): Dictionary of parameters for the query
         engine: SQLAlchemy engine instance
         
     Returns:
@@ -293,15 +346,22 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
 
 def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     """
-    Main function to get filtered data from the database.
+    Main function to get filtered data from the database and return it as a DataFrame.
+    
+    This function orchestrates the entire query process:
+    1. Builds the base query
+    2. Adds user-selected filters
+    3. Executes the query with chunking
+    4. Converts the results to a pandas DataFrame
+    5. Sanitizes column names for consistency
     
     Args:
-        filters (Dict): Dictionary containing filter values
+        filters (Dict): Dictionary containing filter values selected by user
         table_choice (str): Either "Payment Information" or "Contract Information"
         engine: SQLAlchemy engine instance
         
     Returns:
-        pd.DataFrame: DataFrame containing the filtered data
+        pd.DataFrame: DataFrame containing the filtered data with sanitized column names
     """
     logger.info(f"Getting filtered data for {table_choice}")
     logger.info(f"Filters received: {filters}")
