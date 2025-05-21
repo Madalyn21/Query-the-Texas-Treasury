@@ -1263,44 +1263,39 @@ def main():
                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
                     st.error("Error preparing ZIP download. Please try again.")
 
-    # Visualizations Container (only visible after query)
-    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
-        with st.container():
-            st.markdown("""
-                <style>
-                .viz-container {
-                    background-color: #ffffff;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    margin: 1rem 0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                </style>
-            """, unsafe_allow_html=True)
+    # Visualization Section
+    with st.container():
+        st.subheader("Visualization")
+        
+        # Create tabs for different visualizations
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "Payment Distribution", 
+            "Trend Analysis", 
+            "Vendor Analysis",
+            "Category Analysis"
+        ])
+        
+        # Generate all visualizations
+        try:
+            visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
             
-            st.header("Data Visualizations")
-            try:
-                visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
-                
-                viz_col1, viz_col2 = st.columns(2)
-                
-                with viz_col1:
-                    st.subheader("Payment Distribution")
-                    st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+            with tab1:
+                st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+            
+            with tab2:
+                st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+            
+            with tab3:
+                st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+            
+            with tab4:
+                if 'category_analysis' in visualizations:
+                    st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                else:
+                    st.info("Category analysis is only available for Contract Information.")
                     
-                    st.subheader("Top Vendors")
-                    st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-                
-                with viz_col2:
-                    st.subheader("Trend Analysis")
-                    st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-                    
-                    if 'category_analysis' in visualizations:
-                        st.subheader("Category Distribution")
-                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-            except Exception as e:
-                logger.error(f"Error generating visualizations: {str(e)}", exc_info=True)
-                st.error("Error generating visualizations. Please try again.")
+        except Exception as e:
+            st.error(f"Error generating visualizations: {str(e)}")
 
     # AI Analysis Container (only visible after query)
     if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
