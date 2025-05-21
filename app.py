@@ -27,7 +27,12 @@ from sqlalchemy import text
 
 # Local imports
 from logger_config import get_logger
-from query_utils import get_filtered_data, check_table_accessibility
+from query_utils import (
+    get_filtered_data, 
+    check_table_accessibility, 
+    get_complete_filtered_data,
+    get_complete_data
+)
 from db_config import get_db_connection
 
 # Additional imports for visualizations
@@ -1286,25 +1291,51 @@ def main():
                     col1, col2 = st.columns(2)
                     with col1:
                         # Generate CSV data
-                        csv_data = get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine).to_csv(index=False).encode('utf-8')
-                        if st.download_button(
-                            label="Download CSV",
-                            data=csv_data,
-                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                            mime='text/csv',
-                        ):
-                            st.success("CSV file downloaded successfully!")
+                        try:
+                            with st.spinner('Preparing CSV download...'):
+                                # Get complete dataset without pagination
+                                complete_df, _ = get_filtered_data(
+                                    st.session_state.filters, 
+                                    table_choice, 
+                                    st.session_state.db_engine, 
+                                    page_size=1000000,  # Large number to get all records
+                                    page=1
+                                )
+                                csv_data = complete_df.to_csv(index=False).encode('utf-8')
+                                if st.download_button(
+                                    label="Download CSV",
+                                    data=csv_data,
+                                    file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                                    mime='text/csv',
+                                ):
+                                    st.success("CSV file downloaded successfully!")
+                        except Exception as e:
+                            logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
+                            st.error("Error preparing CSV download. Please try again.")
                     
                     with col2:
                         # Generate ZIP data
-                        zip_data = df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine))
-                        if st.download_button(
-                            label="Download ZIP",
-                            data=zip_data,
-                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                            mime='application/zip',
-                        ):
-                            st.success("ZIP file downloaded successfully!")
+                        try:
+                            with st.spinner('Preparing ZIP download...'):
+                                # Get complete dataset without pagination
+                                complete_df, _ = get_filtered_data(
+                                    st.session_state.filters, 
+                                    table_choice, 
+                                    st.session_state.db_engine, 
+                                    page_size=1000000,  # Large number to get all records
+                                    page=1
+                                )
+                                zip_data = df_to_zip(complete_df)
+                                if st.download_button(
+                                    label="Download ZIP",
+                                    data=zip_data,
+                                    file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                    mime='application/zip',
+                                ):
+                                    st.success("ZIP file downloaded successfully!")
+                        except Exception as e:
+                            logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
+                            st.error("Error preparing ZIP download. Please try again.")
 
                     # Add visualization section
                     logger.info("Adding visualization section")
