@@ -1267,7 +1267,7 @@ def main():
                                 # Append new results to existing dataframe
                                 st.session_state['df'] = pd.concat([st.session_state['df'], next_df], ignore_index=True)
                                 st.success(f"Loaded {len(next_df)} more records!")
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.warning("No more results to load.")
                                 st.session_state.has_more_results = False

@@ -52,12 +52,12 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     on which table is being queried:
     
     Payment Information filters:
-    - fiscal_year: Filter by specific fiscal year
+    - fiscal_year: Filter by specific fiscal year (converts 4-digit to 2-digit)
     - agency: Filter by agency name (case-insensitive)
     - appropriation_object: Filter by object title
     
     Contract Information filters:
-    - fiscal_year: Filter by specific fiscal year
+    - fiscal_year: Filter by specific fiscal year (converts 4-digit to 2-digit)
     - agency: Filter by agency name (case-insensitive)
     - category: Filter by contract category
     - procurement_method: Filter by procurement method
@@ -80,10 +80,14 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     where_conditions = []
     
     if table_choice == "Payment Information":
-        if filters.get('fiscal_year'):
-            where_conditions.append("p.fiscal_year = :fiscal_year")
-            params['fiscal_year'] = filters['fiscal_year']
-            logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
+        if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
+            # Convert 4-digit years to 2-digit years
+            start_year = str(filters['fiscal_year_start'])[-2:]  # Get last 2 digits
+            end_year = str(filters['fiscal_year_end'])[-2:]      # Get last 2 digits
+            where_conditions.append("p.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
+            params['fiscal_year_start'] = start_year
+            params['fiscal_year_end'] = end_year
+            logger.info(f"Added fiscal year range filter: {start_year} to {end_year}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(p.agency_title) = LOWER(:agency)")
@@ -96,10 +100,14 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
             
     elif table_choice == "Contract Information":
-        if filters.get('fiscal_year'):
-            where_conditions.append("c.fiscal_year = :fiscal_year")
-            params['fiscal_year'] = filters['fiscal_year']
-            logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
+        if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
+            # Convert 4-digit years to 2-digit years
+            start_year = str(filters['fiscal_year_start'])[-2:]  # Get last 2 digits
+            end_year = str(filters['fiscal_year_end'])[-2:]      # Get last 2 digits
+            where_conditions.append("c.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
+            params['fiscal_year_start'] = start_year
+            params['fiscal_year_end'] = end_year
+            logger.info(f"Added fiscal year range filter: {start_year} to {end_year}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(c.agency) = LOWER(:agency)")
