@@ -77,10 +77,11 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
                 params['agency'] = agency_number
                 logger.info(f"Added agency filter: {agency_number}")
             except ValueError:
-                # If agency is not a number, try to match by agency name
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.agency_name)) = LOWER(TRIM(:agency))")
+                # If agency is not a number, try to match by agency title/name
+                column_name = "agency_title" if table_choice == "Payment Information" else "agency"
+                query = text(str(query) + f" AND LOWER(TRIM({alias}.{column_name})) = LOWER(TRIM(:agency))")
                 params['agency'] = str(filters['agency']).strip()
-                logger.info(f"Added agency name filter: {filters['agency']}")
+                logger.info(f"Added agency filter using {column_name}: {filters['agency']}")
         
         if filters.get('appropriation_title'):
             # Appropriation number is numeric

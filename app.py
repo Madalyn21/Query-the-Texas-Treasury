@@ -807,8 +807,14 @@ from visualization_utils import generate_all_visualizations
 def display_logos():
     """Display the logos section with error handling"""
     try:
-        # Responsive side-by-side clickable logos with improved flexbox layout
-        logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+        # Get the current theme
+        theme = st.get_option("theme.base")
+        is_dark = theme == "dark"
+        
+        # Choose logo based on theme - FIXED LOGIC
+        logo_filename = "Texas DOGE_White.png" if is_dark else "Texas DOGE_Black.png"
+        logo_path = os.path.join(os.path.dirname(__file__), logo_filename)
+        
         doge_img_html = ""
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as image_file:
@@ -818,15 +824,31 @@ def display_logos():
                 f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
                 f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
             )
+        else:
+            # Fallback to white logo if black version doesn't exist
+            fallback_logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+            if os.path.exists(fallback_logo_path):
+                with open(fallback_logo_path, "rb") as image_file:
+                    encoded = base64.b64encode(image_file.read()).decode()
+                doge_img_html = (
+                    f'<div class="logo-item">'
+                    f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                    f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                )
+        
         svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
         svg_img_html = ""
         if os.path.exists(svg_path):
             with open(svg_path, "r") as svg_file:
                 svg_content = svg_file.read()
+            # Add fill color based on theme and wrap in navy blue background
+            fill_color = "#FFFFFF" if is_dark else "#000000"
+            svg_content = svg_content.replace('fill="currentColor"', f'fill="{fill_color}"')
             svg_img_html = (
-                f'<div class="logo-item">'
+                f'<div class="logo-item house-logo-container">'
                 f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
             )
+        
         if doge_img_html or svg_img_html:
             st.markdown(
                 f"""
@@ -851,6 +873,19 @@ def display_logos():
                     width: 100%;
                     height: auto;
                     max-width: 200px;
+                }}
+                .house-logo-container {{
+                    background-color: #002D62;  /* Navy blue background */
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }}
+                .house-logo-container svg {{
+                    width: 100%;
+                    height: auto;
+                    max-width: 180px;  /* Slightly smaller to account for padding */
                 }}
                 @media (max-width: 600px) {{
                     .logo-flex-container {{
@@ -882,13 +917,21 @@ def display_logos():
                 """,
                 unsafe_allow_html=True
             )
-            # Add Find us on X section
-            x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+            # Add Find us on X section with theme-based logo
+            x_logo_filename = "x_logo.png" if is_dark else "x_logo_black.png"
+            x_logo_path = os.path.join(os.path.dirname(__file__), x_logo_filename)
             x_logo_html = ""
             if os.path.exists(x_logo_path):
                 with open(x_logo_path, "rb") as x_img_file:
                     x_encoded = base64.b64encode(x_img_file.read()).decode()
                 x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+            else:
+                # Fallback to original X logo if black version doesn't exist
+                fallback_x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                if os.path.exists(fallback_x_logo_path):
+                    with open(fallback_x_logo_path, "rb") as x_img_file:
+                        x_encoded = base64.b64encode(x_img_file.read()).decode()
+                    x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
             st.markdown(
                 f'<div class="find-x-container">Find us on {x_logo_html}</div>',
                 unsafe_allow_html=True
@@ -896,7 +939,7 @@ def display_logos():
         else:
             st.markdown("---")
             st.markdown("### Texas Department of Government Efficiency")
-            st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
+            st.warning("Logo file (Texas DOGE_White.png or Texas DOGE_Black.png) or SVG file (Texas_House_Logo.svg) not found.")
     except Exception as e:
         st.markdown("---")
         st.markdown("### Texas Department of Government Efficiency")
