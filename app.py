@@ -1186,6 +1186,8 @@ def main():
                     # Get database connection with spinner
                     with st.spinner('Connecting to database...'):
                         engine = get_db_connection()
+                        # Store the engine in session state
+                        st.session_state.db_engine = engine
                         logger.info("Database connection established")
                     
                     # Get filtered data using the query utilities with spinner
@@ -1251,9 +1253,15 @@ def main():
                             # Increment page number
                             st.session_state.current_page += 1
                             
-                            # Get next page of results
-                            next_df, has_more = get_filtered_data(st.session_state.filters, table_choice, engine, page=st.session_state.current_page)
-                            st.session_state.has_more_results = has_more
+                            # Get next page of results using the stored engine
+                            with st.spinner('Loading more results...'):
+                                next_df, has_more = get_filtered_data(
+                                    st.session_state.filters, 
+                                    table_choice, 
+                                    st.session_state.db_engine, 
+                                    page=st.session_state.current_page
+                                )
+                                st.session_state.has_more_results = has_more
                             
                             if not next_df.empty:
                                 # Append new results to existing dataframe
@@ -1264,6 +1272,7 @@ def main():
                                 st.warning("No more results to load.")
                                 st.session_state.has_more_results = False
                         except Exception as e:
+                            logger.error(f"Error loading more results: {str(e)}", exc_info=True)
                             st.error(f"Error loading more results: {str(e)}")
                 
                 # Add download buttons
