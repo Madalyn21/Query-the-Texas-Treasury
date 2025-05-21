@@ -89,7 +89,10 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
 def execute_safe_query(connection, query: text, params: Dict = None) -> Optional[List[Dict]]:
     """Execute a query safely with error handling"""
     try:
-        result = connection.execute(query, params or {})
+        # Ensure params is a dictionary
+        params = params or {}
+        # Execute query with parameters
+        result = connection.execute(query, **params)
         return [dict(row) for row in result]
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")
