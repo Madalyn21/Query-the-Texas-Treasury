@@ -1285,18 +1285,22 @@ def main():
                     # Add download buttons
                     col1, col2 = st.columns(2)
                     with col1:
+                        # Generate CSV data
+                        csv_data = get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine).to_csv(index=False).encode('utf-8')
                         if st.download_button(
                             label="Download CSV",
-                            data=lambda: get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine).to_csv(index=False).encode('utf-8'),
+                            data=csv_data,
                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                             mime='text/csv',
                         ):
                             st.success("CSV file downloaded successfully!")
                     
                     with col2:
+                        # Generate ZIP data
+                        zip_data = df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine))
                         if st.download_button(
                             label="Download ZIP",
-                            data=lambda: df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine)),
+                            data=zip_data,
                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                             mime='application/zip',
                         ):
