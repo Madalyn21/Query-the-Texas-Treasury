@@ -24,12 +24,14 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
             SELECT p.*
             FROM paymentinformation p
             WHERE 1=1
+            LIMIT 1000
         """)
     else:  # Contract Information
         query = text("""
             SELECT c.*
             FROM contractinfo c
             WHERE 1=1
+            LIMIT 1000
         """)
     
     return query, {}
