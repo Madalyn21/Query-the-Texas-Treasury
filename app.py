@@ -42,7 +42,7 @@ pd.options.display.max_rows = 100
 pd.options.display.max_columns = 100
 
 # Version identifier
-APP_VERSION = "1.1.3-DB-TEST-2024-05-16"
+APP_VERSION = "1.1.5-DB-TEST-2024-05-16"
 
 # Check Python version
 if sys.version_info < (3, 8) or sys.version_info >= (3, 9):
@@ -1195,28 +1195,6 @@ def main():
                     if not df.empty:
                         st.session_state['df'] = df
                         logger.info(f"Retrieved {len(df)} records")
-                        
-                        # Display results count with a nice animation
-                        st.success(f"Found {len(df)} matching records")
-                        
-                        # Display the dataframe with a loading animation
-                        with st.spinner('Loading data...'):
-                            st.dataframe(df)
-                        
-                        # Add CSV download button
-                        download_csv(df)
-                        
-                        # Download button for zip file
-                        with st.spinner('Preparing download...'):
-                            zip_file = df_to_zip(df)
-                            logger.info("Generated zip file for download")
-                            st.download_button(
-                                label="Download ZIP",
-                                data=zip_file,
-                                file_name="queried_data.zip",
-                                mime="application/zip",
-                                help="Click to download the queried data as a ZIP file"
-                            )
                     else:
                         logger.info("No data returned from query")
                         st.info("No data returned.")
@@ -1243,6 +1221,31 @@ def main():
                         Database error details:
                         {str(e.orig)}
                         """)
+
+            # Display results if they exist in session state
+            if 'df' in st.session_state and not st.session_state['df'].empty:
+                df = st.session_state['df']
+                # Display results count with a nice animation
+                st.success(f"Found {len(df)} matching records")
+                
+                # Display the dataframe with a loading animation
+                with st.spinner('Loading data...'):
+                    st.dataframe(df)
+                
+                # Add CSV download button
+                download_csv(df)
+                
+                # Download button for zip file
+                with st.spinner('Preparing download...'):
+                    zip_file = df_to_zip(df)
+                    logger.info("Generated zip file for download")
+                    st.download_button(
+                        label="Download ZIP",
+                        data=zip_file,
+                        file_name="queried_data.zip",
+                        mime="application/zip",
+                        help="Click to download the queried data as a ZIP file"
+                    )
 
             # Add visualization section
             logger.info("Adding visualization section")
