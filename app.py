@@ -862,581 +862,442 @@ def main():
     except Exception as e:
         logger.error(f"Error in memory management: {str(e)}")
 
-    # Add error boundary for the main content
-    try:
-        # Display version in sidebar
-        logger.info("Setting up sidebar")
-        st.sidebar.title("Database Status")
-        st.sidebar.info(f"App Version: {APP_VERSION}")
-        
-        # Add a button to clear session state
-        if st.sidebar.button("Clear Session Data"):
-            st.session_state.clear()
-            st.rerun()
-        
-        if st.sidebar.button("Test Database Connection"):
-            test_database_connection()
-        
-        logger.info("Starting application main content")
-        
-        # Health check endpoint
-        if st.query_params.get('health') == 'check':
-            health_status = check_deployment_health()
-            st.json(health_status)
-            return
+    # Title Container
+    with st.container():
+        st.title("Query the Texas Treasury")
+        st.subheader("Committee on the Delivery of Government Efficiency")
+        st.markdown("---")
 
-        # System status endpoint
-        if st.query_params.get('status') == 'check':
-            system_status = get_system_status()
-            st.json(system_status)
-            return
+    # Query Functionality Container
+    with st.container():
+        st.markdown("""
+            <style>
+            .query-container {
+                background-color: #f0f2f6;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         
-        # Privacy statement modal/checkbox with error handling
-        try:
-            if 'privacy_accepted' not in st.session_state:
-                st.session_state['privacy_accepted'] = False
-                logger.info("Privacy statement not accepted yet")
-
-            if not st.session_state['privacy_accepted']:
-                logger.info("Displaying privacy statement")
-                st.markdown("""
-                ## Privacy Statement
-                By using this application, you acknowledge and accept that the queries you make may be recorded for research, quality assurance, or improvement purposes.
-                """)
-                if st.button("I Accept the Privacy Statement"):
-                    st.session_state['privacy_accepted'] = True
-                    logger.info("Privacy statement accepted")
-                    st.rerun()  # Rerun the app after accepting
-                st.stop()  # Stop execution until privacy is accepted
-        except Exception as e:
-            logger.error(f"Error in privacy statement handling: {str(e)}")
-            st.error("Error displaying privacy statement. Please refresh the page.")
-            return
-
-        # Main content with error handling
-        try:
-            logger.info("Displaying main title")
-            st.title("Query the Texas Treasury")
-            st.subheader("Committee on the Delivery of Government Efficiency")
-
-            # Create a container for the main content
-            main_container = st.container()
+        # Create columns for the filter interface
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            logger.info("Setting up filter criteria")
+            st.subheader("Filter Criteria")
             
-            with main_container:
-                # Create columns for the filter interface with adjusted widths
-                col1, col2 = st.columns([2, 1])
+            # Add table selection
+            table_choice = st.radio(
+                "Select Data Source",
+                ["Payment Information", "Contract Information"],
+                help="Choose which table to query data from"
+            )
             
-                with col1:
-                    logger.info("Setting up filter criteria")
-                    st.subheader("Filter Criteria")
+            # Add fiscal year and month sliders
+            st.subheader("Fiscal Year and Month")
+            
+            # Load fiscal years
+            try:
+                fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
+                fiscal_years = fiscal_years_df['fiscal_year'].tolist()
+                fiscal_years.sort()
+            except Exception as e:
+                logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
+                fiscal_years = []
+            
+            # Fiscal Year Slider
+            if fiscal_years:
+                selected_fiscal_year = st.select_slider(
+                    "Fiscal Year",
+                    options=fiscal_years,
+                    value=(fiscal_years[0], fiscal_years[-1]),
+                    help="Select a range of fiscal years"
+                )
+                
+                # Store the selected fiscal year range
+                st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
+                st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
+            
+            # Fiscal Month Slider
+            month_names = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]
+            
+            selected_fiscal_month = st.select_slider(
+                "Fiscal Month",
+                options=month_names,
+                value=("January", "December"),
+                help="Select a range of fiscal months"
+            )
+            
+            # Convert month names to numbers
+            month_to_number = {name: i+1 for i, name in enumerate(month_names)}
+            st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
+            st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
+            
+            # Load and display filter options
+            filter_options = load_filter_options(table_choice)
+            if filter_options is None:
+                return
+                
+            # Display appropriate dropdowns based on table choice
+            if table_choice == "Payment Information":
+                # Payment Information dropdowns
+                agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                selected_agency = st.selectbox("Agency", agency_options)
+                st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
+                
+                appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
+                selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
+                
+                payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
+                selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+                
+                appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
+                selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+                
+                vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
+            else:
+                # Contract Information dropdowns
+                agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                selected_agency = st.selectbox("Agency", agency_options)
+                st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
+                
+                category_options = ["All"] + [category[0] for category in filter_options['categories']]
+                selected_category = st.selectbox("Category", category_options)
+                
+                procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
+                selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
+                
+                status_options = ["All"] + [status[0] for status in filter_options['statuses']]
+                selected_status = st.selectbox("Status", status_options)
+                
+                subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
+                selected_subject = st.selectbox("Subject", subject_options)
+                
+                vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
+            
+            # Vendor search
+            st.subheader("Vendor Search")
+            vendor_search = st.text_input(
+                "Search for a vendor",
+                help="Type to search for vendors. Results will appear below."
+            )
+            
+            # Handle vendor search and selection
+            if vendor_search:
+                try:
+                    vendors_df = pd.read_csv(vendor_file_path)
+                    vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
                     
-                    # Add table selection
-                    table_choice = st.radio(
-                        "Select Data Source",
-                        ["Payment Information", "Contract Information"],
-                        help="Choose which table to query data from"
-                    )
-                    logger.info(f"Table choice selected: {table_choice}")
+                    matching_vendors = vendors_df[
+                        vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
+                    ][vendor_column].unique().tolist()
                     
-                    # Add fiscal year and month sliders
-                    st.subheader("Fiscal Year and Month")
+                    matching_vendors.sort()
+                    matching_vendors = matching_vendors[:st.session_state.vendor_limit]
                     
-                    # Load fiscal years
-                    try:
-                        fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
-                        logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
-                        if 'fiscal_year' not in fiscal_years_df.columns:
-                            raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                        fiscal_years = fiscal_years_df['fiscal_year'].tolist()
-                        fiscal_years.sort()
-                        logger.info(f"Found fiscal years: {fiscal_years}")
-                        logger.info(f"Setting fiscal year range from {fiscal_years[0]} to {fiscal_years[-1]}")
-                    except Exception as e:
-                        logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
-                        fiscal_years = []
-                    
-                    # Fiscal Year Slider
-                    if fiscal_years:
-                        selected_fiscal_year = st.select_slider(
-                            "Fiscal Year",
-                            options=fiscal_years,
-                            value=(fiscal_years[0], fiscal_years[-1]),
-                            help="Select a range of fiscal years"
+                    if matching_vendors:
+                        selected_vendor = st.selectbox(
+                            "Select Vendor",
+                            options=[""] + matching_vendors,
+                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                            key="vendor_select"
                         )
                         
-                        # Store the selected fiscal year range
-                        st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
-                        st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
-                    
-                    # Fiscal Month Slider with month names
-                    month_names = [
-                        "January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"
-                    ]
-                    
-                    selected_fiscal_month = st.select_slider(
-                        "Fiscal Month",
-                        options=month_names,
-                        value=("January", "December"),
-                        help="Select a range of fiscal months"
-                    )
-                    
-                    # Convert month names to numbers for storage
-                    month_to_number = {name: i+1 for i, name in enumerate(month_names)}
-                    st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
-                    st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
-                    
-                    # Add a separator
-                    st.markdown("---")
-                    
-                    # Load filter options
-                    filter_options = load_filter_options(table_choice)
-                    if filter_options is None:
-                        return
-
-                    # Display dropdowns based on table choice
-                    if table_choice == "Payment Information":
-                        # Display Payment Information dropdowns
-                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-                        selected_agency = st.selectbox("Agency", agency_options)
-                        
-                        # Store the selected agency in session state
-                        st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
-                        
-                        appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
-                        selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
-                        
-                        payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
-                        selected_payment_source = st.selectbox("Payment Source", payment_source_options)
-                        
-                        appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
-                        selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
-                        
-                        # Add vendor file path for payment information
-                        vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
+                        if selected_vendor != st.session_state.selected_vendor:
+                            st.session_state.selected_vendor = selected_vendor
+                            st.session_state.filters['vendor'] = selected_vendor if selected_vendor else None
                     else:
-                        # Display Contract Information dropdowns
-                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-                        selected_agency = st.selectbox("Agency", agency_options)
-                        
-                        # Store the selected agency in session state
-                        st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
-                        
-                        category_options = ["All"] + [category[0] for category in filter_options['categories']]
-                        selected_category = st.selectbox("Category", category_options)
-                        
-                        procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
-                        selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
-                        
-                        status_options = ["All"] + [status[0] for status in filter_options['statuses']]
-                        selected_status = st.selectbox("Status", status_options)
-                        
-                        subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
-                        selected_subject = st.selectbox("Subject", subject_options)
-                        
-                        # Add vendor file path for contract information
-                        vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
-                    
-                    # Add vendor search
-                    st.subheader("Vendor Search")
-                    vendor_search = st.text_input(
-                        "Search for a vendor",
-                        help="Type to search for vendors. Results will appear below."
-                    )
-                    
-                    # Initialize vendor search state if not exists
-                    if 'vendor_search' not in st.session_state:
-                        st.session_state.vendor_search = ""
-                    if 'vendor_limit' not in st.session_state:
-                        st.session_state.vendor_limit = 50
-                    if 'selected_vendor' not in st.session_state:
-                        st.session_state.selected_vendor = ""
-                    
-                    # Update vendor search state
-                    if vendor_search != st.session_state.vendor_search:
-                        st.session_state.vendor_search = vendor_search
-                        st.session_state.vendor_limit = 50  # Reset limit when search changes
-                    
-                    # Load and search vendors if there's a search term
-                    if vendor_search:
-                        try:
-                            # Load vendor data
-                            vendors_df = pd.read_csv(vendor_file_path)
-                            vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
-                            
-                            # Search for matching vendors
-                            matching_vendors = vendors_df[
-                                vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
-                            ][vendor_column].unique().tolist()
-                            
-                            # Sort and limit results
-                            matching_vendors.sort()
-                            matching_vendors = matching_vendors[:st.session_state.vendor_limit]
-                            
-                            # Display matching vendors in a selectbox if there are results
-                            if matching_vendors:
-                                # Create a container for the vendor selection
-                                vendor_container = st.container()
-                                
-                                with vendor_container:
-                                    # Create the selectbox with current vendors
-                                    selected_vendor = st.selectbox(
-                                        "Select Vendor",
-                                        options=[""] + matching_vendors,  # Add empty option at start
-                                        index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
-                                        key="vendor_select",
-                                        help="Select a vendor from the search results"
-                                    )
-                                    
-                                    # Add "Load More" button if there are enough results
-                                    if len(matching_vendors) >= st.session_state.vendor_limit:
-                                        if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
-                                            # Store current selection before loading more
-                                            st.session_state.selected_vendor = selected_vendor
-                                            # Increase the limit
-                                            st.session_state.vendor_limit += 50
-                                            # Force a rerun to update the UI with more vendors
-                                            st.rerun()
-                                    
-                                    # Update session state with selected vendor
-                                    if selected_vendor != st.session_state.selected_vendor:
-                                        st.session_state.selected_vendor = selected_vendor
-                                        st.session_state.filters['vendor'] = selected_vendor if selected_vendor else None
-                            else:
-                                st.info("No matching vendors found.")
-                                st.session_state.filters['vendor'] = None
-                        except Exception as e:
-                            logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
-                            st.error("Error searching vendors. Please try again.")
-                    
-                    # Add submit button
-                    submit_clicked = st.button("Submit Query", type="primary")
-                    
-                    # Add readme button
-                    readme_clicked = st.button("About the Data and How to Use")
-                    
-                    if readme_clicked:
-                        with st.expander("**About the Data and How to Use**", expanded=True):
-                            st.markdown("""
-                            ### Data Overview
-                            This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
-                            provided and managed by the Texas Comptroller of Public Accounts.
-                            
-                            ### How to Use
-                            1. Select your desired filters from the dropdown menus
-                            2. Use 'All' to include all values for that field
-                            3. Click 'Submit Query' to view the results
-                            4. Download the results using the download button
-                            
-                            ### Understanding the Dropdown Categories
-                            
-                            #### Payment Information Categories
-                            - **Agency**: The government agency making the payment
-                            - **Vendor**: The recipient of the payment
-                            - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
-                            - **Payment Source (Fund Title)**: The name of the account that actually holds the money
-                            - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
-                            
-                            #### Contract Information Categories
-                            - **Agency**: The government agency managing the contract
-                            - **Vendor**: The company or entity providing the goods or services
-                            - **Category**: The general type or classification of the contract
-                            - **Procurement Method**: How the government chose the vendor for a contract
-                            - **Status**: The current state of the contract
-                            - **Subject**: A short description of what the contract covers
-                            """)
-                    
-                    st.markdown("</div></div>", unsafe_allow_html=True)
-
-                with col2:
-                    # Create a fixed position container for query actions
-                    st.markdown("""
-                        <style>
-                        .fixed-query-container {
-                            position: sticky;
-                            top: 2rem;
-                            padding: 1rem;
-                            border-radius: 0.5rem;
-                            z-index: 100;
-                        }
-                        .query-content {
-                            display: flex;
-                            flex-direction: column;
-                            gap: 1rem;
-                        }
-                        div[data-testid="stButton"] {
-                            display: flex;
-                            justify-content: center;
-                            margin: 0.5rem 0;
-                        }
-                        </style>
-                        <div class="fixed-query-container">
-                            <div class="query-content">
-                    """, unsafe_allow_html=True)
-                    
-                    logger.info("Setting up query actions")
-                    st.subheader("Query Actions")
-                    
-                    submit_clicked = st.button("Submit Query", use_container_width=True)
-                    readme_clicked = st.button("About", use_container_width=True)
-                    
-                    if readme_clicked:
-                        with st.expander("**About the Data and How to Use**", expanded=True):
-                            st.markdown("""
-                            ### Data Overview
-                            This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
-                            provided and managed by the Texas Comptroller of Public Accounts.
-                            
-                            ### How to Use
-                            1. Select your desired filters from the dropdown menus
-                            2. Use 'All' to include all values for that field
-                            3. Click 'Submit Query' to view the results
-                            4. Download the results using the download button
-                            
-                            ### Understanding the Dropdown Categories
-                            
-                            #### Payment Information Categories
-                            - **Agency**: The government agency making the payment
-                            - **Vendor**: The recipient of the payment
-                            - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
-                            - **Payment Source (Fund Title)**: The name of the account that actually holds the money
-                            - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
-                            
-                            #### Contract Information Categories
-                            - **Agency**: The government agency managing the contract
-                            - **Vendor**: The company or entity providing the goods or services
-                            - **Category**: The general type or classification of the contract
-                            - **Procurement Method**: How the government chose the vendor for a contract
-                            - **Status**: The current state of the contract
-                            - **Subject**: A short description of what the contract covers
-                            """)
-                    
-                    st.markdown("</div></div>", unsafe_allow_html=True)
-
-            if submit_clicked:
-                logger.info("Query submitted")
-                # Prepare and validate the filter payload
-                filter_payload = {
-                    k: validate_input(v) 
-                    for k, v in st.session_state.filters.items() 
-                    if v != 'All' and v is not None
-                }
-                
-                logger.info(f"Filter payload: {filter_payload}")
-                logger.info(f"Table choice: {table_choice}")
-                
-                try:
-                    # Reset pagination when new query is submitted
-                    st.session_state.current_page = 1
-                    st.session_state.has_more_results = False
-                    
-                    # Get database connection with spinner
-                    with st.spinner('Connecting to database...'):
-                        engine = get_db_connection()
-                        # Store the engine in session state
-                        st.session_state.db_engine = engine
-                        logger.info("Database connection established")
-                    
-                    # Get filtered data using the query utilities with spinner
-                    with st.spinner('Executing query... This may take a few moments.'):
-                        logger.info("Calling get_filtered_data with:")
-                        logger.info(f"- filters: {filter_payload}")
-                        logger.info(f"- table_choice: {table_choice}")
-                        logger.info(f"- engine: {engine}")
-                        
-                        df, has_more = get_filtered_data(filter_payload, table_choice, engine)
-                    
-                    # Clear the loading container
-                    st.empty()
-                    
-                    logger.info(f"Query result type: {type(df)}")
-                    logger.info(f"Query result shape: {df.shape if isinstance(df, pd.DataFrame) else 'Not a DataFrame'}")
-                    
-                    # Store the results in session state
-                    st.session_state['df'] = df
-                    st.session_state.has_more_results = has_more
-                    
-                    # Display results if they exist
-                    if not df.empty:
-                        try:
-                            # Display results count
-                            st.write(f"Showing {len(df)} records")
-                            
-                            # Display the dataframe
-                            with st.spinner("Loading results..."):
-                                st.dataframe(df, use_container_width=True)
-                            
-                            # Add Load More button if there are more results
-                            if st.session_state.has_more_results:
-                                if st.button("Load 150 More"):
-                                    try:
-                                        # Store current state
-                                        current_df = st.session_state['df']
-                                        current_filters = st.session_state.filters.copy()
-                                        current_table_choice = table_choice
-                                        
-                                        # Increment page number
-                                        st.session_state.current_page += 1
-                                        
-                                        # Get next page of results using the stored engine
-                                        with st.spinner('Loading more results...'):
-                                            next_df, has_more = get_filtered_data(
-                                                current_filters, 
-                                                current_table_choice, 
-                                                st.session_state.db_engine, 
-                                                page=st.session_state.current_page
-                                            )
-                                            st.session_state.has_more_results = has_more
-                                        
-                                        if not next_df.empty:
-                                            # Append new results to existing dataframe
-                                            st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
-                                            st.success(f"Loaded {len(next_df)} more records!")
-                                            # Force a rerun to update the display
-                                            st.rerun()
-                                        else:
-                                            st.warning("No more results to load.")
-                                            st.session_state.has_more_results = False
-                                    except Exception as e:
-                                        logger.error(f"Error loading more results: {str(e)}", exc_info=True)
-                                        st.error(f"Error loading more results: {str(e)}")
-                            
-                            # Add download buttons
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                # Generate CSV data
-                                try:
-                                    with st.spinner('Preparing CSV download...'):
-                                        # Get complete dataset without pagination
-                                        complete_df = get_complete_filtered_data(
-                                            st.session_state.filters, 
-                                            table_choice, 
-                                            st.session_state.db_engine
-                                        )
-                                        csv_data = complete_df.to_csv(index=False)
-                                        if st.download_button(
-                                            label="Download CSV",
-                                            data=csv_data,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                                            mime='text/csv',
-                                        ):
-                                            st.success("CSV file downloaded successfully!")
-                                except Exception as e:
-                                    logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
-                                    st.error("Error preparing CSV download. Please try again.")
-                            
-                            with col2:
-                                # Generate ZIP data
-                                try:
-                                    with st.spinner('Preparing ZIP download...'):
-                                        # Get complete dataset without pagination
-                                        complete_df = get_complete_filtered_data(
-                                            st.session_state.filters, 
-                                            table_choice, 
-                                            st.session_state.db_engine
-                                        )
-                                        zip_data = df_to_zip(complete_df)
-                                        if st.download_button(
-                                            label="Download ZIP",
-                                            data=zip_data,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                                            mime='application/zip',
-                                        ):
-                                            st.success("ZIP file downloaded successfully!")
-                                except Exception as e:
-                                    logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
-                                    st.error("Error preparing ZIP download. Please try again.")
-                            
-                        except Exception as e:
-                            logger.error(f"Error displaying results: {str(e)}", exc_info=True)
-                            st.error("Error displaying results. Please try again.")
-                    else:
-                        st.info("No results found for the selected filters.")
-                        
+                        st.info("No matching vendors found.")
+                        st.session_state.filters['vendor'] = None
                 except Exception as e:
-                    logger.error(f"Error executing query: {str(e)}", exc_info=True)
-                    st.error("Error executing query. Please try again.")
+                    logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
+                    st.error("Error searching vendors. Please try again.")
+        
+        with col2:
+            st.markdown("""
+                <style>
+                .query-actions {
+                    position: sticky;
+                    top: 2rem;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    background-color: #ffffff;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                </style>
+                <div class="query-actions">
+            """, unsafe_allow_html=True)
             
-            # Add visualization section
+            st.subheader("Query Actions")
+            submit_clicked = st.button("Submit Query", type="primary", use_container_width=True)
+            readme_clicked = st.button("About", use_container_width=True)
+            
+            if readme_clicked:
+                with st.expander("**About the Data and How to Use**", expanded=True):
+                    st.markdown("""
+                    ### Data Overview
+                    This dashboard allows you to query the Texas Treasury database containing every payment made from the Texas Treasury, 
+                    provided and managed by the Texas Comptroller of Public Accounts.
+                    
+                    ### How to Use
+                    1. Select your desired filters from the dropdown menus
+                    2. Use 'All' to include all values for that field
+                    3. Click 'Submit Query' to view the results
+                    4. Download the results using the download button
+                    
+                    ### Understanding the Dropdown Categories
+                    
+                    #### Payment Information Categories
+                    - **Agency**: The government agency making the payment
+                    - **Vendor**: The recipient of the payment
+                    - **Appropriation Title**: The official name of a pot of money that the legislature has set aside for a specific purpose in the budget
+                    - **Payment Source (Fund Title)**: The name of the account that actually holds the money
+                    - **Appropriation Object**: A more detailed category within an appropriation that describes what the money will buy
+                    
+                    #### Contract Information Categories
+                    - **Agency**: The government agency managing the contract
+                    - **Vendor**: The company or entity providing the goods or services
+                    - **Category**: The general type or classification of the contract
+                    - **Procurement Method**: How the government chose the vendor for a contract
+                    - **Status**: The current state of the contract
+                    - **Subject**: A short description of what the contract covers
+                    """)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # Results Container (only visible after query)
+    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
+        with st.container():
+            st.markdown("""
+                <style>
+                .results-container {
+                    background-color: #ffffff;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin: 1rem 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            st.header("Query Results")
+            st.write(f"Showing {len(st.session_state['df'])} records")
+            
+            # Display the dataframe
+            with st.spinner("Loading results..."):
+                st.dataframe(st.session_state['df'], use_container_width=True)
+            
+            # Download buttons
+            col1, col2 = st.columns(2)
+            with col1:
+                try:
+                    with st.spinner('Preparing CSV download...'):
+                        complete_df = get_complete_filtered_data(
+                            st.session_state.filters, 
+                            table_choice, 
+                            st.session_state.db_engine
+                        )
+                        csv_data = complete_df.to_csv(index=False)
+                        if st.download_button(
+                            label="Download CSV",
+                            data=csv_data,
+                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                            mime='text/csv',
+                        ):
+                            st.success("CSV file downloaded successfully!")
+                except Exception as e:
+                    logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
+                    st.error("Error preparing CSV download. Please try again.")
+            
+            with col2:
+                try:
+                    with st.spinner('Preparing ZIP download...'):
+                        complete_df = get_complete_filtered_data(
+                            st.session_state.filters, 
+                            table_choice, 
+                            st.session_state.db_engine
+                        )
+                        zip_data = df_to_zip(complete_df)
+                        if st.download_button(
+                            label="Download ZIP",
+                            data=zip_data,
+                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                            mime='application/zip',
+                        ):
+                            st.success("ZIP file downloaded successfully!")
+                except Exception as e:
+                    logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
+                    st.error("Error preparing ZIP download. Please try again.")
+
+    # Visualizations Container (only visible after query)
+    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
+        with st.container():
+            st.markdown("""
+                <style>
+                .viz-container {
+                    background-color: #ffffff;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin: 1rem 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
             st.header("Data Visualizations")
             try:
-                if 'df' in st.session_state and not st.session_state['df'].empty:
-                    # Generate all visualizations
-                    visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
+                visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
+                
+                viz_col1, viz_col2 = st.columns(2)
+                
+                with viz_col1:
+                    st.subheader("Payment Distribution")
+                    st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
                     
-                    # Create two columns for visualizations
-                    col1, col2 = st.columns(2)
+                    st.subheader("Top Vendors")
+                    st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                
+                with viz_col2:
+                    st.subheader("Trend Analysis")
+                    st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
                     
-                    with col1:
-                        st.subheader("Payment Distribution by Agency")
-                        st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
-                        
-                        st.subheader("Vendor Analysis")
-                        st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-                    
-                    with col2:
-                        st.subheader("Trend Analysis")
-                        st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-                        
-                        if 'category_analysis' in visualizations:
-                            st.subheader("Category Distribution")
-                            st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-                else:
-                    st.info("Submit a query to see visualizations of the data.")
-                    
+                    if 'category_analysis' in visualizations:
+                        st.subheader("Category Distribution")
+                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
             except Exception as e:
                 logger.error(f"Error generating visualizations: {str(e)}", exc_info=True)
                 st.error("Error generating visualizations. Please try again.")
+
+    # AI Analysis Container (only visible after query)
+    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
+        with st.container():
+            st.markdown("""
+                <style>
+                .ai-container {
+                    background-color: #ffffff;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin: 1rem 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                </style>
+            """, unsafe_allow_html=True)
             
-            # Add AI Analysis section
-            logger.info("Adding AI Analysis section")
             st.header("AI Analysis")
-            st.info("AI-powered analysis and insights will appear here after you submit a query.")
-            st.markdown("---")
+            st.info("AI-powered analysis and insights will appear here.")
 
-            # Add logos section
-            logger.info("Adding logos section")
-            try:
-                # Create three columns for logos
-                logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
-                
-                with logo_col1:
-                    if os.path.exists("Texas DOGE_White.png"):
-                        st.image("Texas DOGE_White.png", width=200)
-                    elif os.path.exists("Texas_House_Logo.svg"):
-                        st.image("Texas_House_Logo.svg", width=200)
-                    else:
-                        st.markdown("### Texas Department of Government Efficiency")
-                        st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
-                
-                with logo_col2:
-                    st.markdown("### Texas House of Representatives")
-                    st.markdown("Committee on the Delivery of Government Efficiency")
-                
-                with logo_col3:
-                    if os.path.exists("X_logo.png"):
-                        st.image("X_logo.png", width=50)
-                        st.markdown("[Follow us on X](https://twitter.com/TexasDOGE)")
-                    else:
-                        st.markdown("### Follow us on X")
-                        st.warning("X logo file (X_logo.png) not found.")
-                
-            except Exception as e:
-                st.markdown("---")
-                st.markdown("### Texas Department of Government Efficiency")
-                st.error(f"Error loading logo: {str(e)}")
-                logger.error(f"Error in logos section: {str(e)}", exc_info=True)
-
-        except Exception as e:
-            logger.error(f"Error in main content: {str(e)}")
-            st.error("Error displaying main content. Please refresh the page.")
-            return
+    # Logos Container (always visible)
+    with st.container():
+        st.markdown("""
+            <style>
+            .logo-container {
+                background-color: #ffffff;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .logo-flex-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 2vw;
+                flex-wrap: wrap;
+                margin-top: 2em;
+            }
+            .logo-item {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 120px;
+                max-width: 25vw;
+            }
+            .logo-item img, .logo-item svg {
+                width: 100%;
+                height: auto;
+                max-width: 200px;
+            }
+            @media (max-width: 600px) {
+                .logo-flex-container {
+                    flex-direction: column;
+                }
+                .logo-item {
+                    max-width: 60vw;
+                }
+            }
+            .find-x-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5em;
+                margin-top: 2em;
+                font-size: 1.2em;
+            }
+            .x-logo-img {
+                width: 32px;
+                height: 32px;
+                vertical-align: middle;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        try:
+            # Responsive side-by-side clickable logos
+            logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+            doge_img_html = ""
+            if os.path.exists(logo_path):
+                with open(logo_path, "rb") as image_file:
+                    encoded = base64.b64encode(image_file.read()).decode()
+                doge_img_html = (
+                    f'<div class="logo-item">'
+                    f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                    f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                )
             
-    except Exception as e:
-        logger.critical(f"Critical error in main function: {str(e)}", exc_info=True)
-        st.error("A critical error occurred. Please refresh the page or contact support.")
-        return
+            svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
+            svg_img_html = ""
+            if os.path.exists(svg_path):
+                with open(svg_path, "r") as svg_file:
+                    svg_content = svg_file.read()
+                svg_img_html = (
+                    f'<div class="logo-item">'
+                    f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                )
+            
+            if doge_img_html or svg_img_html:
+                st.markdown(
+                    f"""
+                    <div class="logo-flex-container">
+                        {doge_img_html}
+                        {svg_img_html}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                # Add Find us on X section
+                x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                x_logo_html = ""
+                if os.path.exists(x_logo_path):
+                    with open(x_logo_path, "rb") as x_img_file:
+                        x_encoded = base64.b64encode(x_img_file.read()).decode()
+                    x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                st.markdown(
+                    f'<div class="find-x-container">Find us on {x_logo_html}</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown("### Texas Department of Government Efficiency")
+                st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
+        except Exception as e:
+            st.markdown("### Texas Department of Government Efficiency")
+            st.error(f"Error loading logo: {str(e)}")
+            logger.error(f"Error in logos section: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
     try:

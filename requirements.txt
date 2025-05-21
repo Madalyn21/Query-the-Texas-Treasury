@@ -1,15 +1,15 @@
 # Core Application Dependencies
 streamlit
-pandas==1.3.5
-numpy==1.21.6
+pandas>=1.5.0
+numpy>=1.24.0
 altair
 requests
 python-dotenv
 python-json-logger
 psutil
 pillow
-pytz==2021.3
-backports.zoneinfo==0.2.1
+pytz
+backports.zoneinfo
 
 # Database Dependencies
 psycopg2-binary
