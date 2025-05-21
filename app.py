@@ -995,6 +995,9 @@ def main():
                         agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
                         selected_agency = st.selectbox("Agency", agency_options)
                         
+                        # Store the selected agency in session state
+                        st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
+                        
                         appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
                         selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
                         
@@ -1010,6 +1013,9 @@ def main():
                         # Display Contract Information dropdowns
                         agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
                         selected_agency = st.selectbox("Agency", agency_options)
+                        
+                        # Store the selected agency in session state
+                        st.session_state.filters['agency'] = selected_agency if selected_agency != "All" else None
                         
                         category_options = ["All"] + [category[0] for category in filter_options['categories']]
                         selected_category = st.selectbox("Category", category_options)

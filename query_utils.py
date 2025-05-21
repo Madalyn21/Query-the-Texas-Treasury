@@ -13,8 +13,8 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     This function creates the foundation of the SQL query that will be used to fetch data.
     It handles two different tables:
-    - Payment Information: Orders results by fiscal year (newest first) and agency title
-    - Contract Information: Orders results by fiscal year (newest first)
+    - Payment Information: Basic query to fetch payment records
+    - Contract Information: Basic query to fetch contract records
     
     Args:
         table_choice (str): Either "Payment Information" or "Contract Information"
@@ -31,18 +31,12 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
         query = text("""
             SELECT p.*
             FROM paymentinformation p
-            WHERE 1=1
-            ORDER BY p.fiscal_year DESC, p.agency_title
-            LIMIT 1000
         """)
         logger.info("Selected paymentinformation table for query")
     else:  # Contract Information
         query = text("""
             SELECT c.*
             FROM contractinfo c
-            WHERE 1=1
-            ORDER BY c.fy DESC
-            LIMIT 1000
         """)
         logger.info("Selected contractinfo table for query")
     
@@ -82,54 +76,59 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     logger.info(f"Adding filters for {table_choice}")
     logger.info(f"Filters received: {filters}")
     
+    # Start building the WHERE clause
+    where_conditions = []
+    
     if table_choice == "Payment Information":
         if filters.get('fiscal_year'):
-            query = text(str(query) + " AND p.fiscal_year = :fiscal_year")
+            where_conditions.append("p.fiscal_year = :fiscal_year")
             params['fiscal_year'] = filters['fiscal_year']
             logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
             
         if filters.get('agency'):
-            # Make agency filter case-insensitive
-            query = text(str(query) + " AND LOWER(p.agency_title) = LOWER(:agency)")
+            where_conditions.append("LOWER(p.agency_title) = LOWER(:agency)")
             params['agency'] = filters['agency']
             logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
             
         if filters.get('appropriation_object'):
-            query = text(str(query) + " AND p.object_title = :appropriation_object")
+            where_conditions.append("p.object_title = :appropriation_object")
             params['appropriation_object'] = filters['appropriation_object']
             logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
             
     elif table_choice == "Contract Information":
         if filters.get('fiscal_year'):
-            query = text(str(query) + " AND c.fiscal_year = :fiscal_year")
+            where_conditions.append("c.fiscal_year = :fiscal_year")
             params['fiscal_year'] = filters['fiscal_year']
             logger.info(f"Added fiscal year filter: {filters['fiscal_year']}")
             
         if filters.get('agency'):
-            # Make agency filter case-insensitive
-            query = text(str(query) + " AND LOWER(c.agency_title) = LOWER(:agency)")
+            where_conditions.append("LOWER(c.agency) = LOWER(:agency)")
             params['agency'] = filters['agency']
             logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
             
         if filters.get('category'):
-            query = text(str(query) + " AND c.category = :category")
+            where_conditions.append("c.category = :category")
             params['category'] = filters['category']
             logger.info(f"Added category filter: {filters['category']}")
             
         if filters.get('procurement_method'):
-            query = text(str(query) + " AND c.procurement_method = :procurement_method")
+            where_conditions.append("c.procurement_method = :procurement_method")
             params['procurement_method'] = filters['procurement_method']
             logger.info(f"Added procurement method filter: {filters['procurement_method']}")
             
         if filters.get('status'):
-            query = text(str(query) + " AND c.status = :status")
+            where_conditions.append("c.status = :status")
             params['status'] = filters['status']
             logger.info(f"Added status filter: {filters['status']}")
             
         if filters.get('subject'):
-            query = text(str(query) + " AND c.subject = :subject")
+            where_conditions.append("c.subject = :subject")
             params['subject'] = filters['subject']
             logger.info(f"Added subject filter: {filters['subject']}")
+    
+    # Add WHERE clause if we have any conditions
+    if where_conditions:
+        query = text(str(query) + " WHERE " + " AND ".join(where_conditions))
     
     logger.info(f"Final query: {str(query)}")
     logger.info(f"Query parameters: {params}")
