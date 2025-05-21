@@ -1237,200 +1237,208 @@ def main():
 
             # Display results if they exist
             if 'df' in st.session_state and not st.session_state['df'].empty:
-                df = st.session_state['df']
-                
-                # Display results count
-                st.write(f"Showing {len(df)} records")
-                
-                # Display the dataframe
-                with st.spinner("Loading results..."):
-                    st.dataframe(df, use_container_width=True)
-                
-                # Add Load More button if there are more results
-                if st.session_state.has_more_results:
-                    if st.button("Load 150 More"):
-                        try:
-                            # Increment page number
-                            st.session_state.current_page += 1
-                            
-                            # Get next page of results using the stored engine
-                            with st.spinner('Loading more results...'):
-                                next_df, has_more = get_filtered_data(
-                                    st.session_state.filters, 
-                                    table_choice, 
-                                    st.session_state.db_engine, 
-                                    page=st.session_state.current_page
-                                )
-                                st.session_state.has_more_results = has_more
-                            
-                            if not next_df.empty:
-                                # Append new results to existing dataframe
-                                st.session_state['df'] = pd.concat([st.session_state['df'], next_df], ignore_index=True)
-                                st.success(f"Loaded {len(next_df)} more records!")
-                                st.rerun()
-                            else:
-                                st.warning("No more results to load.")
-                                st.session_state.has_more_results = False
-                        except Exception as e:
-                            logger.error(f"Error loading more results: {str(e)}", exc_info=True)
-                            st.error(f"Error loading more results: {str(e)}")
-                
-                # Add download buttons
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.download_button(
-                        label="Download CSV",
-                        data=lambda: get_complete_filtered_data(st.session_state.filters, table_choice, engine).to_csv(index=False).encode('utf-8'),
-                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                        mime='text/csv',
-                    ):
-                        st.success("CSV file downloaded successfully!")
-                
-                with col2:
-                    if st.download_button(
-                        label="Download ZIP",
-                        data=lambda: df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, engine)),
-                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                        mime='application/zip',
-                    ):
-                        st.success("ZIP file downloaded successfully!")
-
-            # Add visualization section
-            logger.info("Adding visualization section")
-            st.markdown("---")  # Add a separator
-            st.header("Visualizations")
-            
-            if 'df' in st.session_state and not st.session_state['df'].empty:
                 try:
-                    # Generate all visualizations
-                    visualizations = generate_all_visualizations(st.session_state['df'])
+                    df = st.session_state['df']
                     
-                    # Create two columns for visualizations
-                    viz_col1, viz_col2 = st.columns(2)
+                    # Display results count
+                    st.write(f"Showing {len(df)} records")
                     
-                    with viz_col1:
-                        st.subheader("Payment Distribution")
-                        st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
-                        
-                        st.subheader("Top Vendors")
-                        st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-                        
-                    with viz_col2:
-                        st.subheader("Trend Analysis")
-                        st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-                        
-                        st.subheader("Category Distribution")
-                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-                        
-                except Exception as e:
-                    logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
-                    st.error("Error generating visualizations. Please check the data format.")
-            else:
-                st.info("Submit a query to see visualizations of the data.")
+                    # Display the dataframe
+                    with st.spinner("Loading results..."):
+                        st.dataframe(df, use_container_width=True)
+                    
+                    # Add Load More button if there are more results
+                    if st.session_state.has_more_results:
+                        if st.button("Load 150 More"):
+                            try:
+                                # Store current state before rerun
+                                current_df = st.session_state['df']
+                                current_page = st.session_state.current_page
+                                current_filters = st.session_state.filters.copy()
+                                current_table_choice = table_choice
+                                
+                                # Increment page number
+                                st.session_state.current_page += 1
+                                
+                                # Get next page of results using the stored engine
+                                with st.spinner('Loading more results...'):
+                                    next_df, has_more = get_filtered_data(
+                                        current_filters, 
+                                        current_table_choice, 
+                                        st.session_state.db_engine, 
+                                        page=st.session_state.current_page
+                                    )
+                                    st.session_state.has_more_results = has_more
+                                
+                                if not next_df.empty:
+                                    # Append new results to existing dataframe
+                                    st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
+                                    st.success(f"Loaded {len(next_df)} more records!")
+                                    st.rerun()
+                                else:
+                                    st.warning("No more results to load.")
+                                    st.session_state.has_more_results = False
+                            except Exception as e:
+                                logger.error(f"Error loading more results: {str(e)}", exc_info=True)
+                                st.error(f"Error loading more results: {str(e)}")
+                    
+                    # Add download buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.download_button(
+                            label="Download CSV",
+                            data=lambda: get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine).to_csv(index=False).encode('utf-8'),
+                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                            mime='text/csv',
+                        ):
+                            st.success("CSV file downloaded successfully!")
+                    
+                    with col2:
+                        if st.download_button(
+                            label="Download ZIP",
+                            data=lambda: df_to_zip(get_complete_filtered_data(st.session_state.filters, table_choice, st.session_state.db_engine)),
+                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                            mime='application/zip',
+                        ):
+                            st.success("ZIP file downloaded successfully!")
 
-            # Add AI Analysis section
-            logger.info("Adding AI Analysis section")
-            st.header("AI Analysis")
-            st.info("AI-powered analysis and insights will appear here.")
-            st.markdown("---")
+                    # Add visualization section
+                    logger.info("Adding visualization section")
+                    st.markdown("---")  # Add a separator
+                    st.header("Visualizations")
+                    
+                    try:
+                        # Generate all visualizations
+                        visualizations = generate_all_visualizations(df)
+                        
+                        # Create two columns for visualizations
+                        viz_col1, viz_col2 = st.columns(2)
+                        
+                        with viz_col1:
+                            st.subheader("Payment Distribution")
+                            st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                            
+                            st.subheader("Top Vendors")
+                            st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                            
+                        with viz_col2:
+                            st.subheader("Trend Analysis")
+                            st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                            
+                            st.subheader("Category Distribution")
+                            st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                            
+                    except Exception as e:
+                        logger.error(f"Error displaying visualizations: {str(e)}", exc_info=True)
+                        st.error("Error generating visualizations. Please check the data format.")
 
-            # Add logos section
-            logger.info("Adding logos section")
-            try:
-                # Responsive side-by-side clickable logos with improved flexbox layout
-                logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
-                doge_img_html = ""
-                if os.path.exists(logo_path):
-                    with open(logo_path, "rb") as image_file:
-                        encoded = base64.b64encode(image_file.read()).decode()
-                    doge_img_html = (
-                        f'<div class="logo-item">'
-                        f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
-                        f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
-                    )
-                svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
-                svg_img_html = ""
-                if os.path.exists(svg_path):
-                    with open(svg_path, "r") as svg_file:
-                        svg_content = svg_file.read()
-                    svg_img_html = (
-                        f'<div class="logo-item">'
-                        f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
-                    )
-                if doge_img_html or svg_img_html:
-                    st.markdown(
-                        f"""
-                        <style>
-                        .logo-flex-container {{
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            gap: 2vw;
-                            flex-wrap: wrap;
-                            margin-top: 2em;
-                        }}
-                        .logo-item {{
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            min-width: 120px;
-                            max-width: 25vw;
-                        }}
-                        .logo-item img, .logo-item svg {{
-                            width: 100%;
-                            height: auto;
-                            max-width: 200px;
-                        }}
-                        @media (max-width: 600px) {{
-                            .logo-flex-container {{
-                                flex-direction: column;
-                            }}
-                            .logo-item {{
-                                max-width: 60vw;
-                            }}
-                        }}
-                        .find-x-container {{
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            gap: 0.5em;
-                            margin-top: 2em;
-                            font-size: 1.2em;
-                        }}
-                        .x-logo-img {{
-                            width: 32px;
-                            height: 32px;
-                            vertical-align: middle;
-                        }}
-                        </style>
-                        <div class="logo-flex-container">
-                            {doge_img_html}
-                            {svg_img_html}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    # Add Find us on X section
-                    x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
-                    x_logo_html = ""
-                    if os.path.exists(x_logo_path):
-                        with open(x_logo_path, "rb") as x_img_file:
-                            x_encoded = base64.b64encode(x_img_file.read()).decode()
-                        x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
-                    st.markdown(
-                        f'<div class="find-x-container">Find us on {x_logo_html}</div>',
-                        unsafe_allow_html=True
-                    )
-                else:
+                    # Add AI Analysis section
+                    logger.info("Adding AI Analysis section")
+                    st.header("AI Analysis")
+                    st.info("AI-powered analysis and insights will appear here.")
                     st.markdown("---")
-                    st.markdown("### Texas Department of Government Efficiency")
-                    st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
-            except Exception as e:
-                st.markdown("---")
-                st.markdown("### Texas Department of Government Efficiency")
-                st.error(f"Error loading logo: {str(e)}")
-                logger.error(f"Error in logos section: {str(e)}", exc_info=True)
-            
+
+                    # Add logos section
+                    logger.info("Adding logos section")
+                    try:
+                        # Responsive side-by-side clickable logos with improved flexbox layout
+                        logo_path = os.path.join(os.path.dirname(__file__), "Texas DOGE_White.png")
+                        doge_img_html = ""
+                        if os.path.exists(logo_path):
+                            with open(logo_path, "rb") as image_file:
+                                encoded = base64.b64encode(image_file.read()).decode()
+                            doge_img_html = (
+                                f'<div class="logo-item">'
+                                f'<a href="https://house.texas.gov/committees/committee/233" target="_blank">'
+                                f'<img src="data:image/png;base64,{encoded}" alt="DOGE Logo"/></a></div>'
+                            )
+                        svg_path = os.path.join(os.path.dirname(__file__), "Texas_House_Logo.svg")
+                        svg_img_html = ""
+                        if os.path.exists(svg_path):
+                            with open(svg_path, "r") as svg_file:
+                                svg_content = svg_file.read()
+                            svg_img_html = (
+                                f'<div class="logo-item">'
+                                f'<a href="https://house.texas.gov/" target="_blank">{svg_content}</a></div>'
+                            )
+                        if doge_img_html or svg_img_html:
+                            st.markdown(
+                                f"""
+                                <style>
+                                .logo-flex-container {{
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    gap: 2vw;
+                                    flex-wrap: wrap;
+                                    margin-top: 2em;
+                                }}
+                                .logo-item {{
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    min-width: 120px;
+                                    max-width: 25vw;
+                                }}
+                                .logo-item img, .logo-item svg {{
+                                    width: 100%;
+                                    height: auto;
+                                    max-width: 200px;
+                                }}
+                                @media (max-width: 600px) {{
+                                    .logo-flex-container {{
+                                        flex-direction: column;
+                                    }}
+                                    .logo-item {{
+                                        max-width: 60vw;
+                                    }}
+                                }}
+                                .find-x-container {{
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    gap: 0.5em;
+                                    margin-top: 2em;
+                                    font-size: 1.2em;
+                                }}
+                                .x-logo-img {{
+                                    width: 32px;
+                                    height: 32px;
+                                    vertical-align: middle;
+                                }}
+                                </style>
+                                <div class="logo-flex-container">
+                                    {doge_img_html}
+                                    {svg_img_html}
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                            # Add Find us on X section
+                            x_logo_path = os.path.join(os.path.dirname(__file__), "x_logo.png")
+                            x_logo_html = ""
+                            if os.path.exists(x_logo_path):
+                                with open(x_logo_path, "rb") as x_img_file:
+                                    x_encoded = base64.b64encode(x_img_file.read()).decode()
+                                x_logo_html = f'<a href="https://x.com/TxLegeDOGE" target="_blank"><img src="data:image/png;base64,{x_encoded}" class="x-logo-img" alt="X Logo"/></a>'
+                            st.markdown(
+                                f'<div class="find-x-container">Find us on {x_logo_html}</div>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.markdown("---")
+                            st.markdown("### Texas Department of Government Efficiency")
+                            st.warning("Logo file (Texas DOGE_White.png) or SVG file (Texas_House_Logo.svg) not found.")
+                    except Exception as e:
+                        st.markdown("---")
+                        st.markdown("### Texas Department of Government Efficiency")
+                        st.error(f"Error loading logo: {str(e)}")
+                        logger.error(f"Error in logos section: {str(e)}", exc_info=True)
+                    
+                except Exception as e:
+                    logger.error(f"Error displaying results: {str(e)}", exc_info=True)
+                    st.error("Error displaying results. Please try again.")
+
         except Exception as e:
             logger.error(f"Error in main content: {str(e)}")
             st.error("Error displaying main content. Please refresh the page.")
