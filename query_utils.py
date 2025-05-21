@@ -126,6 +126,7 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 );
             """)
             payment_exists = connection.execute(check_payment).scalar()
+            logger.info(f"Paymentinformation table exists: {payment_exists}")
             
             if payment_exists:
                 # Try to execute a simple query on paymentinformation
@@ -147,6 +148,7 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 );
             """)
             contract_exists = connection.execute(check_contract).scalar()
+            logger.info(f"Contractinfo table exists: {contract_exists}")
             
             if contract_exists:
                 # Try to execute a simple query on contractinfo
@@ -222,12 +224,6 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             """)
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
-            
-            # Add index hints to improve query performance
-            if table_name == "contractinfo":
-                query = text(str(query).replace("FROM contractinfo", "FROM contractinfo USE INDEX (PRIMARY)"))
-            else:
-                query = text(str(query).replace("FROM paymentinformation", "FROM paymentinformation USE INDEX (PRIMARY)"))
             
             # Now execute the main query with chunking
             while True:
