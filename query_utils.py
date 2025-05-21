@@ -227,7 +227,12 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             
             # Now execute the main query with chunking
             while True:
-                chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
+                # Remove any existing LIMIT clause and add our chunking LIMIT
+                base_query = str(query)
+                if "LIMIT" in base_query:
+                    base_query = base_query.split("LIMIT")[0].strip()
+                
+                chunk_query = text(f"{base_query} LIMIT {chunk_size} OFFSET {offset}")
                 logger.info(f"Executing chunk query: {str(chunk_query)}")
                 logger.info(f"Chunk parameters: {params}")
                 
