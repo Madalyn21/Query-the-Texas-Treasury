@@ -22,7 +22,7 @@ def create_payment_distribution_chart(df: pd.DataFrame, table_choice: str) -> al
         logger.info("Creating payment distribution chart")
         
         # Determine the amount column based on table choice
-        amount_column = 'amount_pay' if table_choice == "Payment Information" else 'curvalue'
+        amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         agency_column = 'agency_title' if table_choice == "Payment Information" else 'agency'
         
         # Group by agency and sum the amounts
@@ -63,7 +63,7 @@ def create_trend_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Char
         logger.info("Creating trend analysis chart")
         
         # Determine the amount column based on table choice
-        amount_column = 'amount_pay' if table_choice == "Payment Information" else 'curvalue'
+        amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         
         # Determine fiscal year and month columns based on table choice
         fiscal_year_col = 'fiscal year' if table_choice == "Payment Information" else 'fy'
@@ -109,7 +109,7 @@ def create_vendor_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Cha
         logger.info("Creating vendor analysis chart")
         
         # Determine the amount column based on table choice
-        amount_column = 'amount_pay' if table_choice == "Payment Information" else 'curvalue'
+        amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
         
         # Group by vendor and sum the amounts, get top 10
