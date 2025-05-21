@@ -29,7 +29,7 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     # Build a more detailed base query
     query = text(f"""
-        SELECT DISTINCT {alias}.*
+        SELECT {alias}.*
         FROM {table_name} {alias}
         WHERE 1=1
     """)
@@ -63,7 +63,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     
     # Add vendor filter
     if filters.get('vendor') and len(filters['vendor']) > 0:
-        query = text(str(query) + f" AND LOWER(TRIM({alias}.vendor_name)) = LOWER(TRIM(:vendor))")
+        query = text(str(query) + f" AND LOWER({alias}.vendor_name) = LOWER(:vendor)")
         params['vendor'] = str(filters['vendor'][0]).strip()
         logger.info(f"Added vendor filter: {filters['vendor'][0]}")
     
@@ -79,7 +79,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             except ValueError:
                 # If agency is not a number, try to match by agency title/name
                 column_name = "agency_title" if table_choice == "Payment Information" else "agency"
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.{column_name})) = LOWER(TRIM(:agency))")
+                query = text(str(query) + f" AND LOWER({alias}.{column_name}) = LOWER(:agency)")
                 params['agency'] = str(filters['agency']).strip()
                 logger.info(f"Added agency filter using {column_name}: {filters['agency']}")
         
@@ -92,7 +92,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
                 logger.info(f"Added appropriation number filter: {appropriation_number}")
             except ValueError:
                 # If not a number, try to match by title
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.appropriation_title)) = LOWER(TRIM(:appropriation_title))")
+                query = text(str(query) + f" AND LOWER({alias}.appropriation_title) = LOWER(:appropriation_title)")
                 params['appropriation_title'] = str(filters['appropriation_title']).strip()
                 logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
         
@@ -105,7 +105,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
                 logger.info(f"Added fund number filter: {fund_number}")
             except ValueError:
                 # If not a number, try to match by name
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.fund_name)) = LOWER(TRIM(:payment_source))")
+                query = text(str(query) + f" AND LOWER({alias}.fund_name) = LOWER(:payment_source)")
                 params['payment_source'] = str(filters['payment_source']).strip()
                 logger.info(f"Added fund name filter: {filters['payment_source']}")
         
@@ -118,7 +118,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
                 logger.info(f"Added object number filter: {object_number}")
             except ValueError:
                 # If not a number, try to match by title
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.object_title)) = LOWER(TRIM(:appropriation_object))")
+                query = text(str(query) + f" AND LOWER({alias}.object_title) = LOWER(:appropriation_object)")
                 params['appropriation_object'] = str(filters['appropriation_object']).strip()
                 logger.info(f"Added object title filter: {filters['appropriation_object']}")
     else:
@@ -131,27 +131,27 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
                 logger.info(f"Added agency filter: {agency_number}")
             except ValueError:
                 # If agency is not a number, try to match by agency name
-                query = text(str(query) + f" AND LOWER(TRIM({alias}.agency_name)) = LOWER(TRIM(:agency))")
+                query = text(str(query) + f" AND LOWER({alias}.agency_name) = LOWER(:agency)")
                 params['agency'] = str(filters['agency']).strip()
                 logger.info(f"Added agency name filter: {filters['agency']}")
         
         if filters.get('category'):
-            query = text(str(query) + f" AND LOWER(TRIM({alias}.category)) = LOWER(TRIM(:category))")
+            query = text(str(query) + f" AND LOWER({alias}.category) = LOWER(:category)")
             params['category'] = str(filters['category']).strip()
             logger.info(f"Added category filter: {filters['category']}")
         
         if filters.get('procurement_method'):
-            query = text(str(query) + f" AND LOWER(TRIM({alias}.procurement_method)) = LOWER(TRIM(:procurement_method))")
+            query = text(str(query) + f" AND LOWER({alias}.procurement_method) = LOWER(:procurement_method)")
             params['procurement_method'] = str(filters['procurement_method']).strip()
             logger.info(f"Added procurement method filter: {filters['procurement_method']}")
         
         if filters.get('status'):
-            query = text(str(query) + f" AND LOWER(TRIM({alias}.status)) = LOWER(TRIM(:status))")
+            query = text(str(query) + f" AND LOWER({alias}.status) = LOWER(:status)")
             params['status'] = str(filters['status']).strip()
             logger.info(f"Added status filter: {filters['status']}")
         
         if filters.get('subject'):
-            query = text(str(query) + f" AND LOWER(TRIM({alias}.subject)) = LOWER(TRIM(:subject))")
+            query = text(str(query) + f" AND LOWER({alias}.subject) = LOWER(:subject)")
             params['subject'] = str(filters['subject']).strip()
             logger.info(f"Added subject filter: {filters['subject']}")
     
@@ -196,7 +196,9 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             while True:
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
                 logger.info(f"Executing chunk query: {str(chunk_query)}")
-                chunk_data = execute_safe_query(connection, chunk_query, params)
+                # Convert params to a list of tuples for proper parameter binding
+                params_list = [(k, v) for k, v in params.items()]
+                chunk_data = execute_safe_query(connection, chunk_query, dict(params_list))
                 
                 if not chunk_data:
                     logger.info(f"No more data found at offset {offset}")
