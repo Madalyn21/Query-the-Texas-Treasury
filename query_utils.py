@@ -196,9 +196,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             while True:
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
                 logger.info(f"Executing chunk query: {str(chunk_query)}")
-                # Convert params to a list of tuples for proper parameter binding
-                params_list = [(k, v) for k, v in params.items()]
-                chunk_data = execute_safe_query(connection, chunk_query, dict(params_list))
+                # Use params directly without conversion
+                chunk_data = execute_safe_query(connection, chunk_query, params)
                 
                 if not chunk_data:
                     logger.info(f"No more data found at offset {offset}")
