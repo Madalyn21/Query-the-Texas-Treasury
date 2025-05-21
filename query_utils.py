@@ -34,7 +34,7 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
             SELECT c.*
             FROM contractinfo c
             WHERE 1=1
-            ORDER BY c.fy DESC, c.agency_title
+            ORDER BY c.fy DESC
             LIMIT 1000
         """)
         logger.info("Selected contractinfo table for query")
@@ -130,6 +130,16 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
             logger.info(f"Paymentinformation table exists: {payment_exists}")
             
             if payment_exists:
+                # Log paymentinformation table structure
+                payment_columns = text("""
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'paymentinformation'
+                    ORDER BY ordinal_position;
+                """)
+                payment_structure = connection.execute(payment_columns).fetchall()
+                logger.info(f"Paymentinformation table structure: {payment_structure}")
+                
                 # Try to execute a simple query on paymentinformation
                 test_payment = text("SELECT COUNT(*) FROM paymentinformation LIMIT 1")
                 try:
@@ -152,6 +162,16 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
             logger.info(f"Contractinfo table exists: {contract_exists}")
             
             if contract_exists:
+                # Log contractinfo table structure
+                contract_columns = text("""
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'contractinfo'
+                    ORDER BY ordinal_position;
+                """)
+                contract_structure = connection.execute(contract_columns).fetchall()
+                logger.info(f"Contractinfo table structure: {contract_structure}")
+                
                 # Try to execute a simple query on contractinfo
                 test_contract = text("SELECT COUNT(*) FROM contractinfo LIMIT 1")
                 try:
@@ -257,8 +277,14 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     if not chunk_data:
                         break
                     
-                    # Convert to list of dicts
-                    chunk_dicts = [dict(row) for row in chunk_data]
+                    # Convert to list of dicts using column names
+                    chunk_dicts = []
+                    for row in chunk_data:
+                        row_dict = {}
+                        for i, col in enumerate(row.keys()):
+                            row_dict[col] = row[i]
+                        chunk_dicts.append(row_dict)
+                    
                     all_data.extend(chunk_dicts)
                     logger.info(f"Retrieved {len(chunk_dicts)} records in this chunk")
                     
