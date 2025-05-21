@@ -246,17 +246,6 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
-            # Verify the columns we're trying to order by exist
-            if "ORDER BY" in str(query):
-                order_columns = [col.strip() for col in str(query).split("ORDER BY")[1].split("LIMIT")[0].split(",")]
-                order_columns = [col.split(".")[1] if "." in col else col for col in order_columns]
-                for col in order_columns:
-                    if col not in [c[0] for c in columns]:
-                        logger.error(f"Column {col} used in ORDER BY does not exist in table {table_name}")
-                        # Remove the ORDER BY clause if the column doesn't exist
-                        query = text(str(query).split("ORDER BY")[0] + "LIMIT 1000")
-                        logger.info(f"Modified query to remove invalid ORDER BY: {str(query)}")
-            
             # Now execute the main query with chunking
             while True:
                 # Remove any existing LIMIT clause and add our chunking LIMIT
@@ -277,11 +266,11 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     if not chunk_data:
                         break
                     
-                    # Convert to list of dicts using column names
+                    # Convert to list of dicts using column names from the result
                     chunk_dicts = []
                     for row in chunk_data:
                         row_dict = {}
-                        for i, col in enumerate(row.keys()):
+                        for i, col in enumerate(row._mapping.keys()):
                             row_dict[col] = row[i]
                         chunk_dicts.append(row_dict)
                     
