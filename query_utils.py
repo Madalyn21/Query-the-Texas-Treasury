@@ -193,6 +193,28 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             total_count = count_result[0]['count'] if count_result else 0
             logger.info(f"Total records in {table_name}: {total_count}")
             
+            # Debug query to check data for our parameters
+            debug_query = text(f"""
+                SELECT COUNT(*) as count 
+                FROM {table_name} 
+                WHERE fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end 
+                AND fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end
+            """)
+            debug_params = {k: v for k, v in params.items() if k in ['fiscal_year_start', 'fiscal_year_end', 'fiscal_month_start', 'fiscal_month_end']}
+            debug_result = execute_safe_query(connection, debug_query, debug_params)
+            logger.info(f"Records matching date range: {debug_result[0]['count'] if debug_result else 0}")
+            
+            # Debug query for agency
+            if 'agency' in params:
+                agency_query = text(f"""
+                    SELECT DISTINCT agency_title 
+                    FROM {table_name} 
+                    WHERE LOWER(agency_title) LIKE LOWER(:agency_pattern)
+                """)
+                agency_params = {'agency_pattern': f"%{params['agency']}%"}
+                agency_result = execute_safe_query(connection, agency_query, agency_params)
+                logger.info(f"Similar agency titles found: {[r['agency_title'] for r in agency_result] if agency_result else []}")
+            
             # Execute query with chunking
             while True:
                 chunk_query = text(str(query) + f" LIMIT {chunk_size} OFFSET {offset}")
