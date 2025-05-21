@@ -2,6 +2,7 @@ from sqlalchemy import text
 from logger_config import get_logger
 import pandas as pd
 from typing import Dict, List, Optional, Union, Tuple
+import time
 
 # Initialize logger
 logger = get_logger('query_utils')
@@ -16,7 +17,7 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     Returns:
         Tuple[str, Dict]: The base query and parameters dictionary
     """
-    logger.info(f"Building base query for {table_choice}")
+    logger.info(f"Building base query for table choice: '{table_choice}'")
     
     # Determine which table to query based on selection
     if table_choice == "Payment Information":
@@ -26,14 +27,18 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
             WHERE 1=1
             LIMIT 1000
         """)
+        logger.info("Selected paymentinformation table for query")
     else:  # Contract Information
         query = text("""
             SELECT c.*
             FROM contractinfo c
             WHERE 1=1
+            ORDER BY c.fiscal_year DESC, c.agency_title
             LIMIT 1000
         """)
+        logger.info("Selected contractinfo table for query")
     
+    logger.info(f"Generated query: {str(query)}")
     return query, {}
 
 def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice: str) -> Tuple[text, Dict]:
@@ -72,10 +77,25 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             params['agency'] = filters['agency']
             logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
             
-        if filters.get('appropriation_object'):
-            query = text(str(query) + " AND c.object_title = :appropriation_object")
-            params['appropriation_object'] = filters['appropriation_object']
-            logger.info(f"Added appropriation object filter: {filters['appropriation_object']}")
+        if filters.get('category'):
+            query = text(str(query) + " AND c.category = :category")
+            params['category'] = filters['category']
+            logger.info(f"Added category filter: {filters['category']}")
+            
+        if filters.get('procurement_method'):
+            query = text(str(query) + " AND c.procurement_method = :procurement_method")
+            params['procurement_method'] = filters['procurement_method']
+            logger.info(f"Added procurement method filter: {filters['procurement_method']}")
+            
+        if filters.get('status'):
+            query = text(str(query) + " AND c.status = :status")
+            params['status'] = filters['status']
+            logger.info(f"Added status filter: {filters['status']}")
+            
+        if filters.get('subject'):
+            query = text(str(query) + " AND c.subject = :subject")
+            params['subject'] = filters['subject']
+            logger.info(f"Added subject filter: {filters['subject']}")
     
     logger.info(f"Final query: {str(query)}")
     logger.info(f"Query parameters: {params}")
@@ -168,6 +188,7 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
     Returns:
         List[Dict]: List of dictionaries containing the query results
     """
+    start_time = time.time()
     logger.info("Executing query with chunking")
     logger.info(f"Query: {str(query)}")
     logger.info(f"Parameters: {params}")
@@ -202,92 +223,11 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
-            # Let's check if we have any data for the agency
-            if params.get('agency'):
-                # First check exact match
-                agency_check = text(f"""
-                    SELECT COUNT(*) 
-                    FROM {table_name} 
-                    WHERE agency_title = :agency
-                """)
-                try:
-                    agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
-                    logger.info(f"Found {agency_count} records for exact agency match: {params['agency']}")
-                except Exception as e:
-                    logger.error(f"Error checking exact agency match: {str(e)}")
-                    # Try with different column names
-                    for col in ['agency', 'agency_name', 'agency_title', 'agency_number']:
-                        try:
-                            agency_check = text(f"""
-                                SELECT COUNT(*) 
-                                FROM {table_name} 
-                                WHERE {col} = :agency
-                            """)
-                            agency_count = connection.execute(agency_check, {'agency': params['agency']}).scalar()
-                            logger.info(f"Found {agency_count} records for agency match using column {col}: {params['agency']}")
-                            if agency_count > 0:
-                                # Update the query to use this column
-                                query = text(str(query).replace('agency_title', col))
-                                logger.info(f"Updated query to use column {col}")
-                                break
-                        except Exception as e:
-                            logger.error(f"Error checking agency match with column {col}: {str(e)}")
-                
-                # Then check case-insensitive match
-                agency_check_ci = text(f"""
-                    SELECT COUNT(*) 
-                    FROM {table_name} 
-                    WHERE LOWER(agency_title) = LOWER(:agency)
-                """)
-                try:
-                    agency_count_ci = connection.execute(agency_check_ci, {'agency': params['agency']}).scalar()
-                    logger.info(f"Found {agency_count_ci} records for case-insensitive agency match: {params['agency']}")
-                except Exception as e:
-                    logger.error(f"Error checking case-insensitive agency match: {str(e)}")
-                
-                # If no matches, let's see what agencies are similar
-                if agency_count_ci == 0:
-                    similar_agencies = text(f"""
-                        SELECT DISTINCT agency_title 
-                        FROM {table_name} 
-                        WHERE agency_title ILIKE :agency_pattern
-                        LIMIT 5
-                    """)
-                    try:
-                        similar = connection.execute(similar_agencies, {'agency_pattern': f'%{params["agency"]}%'}).fetchall()
-                        logger.info(f"Similar agencies found: {[row[0] for row in similar]}")
-                    except Exception as e:
-                        logger.error(f"Error finding similar agencies: {str(e)}")
-            
-            # Check if we have any data for the fiscal year
-            if params.get('fiscal_year'):
-                year_check = text(f"""
-                    SELECT COUNT(*) 
-                    FROM {table_name} 
-                    WHERE fiscal_year = :fiscal_year
-                """)
-                try:
-                    year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
-                    logger.info(f"Found {year_count} records for fiscal year: {params['fiscal_year']}")
-                except Exception as e:
-                    logger.error(f"Error checking fiscal year: {str(e)}")
-                    # Try with different column names
-                    for col in ['fiscal_year', 'year', 'payment_year', 'contract_year']:
-                        try:
-                            year_check = text(f"""
-                                SELECT COUNT(*) 
-                                FROM {table_name} 
-                                WHERE {col} = :fiscal_year
-                            """)
-                            year_count = connection.execute(year_check, {'fiscal_year': params['fiscal_year']}).scalar()
-                            logger.info(f"Found {year_count} records for fiscal year using column {col}: {params['fiscal_year']}")
-                            if year_count > 0:
-                                # Update the query to use this column
-                                query = text(str(query).replace('fiscal_year', col))
-                                logger.info(f"Updated query to use column {col}")
-                                break
-                        except Exception as e:
-                            logger.error(f"Error checking fiscal year with column {col}: {str(e)}")
+            # Add index hints to improve query performance
+            if table_name == "contractinfo":
+                query = text(str(query).replace("FROM contractinfo", "FROM contractinfo USE INDEX (PRIMARY)"))
+            else:
+                query = text(str(query).replace("FROM paymentinformation", "FROM paymentinformation USE INDEX (PRIMARY)"))
             
             # Now execute the main query with chunking
             while True:
@@ -296,7 +236,11 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                 logger.info(f"Chunk parameters: {params}")
                 
                 try:
+                    chunk_start_time = time.time()
                     chunk_data = connection.execute(chunk_query, params).fetchall()
+                    chunk_time = time.time() - chunk_start_time
+                    logger.info(f"Chunk query took {chunk_time:.2f} seconds")
+                    
                     if not chunk_data:
                         break
                     
@@ -310,6 +254,8 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
                     logger.error(f"Error executing chunk query: {str(e)}")
                     break
             
+            total_time = time.time() - start_time
+            logger.info(f"Total query execution took {total_time:.2f} seconds")
             logger.info(f"Query execution returned {len(all_data)} records")
             return all_data
             
