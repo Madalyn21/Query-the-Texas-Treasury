@@ -1066,20 +1066,6 @@ def main():
                     st.error("Error searching vendors. Please try again.")
         
         with col2:
-            st.markdown("""
-                <style>
-                .query-actions {
-                    position: sticky;
-                    top: 2rem;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    background-color: #ffffff;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                </style>
-                <div class="query-actions">
-            """, unsafe_allow_html=True)
-            
             st.subheader("Query Actions")
             submit_clicked = st.button("Submit Query", type="primary", use_container_width=True)
             readme_clicked = st.button("About", use_container_width=True)
@@ -1114,8 +1100,6 @@ def main():
                     - **Status**: The current state of the contract
                     - **Subject**: A short description of what the contract covers
                     """)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
 
             # Handle query submission
             if submit_clicked:
@@ -1371,8 +1355,17 @@ def main():
             }
             .doge-logo-box {
                 background-color: #000000;
-                padding: 1rem;
+                padding: 0.5rem;
                 border-radius: 0.5rem;
+                width: 50%;
+                margin: 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .doge-logo-box img {
+                width: 100%;
+                height: auto;
             }
             .house-logo-box {
                 background-color: #000080;
