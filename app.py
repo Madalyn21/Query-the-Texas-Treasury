@@ -1229,8 +1229,43 @@ def main():
                         logger.info(f"- engine: {engine}")
                         
                         try:
-                            # Set a timeout for the query
+                            # Get initial page of results
                             df, has_more = get_filtered_data(filter_payload, table_choice, engine)
+                            
+                            # Get total count using a separate count query
+                            with st.spinner('Calculating total records...'):
+                                try:
+                                    # Build count query
+                                    count_query = text(f"""
+                                        SELECT COUNT(*) as total_count
+                                        FROM {table_choice.lower().replace(' ', '')}
+                                        WHERE 1=1
+                                    """)
+                                    
+                                    # Add filters to count query
+                                    if filter_payload:
+                                        where_conditions = []
+                                        for key, value in filter_payload.items():
+                                            if key == 'fiscal_year_start' and 'fiscal_year_end' in filter_payload:
+                                                where_conditions.append(f"fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
+                                            elif key == 'fiscal_month_start' and 'fiscal_month_end' in filter_payload:
+                                                where_conditions.append(f"fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
+                                            elif key in ['agency', 'vendor']:
+                                                where_conditions.append(f"LOWER({key}) = LOWER(:{key})")
+                                            else:
+                                                where_conditions.append(f"{key} = :{key}")
+                                        
+                                        if where_conditions:
+                                            count_query = text(str(count_query) + " AND " + " AND ".join(where_conditions))
+                                    
+                                    # Execute count query
+                                    with engine.connect() as connection:
+                                        total_records = connection.execute(count_query, filter_payload).scalar()
+                                    
+                                    st.info(f"Showing {len(df)} records of {total_records:,} total records")
+                                except Exception as count_error:
+                                    logger.error(f"Error getting total count: {str(count_error)}")
+                                    st.info(f"Showing {len(df)} records")
                             
                             # Check if the result is too large
                             if len(df) > 100000:  # If more than 100k rows
@@ -1245,70 +1280,22 @@ def main():
                                 The results will still be displayed, but the application may be slower.
                                 """)
                             
-                            # Clear any previous large dataframes from memory
-                            if 'previous_df' in st.session_state:
-                                del st.session_state.previous_df
-                            
                             # Store the current dataframe
-                            st.session_state.previous_df = df
-                            
-                        except Exception as query_error:
-                            error_msg = str(query_error)
-                            logger.error(f"Query execution error: {error_msg}", exc_info=True)
-                            
-                            if "memory" in error_msg.lower() or "killed" in error_msg.lower():
-                                st.error("""
-                                ⚠️ **Query Too Large**
-                                
-                                The query returned too many results to process. Please try:
-                                1. Adding more specific filters
-                                2. Reducing the date range
-                                3. Selecting specific agencies or vendors
-                                
-                                This will help reduce the result set size and improve performance.
-                                """)
-                            else:
-                                st.error(f"Error executing query: {error_msg}")
-                            return
-                    
-                    # Clear the loading container
-                    st.empty()
-                    
-                    logger.info(f"Query result type: {type(df)}")
-                    logger.info(f"Query result shape: {df.shape if isinstance(df, pd.DataFrame) else 'Not a DataFrame'}")
-                    
-                    # Store the results in session state
-                    st.session_state['df'] = df
-                    st.session_state.has_more_results = has_more
-                    
-                    # Display results if they exist
-                    if 'df' in st.session_state and not st.session_state['df'].empty:
-                        try:
-                            # Get total count from complete data
-                            with st.spinner('Calculating total records...'):
-                                complete_df = get_complete_filtered_data(
-                                    st.session_state.filters, 
-                                    table_choice, 
-                                    st.session_state.db_engine
-                                )
-                                total_records = len(complete_df)
-                                st.info(f"Showing {len(df)} records of {total_records:,} total records")
+                            st.session_state['df'] = df
+                            st.session_state.has_more_results = has_more
                             
                             # Display the dataframe
                             with st.spinner("Loading results..."):
-                                st.dataframe(st.session_state['df'], use_container_width=True)
+                                st.dataframe(df, use_container_width=True)
                             
                             # Download buttons in a row
                             col1, col2 = st.columns(2)
                             with col1:
                                 try:
                                     with st.spinner('Preparing CSV download...'):
-                                        complete_df = get_complete_filtered_data(
-                                            st.session_state.filters, 
-                                            table_choice, 
-                                            st.session_state.db_engine
-                                        )
-                                        csv_data = complete_df.to_csv(index=False)
+                                        # Use the same query but without pagination for download
+                                        download_df = get_filtered_data(filter_payload, table_choice, engine, page_size=None)[0]
+                                        csv_data = download_df.to_csv(index=False)
                                         st.download_button(
                                             label="Download CSV",
                                             data=csv_data,
@@ -1323,12 +1310,9 @@ def main():
                             with col2:
                                 try:
                                     with st.spinner('Preparing ZIP download...'):
-                                        complete_df = get_complete_filtered_data(
-                                            st.session_state.filters, 
-                                            table_choice, 
-                                            st.session_state.db_engine
-                                        )
-                                        zip_data = df_to_zip(complete_df)
+                                        # Use the same query but without pagination for download
+                                        download_df = get_filtered_data(filter_payload, table_choice, engine, page_size=None)[0]
+                                        zip_data = df_to_zip(download_df)
                                         st.download_button(
                                             label="Download ZIP",
                                             data=zip_data,
@@ -1340,11 +1324,8 @@ def main():
                                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
                                     st.error("Error preparing ZIP download. Please try again.")
                         except Exception as e:
-                            logger.error(f"Error displaying results: {str(e)}", exc_info=True)
-                            st.error("Error displaying results. Please try again.")
-                    else:
-                        st.info("No results found for the selected filters.")
-                        
+                            logger.error(f"Error executing query: {str(e)}", exc_info=True)
+                            st.error("Error executing query. Please try again.")
                 except Exception as e:
                     logger.error(f"Error executing query: {str(e)}", exc_info=True)
                     st.error("Error executing query. Please try again.")
