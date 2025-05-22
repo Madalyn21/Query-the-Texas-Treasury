@@ -976,6 +976,8 @@ def main():
             try:
                 fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
                 fiscal_years = fiscal_years_df['fiscal_year'].tolist()
+                # Ensure fiscal years are in 4-digit format
+                fiscal_years = [str(year).zfill(4) for year in fiscal_years]
                 fiscal_years.sort()
             except Exception as e:
                 logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
@@ -1007,10 +1009,14 @@ def main():
                 help="Select a range of fiscal months"
             )
             
-            # Convert month names to numbers
+            # Convert month names to numbers and ensure they're in the correct format
             month_to_number = {name: i+1 for i, name in enumerate(month_names)}
             st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
             st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
+            
+            # Add debug information
+            st.write(f"Selected fiscal year range: {st.session_state.filters['fiscal_year_start']} to {st.session_state.filters['fiscal_year_end']}")
+            st.write(f"Selected fiscal month range: {st.session_state.filters['fiscal_month_start']} to {st.session_state.filters['fiscal_month_end']}")
             
             # Load and display filter options
             filter_options = load_filter_options(table_choice)
