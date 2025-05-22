@@ -1228,7 +1228,48 @@ def main():
                         logger.info(f"- table_choice: {table_choice}")
                         logger.info(f"- engine: {engine}")
                         
-                        df, has_more = get_filtered_data(filter_payload, table_choice, engine)
+                        try:
+                            # Set a timeout for the query
+                            df, has_more = get_filtered_data(filter_payload, table_choice, engine)
+                            
+                            # Check if the result is too large
+                            if len(df) > 100000:  # If more than 100k rows
+                                st.warning("""
+                                ⚠️ **Large Result Set**
+                                
+                                Your query returned a large number of records. For better performance:
+                                1. Try adding more specific filters
+                                2. Narrow down the date range
+                                3. Select specific agencies or vendors
+                                
+                                The results will still be displayed, but the application may be slower.
+                                """)
+                            
+                            # Clear any previous large dataframes from memory
+                            if 'previous_df' in st.session_state:
+                                del st.session_state.previous_df
+                            
+                            # Store the current dataframe
+                            st.session_state.previous_df = df
+                            
+                        except Exception as query_error:
+                            error_msg = str(query_error)
+                            logger.error(f"Query execution error: {error_msg}", exc_info=True)
+                            
+                            if "memory" in error_msg.lower() or "killed" in error_msg.lower():
+                                st.error("""
+                                ⚠️ **Query Too Large**
+                                
+                                The query returned too many results to process. Please try:
+                                1. Adding more specific filters
+                                2. Reducing the date range
+                                3. Selecting specific agencies or vendors
+                                
+                                This will help reduce the result set size and improve performance.
+                                """)
+                            else:
+                                st.error(f"Error executing query: {error_msg}")
+                            return
                     
                     # Clear the loading container
                     st.empty()
