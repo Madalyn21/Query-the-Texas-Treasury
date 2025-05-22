@@ -1071,28 +1071,12 @@ def main():
                 if 'matching_vendors' not in st.session_state:
                     st.session_state.matching_vendors = []
                 
-                # Create columns for search input and clear button
-                search_col1, search_col2 = st.columns([3, 1])
-                
-                with search_col1:
-                    # Simple search input
-                    vendor_search = st.text_input(
-                        "Search for a vendor",
-                        help="Type to search for vendors",
-                        key="vendor_search_input"
-                    )
-                
-                with search_col2:
-                    # Clear button
-                    if st.button("Clear", key="clear_vendor"):
-                        # Clear all vendor-related session state
-                        st.session_state.selected_vendor = None
-                        st.session_state.filters['vendor'] = None
-                        st.session_state.vendor_display_limit = 15
-                        st.session_state.matching_vendors = []
-                        st.session_state.last_search = ""
-                        # Force a rerun to clear the search
-                        st.rerun()
+                # Simple search input with help text
+                vendor_search = st.text_input(
+                    "Search for a vendor",
+                    help="Type to search for vendors. Delete the text to clear your search.",
+                    key="vendor_search_input"
+                )
                 
                 # Handle vendor search and selection
                 if vendor_search:
