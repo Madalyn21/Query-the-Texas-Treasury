@@ -1067,9 +1067,11 @@ def main():
             with vendor_container:
                 # Initialize session state for vendor display limit if not exists
                 if 'vendor_display_limit' not in st.session_state:
-                    st.session_state.vendor_display_limit = 15
+                    st.session_state.vendor_display_limit = 150
                 if 'matching_vendors' not in st.session_state:
                     st.session_state.matching_vendors = []
+                if 'last_search' not in st.session_state:
+                    st.session_state.last_search = ""
                 
                 # Simple search input with help text
                 vendor_search = st.text_input(
@@ -1082,7 +1084,7 @@ def main():
                 if vendor_search:
                     try:
                         # Only perform search if we don't have results or search term changed
-                        if not st.session_state.matching_vendors or vendor_search != st.session_state.get('last_search', ''):
+                        if not st.session_state.matching_vendors or vendor_search != st.session_state.last_search:
                             # Read the vendor file with a specific encoding
                             vendors_df = pd.read_csv(
                                 vendor_file_path,
@@ -1105,7 +1107,6 @@ def main():
                             # Sort results and store in session state
                             st.session_state.matching_vendors = sorted(matching_vendors)
                             st.session_state.last_search = vendor_search
-                            st.session_state.vendor_display_limit = 15  # Reset display limit
                         
                         # Get total count
                         total_vendors = len(st.session_state.matching_vendors)
@@ -1129,13 +1130,6 @@ def main():
                                 st.session_state.selected_vendor = selected_vendor
                                 st.session_state.filters['vendor'] = selected_vendor
                                 st.success(f"Selected vendor: {selected_vendor}")
-                            
-                            # Show "Show More" button if there are more results
-                            if total_vendors > st.session_state.vendor_display_limit:
-                                if st.button("Show More Vendors"):
-                                    st.session_state.vendor_display_limit += 15
-                                    # No need to rerun, just update the display
-                                    st.experimental_rerun()
                         else:
                             st.info("No matching vendors found. Try different search terms.")
                             st.session_state.filters['vendor'] = None
@@ -1147,8 +1141,8 @@ def main():
                     # Clear vendor selection when search is empty
                     st.session_state.selected_vendor = None
                     st.session_state.filters['vendor'] = None
-                    st.session_state.vendor_display_limit = 15  # Reset display limit
                     st.session_state.matching_vendors = []  # Clear matching vendors
+                    st.session_state.last_search = ""  # Clear last search
         
         with col2:
             st.subheader("Query Actions")
