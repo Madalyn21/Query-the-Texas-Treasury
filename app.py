@@ -1085,11 +1085,13 @@ def main():
                 with search_col2:
                     # Clear button
                     if st.button("Clear", key="clear_vendor"):
+                        # Clear all vendor-related session state
                         st.session_state.selected_vendor = None
                         st.session_state.filters['vendor'] = None
-                        st.session_state.vendor_search_input = ""
-                        st.session_state.vendor_display_limit = 15  # Reset display limit
-                        st.session_state.matching_vendors = []  # Clear matching vendors
+                        st.session_state.vendor_display_limit = 15
+                        st.session_state.matching_vendors = []
+                        st.session_state.last_search = ""
+                        # Force a rerun to clear the search
                         st.rerun()
                 
                 # Handle vendor search and selection
