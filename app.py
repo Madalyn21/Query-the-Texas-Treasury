@@ -8,6 +8,7 @@ import sys
 import time
 import zipfile
 from datetime import datetime, timedelta
+import tempfile
 
 # Configure pandas before importing
 import warnings
@@ -457,18 +458,44 @@ def test_database_connection():
 def download_csv(df):
     """Convert DataFrame to CSV and create download button"""
     try:
-        # Convert DataFrame to CSV
-        csv = df.to_csv(index=False)
-        
-        # Create download button
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name="queried_data.csv",
-            mime="text/csv",
-            help="Click to download the queried data as a CSV file"
-        )
-        logger.info("CSV download button created successfully")
+        # Add download button for CSV
+        if not df.empty:
+            try:
+                # Create a temporary file to store the CSV
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.csv')
+                temp_file.close()
+                
+                # Write the DataFrame to CSV in chunks
+                chunk_size = 10000  # Process 10,000 rows at a time
+                total_rows = len(df)
+                
+                with open(temp_file.name, 'w', newline='', encoding='utf-8') as f:
+                    # Write header
+                    df.head(0).to_csv(f, index=False)
+                    
+                    # Write data in chunks
+                    for start in range(0, total_rows, chunk_size):
+                        end = min(start + chunk_size, total_rows)
+                        chunk = df.iloc[start:end]
+                        chunk.to_csv(f, index=False, header=False, mode='a')
+                
+                # Create download button
+                with open(temp_file.name, 'rb') as f:
+                    csv_data = f.read()
+                
+                # Clean up the temporary file
+                os.unlink(temp_file.name)
+                
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                    mime="text/csv",
+                    key="download_csv"
+                )
+            except Exception as e:
+                logger.error(f"Error creating CSV: {str(e)}")
+                st.error("Error creating CSV file. Please try again or contact support if the issue persists.")
     except Exception as e:
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
@@ -1034,89 +1061,100 @@ def main():
             # Vendor search
             st.subheader("Vendor Search")
             
-            # Initialize session state for vendor display limit if not exists
-            if 'vendor_display_limit' not in st.session_state:
-                st.session_state.vendor_display_limit = 15
+            # Create a container for vendor search
+            vendor_container = st.container()
             
-            # Simple search input
-            vendor_search = st.text_input(
-                "Search for a vendor",
-                help="Type to search for vendors",
-                key="vendor_search_input"
-            )
-            
-            # Clear button
-            if st.button("Clear Selection", key="clear_vendor"):
-                st.session_state.selected_vendor = None
-                st.session_state.filters['vendor'] = None
-                st.session_state.vendor_search_input = ""
-                st.session_state.vendor_display_limit = 15  # Reset display limit
-                st.rerun()
-            
-            # Handle vendor search and selection
-            if vendor_search:
-                try:
-                    # Read the vendor file with a specific encoding
-                    vendors_df = pd.read_csv(
-                        vendor_file_path,
-                        encoding='latin1',
-                        usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor'],
-                        on_bad_lines='skip'
+            with vendor_container:
+                # Initialize session state for vendor display limit if not exists
+                if 'vendor_display_limit' not in st.session_state:
+                    st.session_state.vendor_display_limit = 15
+                
+                # Create columns for search input and clear button
+                search_col1, search_col2 = st.columns([3, 1])
+                
+                with search_col1:
+                    # Simple search input
+                    vendor_search = st.text_input(
+                        "Search for a vendor",
+                        help="Type to search for vendors",
+                        key="vendor_search_input"
                     )
-                    
-                    # Get the correct column name
-                    vendor_column = 'Ven_NAME' if table_choice == "Payment Information" else 'Vendor'
-                    
-                    # Basic cleaning
-                    vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
-                    
-                    # Simple search
-                    matching_vendors = vendors_df[
-                        vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
-                    ][vendor_column].unique().tolist()
-                    
-                    # Sort results
-                    matching_vendors.sort()
-                    
-                    # Get total count
-                    total_vendors = len(matching_vendors)
-                    
-                    # Display current results
-                    current_vendors = matching_vendors[:st.session_state.vendor_display_limit]
-                    
-                    if current_vendors:
-                        # Show results count
-                        st.write(f"Showing {len(current_vendors)} of {total_vendors} matching vendors")
-                        
-                        selected_vendor = st.selectbox(
-                            "Select a vendor",
-                            options=[""] + current_vendors,
-                            index=0,
-                            key="vendor_select"
+                
+                with search_col2:
+                    # Clear button
+                    if st.button("Clear", key="clear_vendor"):
+                        st.session_state.selected_vendor = None
+                        st.session_state.filters['vendor'] = None
+                        st.session_state.vendor_search_input = ""
+                        st.session_state.vendor_display_limit = 15  # Reset display limit
+                        st.rerun()
+                
+                # Handle vendor search and selection
+                if vendor_search and len(vendor_search.strip()) > 0:  # Only proceed if there's actual search text
+                    try:
+                        # Read the vendor file with a specific encoding
+                        vendors_df = pd.read_csv(
+                            vendor_file_path,
+                            encoding='latin1',
+                            usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor'],
+                            on_bad_lines='skip'
                         )
                         
-                        if selected_vendor:
-                            st.session_state.selected_vendor = selected_vendor
-                            st.session_state.filters['vendor'] = selected_vendor
-                            st.success(f"Selected vendor: {selected_vendor}")
+                        # Get the correct column name
+                        vendor_column = 'Ven_NAME' if table_choice == "Payment Information" else 'Vendor'
                         
-                        # Show "Show More" button if there are more results
-                        if total_vendors > st.session_state.vendor_display_limit:
-                            if st.button("Show More Vendors"):
-                                st.session_state.vendor_display_limit += 15
-                                st.rerun()
-                    else:
-                        st.info("No matching vendors found. Try different search terms.")
-                        st.session_state.filters['vendor'] = None
+                        # Basic cleaning
+                        vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
                         
-                except Exception as e:
-                    logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
-                    st.error("Error searching vendors. Please try again.")
-            else:
-                # Clear vendor selection when search is empty
-                st.session_state.selected_vendor = None
-                st.session_state.filters['vendor'] = None
-                st.session_state.vendor_display_limit = 15  # Reset display limit
+                        # Simple search
+                        matching_vendors = vendors_df[
+                            vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
+                        ][vendor_column].unique().tolist()
+                        
+                        # Sort results
+                        matching_vendors.sort()
+                        
+                        # Get total count
+                        total_vendors = len(matching_vendors)
+                        
+                        # Only show results if we have matches
+                        if total_vendors > 0:
+                            # Display current results
+                            current_vendors = matching_vendors[:st.session_state.vendor_display_limit]
+                            
+                            # Show results count
+                            st.write(f"Found {total_vendors} matching vendors")
+                            
+                            # Create a selectbox for vendor selection
+                            selected_vendor = st.selectbox(
+                                "Select a vendor",
+                                options=[""] + current_vendors,
+                                index=0,
+                                key="vendor_select"
+                            )
+                            
+                            if selected_vendor:
+                                st.session_state.selected_vendor = selected_vendor
+                                st.session_state.filters['vendor'] = selected_vendor
+                                st.success(f"Selected vendor: {selected_vendor}")
+                            
+                            # Show "Show More" button if there are more results
+                            if total_vendors > st.session_state.vendor_display_limit:
+                                if st.button("Show More Vendors"):
+                                    st.session_state.vendor_display_limit += 15
+                                    st.rerun()
+                        else:
+                            st.info("No matching vendors found. Try different search terms.")
+                            st.session_state.filters['vendor'] = None
+                            
+                    except Exception as e:
+                        logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
+                        st.error("Error searching vendors. Please try again.")
+                else:
+                    # Clear vendor selection when search is empty
+                    st.session_state.selected_vendor = None
+                    st.session_state.filters['vendor'] = None
+                    st.session_state.vendor_display_limit = 15  # Reset display limit
         
         with col2:
             st.subheader("Query Actions")

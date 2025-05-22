@@ -55,12 +55,14 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     - fiscal_year: Filter by specific fiscal year (converts 4-digit to 2-digit)
     - fiscal_month: Filter by fiscal month
     - agency: Filter by agency name (case-insensitive)
+    - vendor: Filter by vendor name (case-insensitive)
     - appropriation_object: Filter by object title
     
     Contract Information filters:
     - fiscal_year: Filter by specific fiscal year (converts 4-digit to 2-digit)
     - fiscal_month: Filter by fiscal month (using 'fm' column)
     - agency: Filter by agency name (case-insensitive)
+    - vendor: Filter by vendor name (case-insensitive)
     - category: Filter by contract category
     - procurement_method: Filter by procurement method
     - status: Filter by contract status
@@ -102,6 +104,11 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             params['agency'] = filters['agency']
             logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
             
+        if filters.get('vendor'):
+            where_conditions.append("LOWER(p.vendor_name) = LOWER(:vendor)")
+            params['vendor'] = filters['vendor']
+            logger.info(f"Added vendor filter (case-insensitive): {filters['vendor']}")
+            
         if filters.get('appropriation_object'):
             where_conditions.append("p.object_title = :appropriation_object")
             params['appropriation_object'] = filters['appropriation_object']
@@ -127,6 +134,11 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             where_conditions.append("LOWER(c.agency) = LOWER(:agency)")
             params['agency'] = filters['agency']
             logger.info(f"Added agency filter (case-insensitive): {filters['agency']}")
+            
+        if filters.get('vendor'):
+            where_conditions.append("LOWER(c.vendor) = LOWER(:vendor)")
+            params['vendor'] = filters['vendor']
+            logger.info(f"Added vendor filter (case-insensitive): {filters['vendor']}")
             
         if filters.get('category'):
             where_conditions.append("c.category = :category")
