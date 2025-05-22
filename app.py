@@ -1254,7 +1254,7 @@ def main():
                                     st.session_state.db_engine
                                 )
                                 total_records = len(complete_df)
-                                st.info(f"Total records matching your filters: {total_records:,}")
+                                st.info(f"Showing {len(df)} records of {total_records:,} total records")
                             
                             # Display the dataframe
                             with st.spinner("Loading results..."):
@@ -1345,7 +1345,7 @@ def main():
                                                         st.session_state.db_engine
                                                     )
                                                     total_records = len(complete_df)
-                                                    st.info(f"Total records matching your filters: {total_records:,}")
+                                                    st.info(f"Showing {len(st.session_state['df'])} records of {total_records:,} total records")
                                             else:
                                                 st.warning("No more results to load.")
                                                 st.session_state.has_more_results = False
