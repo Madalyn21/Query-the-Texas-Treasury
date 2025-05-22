@@ -78,26 +78,27 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
         Tuple[text, Dict]: Updated query and parameters dictionary
     """
     logger.info(f"Adding filters for {table_choice}")
-    logger.info(f"Filters received: {filters}")
+    logger.info(f"Raw filters received: {filters}")
     
     # Start building the WHERE clause
     where_conditions = []
     
     if table_choice == "Payment Information":
         if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-            # Convert 4-digit years to 2-digit years
-            start_year = str(filters['fiscal_year_start'])[-2:]  # Get last 2 digits
-            end_year = str(filters['fiscal_year_end'])[-2:]      # Get last 2 digits
+            # Convert calendar year to fiscal year (subtract 1 from the year)
+            start_year = int(filters['fiscal_year_start']) - 1
+            end_year = int(filters['fiscal_year_end']) - 1
             where_conditions.append("p.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = start_year
-            params['fiscal_year_end'] = end_year
-            logger.info(f"Added fiscal year range filter: {start_year} to {end_year}")
+            params['fiscal_year_start'] = str(start_year)
+            params['fiscal_year_end'] = str(end_year)
+            logger.info(f"Payment Info - Added fiscal year range filter: {start_year} to {end_year}")
+            logger.info(f"Payment Info - Original fiscal year range: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
             where_conditions.append("p.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
-            logger.info(f"Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
+            logger.info(f"Payment Info - Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(p.agency_title) = LOWER(:agency)")
@@ -116,19 +117,20 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             
     elif table_choice == "Contract Information":
         if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-            # Convert 4-digit years to 2-digit years
-            start_year = str(filters['fiscal_year_start'])[-2:]  # Get last 2 digits
-            end_year = str(filters['fiscal_year_end'])[-2:]      # Get last 2 digits
+            # Convert calendar year to fiscal year (subtract 1 from the year)
+            start_year = int(filters['fiscal_year_start']) - 1
+            end_year = int(filters['fiscal_year_end']) - 1
             where_conditions.append("c.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = start_year
-            params['fiscal_year_end'] = end_year
-            logger.info(f"Added fiscal year range filter: {start_year} to {end_year}")
+            params['fiscal_year_start'] = str(start_year)
+            params['fiscal_year_end'] = str(end_year)
+            logger.info(f"Contract Info - Added fiscal year range filter: {start_year} to {end_year}")
+            logger.info(f"Contract Info - Original fiscal year range: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
             where_conditions.append("c.fm BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
-            logger.info(f"Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
+            logger.info(f"Contract Info - Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(c.agency) = LOWER(:agency)")
