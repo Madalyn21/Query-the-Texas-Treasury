@@ -1037,9 +1037,30 @@ def main():
             # Handle vendor search and selection
             if vendor_search:
                 try:
-                    vendors_df = pd.read_csv(vendor_file_path)
+                    # Try different encodings
+                    encodings = ['latin1', 'cp1252', 'iso-8859-1', 'utf-8']
+                    vendors_df = None
+                    
+                    for encoding in encodings:
+                        try:
+                            vendors_df = pd.read_csv(
+                                vendor_file_path,
+                                encoding=encoding,
+                                on_bad_lines='skip'  # Skip problematic lines
+                            )
+                            break  # If successful, break the loop
+                        except UnicodeDecodeError:
+                            continue  # Try next encoding
+                    
+                    if vendors_df is None:
+                        raise Exception("Could not read vendor file with any supported encoding")
+                    
                     vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
                     
+                    # Clean vendor names
+                    vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
+                    
+                    # Filter for matches
                     matching_vendors = vendors_df[
                         vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
                     ][vendor_column].unique().tolist()
@@ -1063,7 +1084,7 @@ def main():
                         st.session_state.filters['vendor'] = None
                 except Exception as e:
                     logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
-                    st.error("Error searching vendors. Please try again.")
+                    st.error("Error searching vendors. Please try again with different search terms.")
         
         with col2:
             st.subheader("Query Actions")

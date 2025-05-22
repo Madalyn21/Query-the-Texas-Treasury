@@ -66,8 +66,14 @@ def create_trend_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Char
         amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         
         # Determine fiscal year and month columns based on table choice
-        fiscal_year_col = 'fiscal year' if table_choice == "Payment Information" else 'fy'
+        fiscal_year_col = 'fiscal_year' if table_choice == "Payment Information" else 'fy'
         fiscal_month_col = 'fiscal_month' if table_choice == "Payment Information" else 'fm'
+        
+        # Verify columns exist
+        required_columns = [fiscal_year_col, fiscal_month_col, amount_column]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
         
         # Group by fiscal year and month, sum the amounts
         monthly_totals = df.groupby([fiscal_year_col, fiscal_month_col])[amount_column].sum().reset_index()
