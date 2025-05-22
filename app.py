@@ -1370,7 +1370,8 @@ def main():
                                             data=csv_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                                             mime="text/csv",
-                                            key="download_csv"
+                                            key=f"download_csv_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                            use_container_width=True  # Make button fill container width
                                         )
                                     
                                     with col2:
@@ -1396,7 +1397,8 @@ def main():
                                                 data=zip_buffer,
                                                 file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                                 mime="application/zip",
-                                                key="download_zip"
+                                                key=f"download_zip_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                                use_container_width=True  # Make button fill container width
                                             )
                                         except ImportError:
                                             # Fallback to CSV-only ZIP if openpyxl is not available
@@ -1412,7 +1414,8 @@ def main():
                                                 data=zip_buffer,
                                                 file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                                 mime="application/zip",
-                                                key="download_zip"
+                                                key=f"download_zip_csv_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                                use_container_width=True  # Make button fill container width
                                             )
                                             st.info("Excel format not available. Install openpyxl package for Excel support.")
                                     
@@ -1435,7 +1438,7 @@ def main():
                                     
                                     # Download section
                                     st.write("### Download Options")
-                                    download_col1, download_col2 = st.columns(2)
+                                    download_col1, download_col2 = st.columns([1, 1])  # Equal width columns
                                     
                                     with download_col1:
                                         # CSV Download button
@@ -1445,7 +1448,8 @@ def main():
                                             data=csv_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                                             mime="text/csv",
-                                            key="download_csv"
+                                            key=f"download_csv_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                            use_container_width=True  # Make button fill container width
                                         )
                                     
                                     with download_col2:
@@ -1471,7 +1475,8 @@ def main():
                                                 data=zip_buffer,
                                                 file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                                 mime="application/zip",
-                                                key="download_zip"
+                                                key=f"download_zip_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                                use_container_width=True  # Make button fill container width
                                             )
                                         except ImportError:
                                             # Fallback to CSV-only ZIP if openpyxl is not available
@@ -1487,7 +1492,8 @@ def main():
                                                 data=zip_buffer,
                                                 file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                                 mime="application/zip",
-                                                key="download_zip"
+                                                key=f"download_zip_csv_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
+                                                use_container_width=True  # Make button fill container width
                                             )
                                             st.info("Excel format not available. Install openpyxl package for Excel support.")
                                 
