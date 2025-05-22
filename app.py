@@ -1198,12 +1198,28 @@ def main():
                     st.session_state.current_page = 1
                     st.session_state.has_more_results = False
                     
-                    # Get database connection with spinner
+                    # Get database connection with spinner and better error handling
                     with st.spinner('Connecting to database...'):
-                        engine = get_db_connection()
-                        # Store the engine in session state
-                        st.session_state.db_engine = engine
-                        logger.info("Database connection established")
+                        try:
+                            engine = get_db_connection()
+                            # Store the engine in session state
+                            st.session_state.db_engine = engine
+                            logger.info("Database connection established")
+                        except Exception as db_error:
+                            error_msg = str(db_error)
+                            logger.error(f"Database connection error: {error_msg}", exc_info=True)
+                            if "502" in error_msg:
+                                st.error("""
+                                Unable to connect to the database server. This could be due to:
+                                1. The database server is temporarily unavailable
+                                2. Network connectivity issues
+                                3. Server maintenance
+                                
+                                Please try again in a few minutes. If the problem persists, contact support.
+                                """)
+                            else:
+                                st.error(f"Database connection error: {error_msg}")
+                            return
                     
                     # Get filtered data using the query utilities with spinner
                     with st.spinner('Executing query... This may take a few moments.'):
@@ -1229,6 +1245,16 @@ def main():
                         try:
                             # Display results count
                             st.write(f"Showing {len(df)} records")
+                            
+                            # Get total count from complete data
+                            with st.spinner('Calculating total records...'):
+                                complete_df = get_complete_filtered_data(
+                                    st.session_state.filters, 
+                                    table_choice, 
+                                    st.session_state.db_engine
+                                )
+                                total_records = len(complete_df)
+                                st.info(f"Total records matching your filters: {total_records:,}")
                             
                             # Display the dataframe
                             with st.spinner("Loading results..."):
@@ -1279,7 +1305,7 @@ def main():
                             with col3:
                                 # Add Load More button if there are more results
                                 if st.session_state.has_more_results:
-                                    if st.button("Load 150 More", use_container_width=True):
+                                    if st.button("Load 150 More", use_container_width=True, key="load_more_button"):
                                         try:
                                             # Store current state
                                             current_df = st.session_state['df']
@@ -1307,6 +1333,7 @@ def main():
                                             else:
                                                 st.warning("No more results to load.")
                                                 st.session_state.has_more_results = False
+                                                st.session_state.current_page -= 1  # Reset page number if no more results
                                         except Exception as e:
                                             logger.error(f"Error loading more results: {str(e)}", exc_info=True)
                                             st.error(f"Error loading more results: {str(e)}")
