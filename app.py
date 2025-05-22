@@ -1151,10 +1151,6 @@ def main():
                             # Display results count
                             st.write(f"Showing {len(df)} records")
                             
-                            # Display the dataframe
-                            with st.spinner("Loading results..."):
-                                st.dataframe(df, use_container_width=True)
-                            
                             # Add Load More button if there are more results
                             if st.session_state.has_more_results:
                                 if st.button("Load 150 More"):
@@ -1267,35 +1263,39 @@ def main():
     with st.container():
         st.subheader("Visualization")
         
-        # Create tabs for different visualizations
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "Payment Distribution", 
-            "Trend Analysis", 
-            "Vendor Analysis",
-            "Category Analysis"
-        ])
-        
-        # Generate all visualizations
-        try:
-            visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
+        # Only show visualizations if we have data
+        if 'df' in st.session_state and not st.session_state['df'].empty:
+            # Create tabs for different visualizations
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "Payment Distribution", 
+                "Trend Analysis", 
+                "Vendor Analysis",
+                "Category Analysis"
+            ])
             
-            with tab1:
-                st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
-            
-            with tab2:
-                st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-            
-            with tab3:
-                st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-            
-            with tab4:
-                if 'category_analysis' in visualizations:
-                    st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-                else:
-                    st.info("Category analysis is only available for Contract Information.")
-                    
-        except Exception as e:
-            st.error(f"Error generating visualizations: {str(e)}")
+            # Generate all visualizations
+            try:
+                visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
+                
+                with tab1:
+                    st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+                
+                with tab2:
+                    st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+                
+                with tab3:
+                    st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+                
+                with tab4:
+                    if 'category_analysis' in visualizations:
+                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+                    else:
+                        st.info("Category analysis is only available for Contract Information.")
+                        
+            except Exception as e:
+                st.error(f"Error generating visualizations: {str(e)}")
+        else:
+            st.info("Run a query to see visualizations")
 
     # AI Analysis Container (only visible after query)
     if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
@@ -1313,7 +1313,7 @@ def main():
             """, unsafe_allow_html=True)
             
             st.header("AI Analysis")
-            st.info("AI-powered analysis and insights will appear here.")
+            st.info("AI-powered analysis and insights coming soon!")
 
     # Logos Container (always visible)
     with st.container():
