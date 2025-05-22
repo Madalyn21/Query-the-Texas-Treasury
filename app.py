@@ -1245,13 +1245,13 @@ def main():
                                             st.session_state.db_engine
                                         )
                                         csv_data = complete_df.to_csv(index=False)
-                                        if st.download_button(
+                                        st.download_button(
                                             label="Download CSV",
                                             data=csv_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                                             mime='text/csv',
-                                        ):
-                                            st.success("CSV file downloaded successfully!")
+                                            key="download_csv_button"
+                                        )
                                 except Exception as e:
                                     logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
                                     st.error("Error preparing CSV download. Please try again.")
@@ -1265,13 +1265,13 @@ def main():
                                             st.session_state.db_engine
                                         )
                                         zip_data = df_to_zip(complete_df)
-                                        if st.download_button(
+                                        st.download_button(
                                             label="Download ZIP",
                                             data=zip_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                             mime='application/zip',
-                                        ):
-                                            st.success("ZIP file downloaded successfully!")
+                                            key="download_zip_button"
+                                        )
                                 except Exception as e:
                                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
                                     st.error("Error preparing ZIP download. Please try again.")
@@ -1355,13 +1355,13 @@ def main():
                             st.session_state.db_engine
                         )
                         csv_data = complete_df.to_csv(index=False)
-                        if st.download_button(
+                        st.download_button(
                             label="Download CSV",
                             data=csv_data,
                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                             mime='text/csv',
-                        ):
-                            st.success("CSV file downloaded successfully!")
+                            key="download_csv_button"
+                        )
                 except Exception as e:
                     logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
                     st.error("Error preparing CSV download. Please try again.")
@@ -1375,13 +1375,13 @@ def main():
                             st.session_state.db_engine
                         )
                         zip_data = df_to_zip(complete_df)
-                        if st.download_button(
+                        st.download_button(
                             label="Download ZIP",
                             data=zip_data,
                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                             mime='application/zip',
-                        ):
-                            st.success("ZIP file downloaded successfully!")
+                            key="download_zip_button"
+                        )
                 except Exception as e:
                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
                     st.error("Error preparing ZIP download. Please try again.")
