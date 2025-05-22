@@ -171,20 +171,13 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
 def check_table_accessibility(engine) -> Dict[str, bool]:
     """
     Verifies if the database tables exist and are accessible.
-    
-    This function performs several checks:
-    1. Checks if each table exists in the database
-    2. Retrieves and logs the table structure (column names and types)
-    3. Attempts to execute a simple query on each table
-    4. Logs detailed information about table accessibility
+    Uses efficient table existence checks without counting records.
     
     Args:
         engine: SQLAlchemy engine instance for database connection
         
     Returns:
-        Dict[str, bool]: Dictionary indicating which tables are accessible:
-            - 'paymentinformation': True if payment information table is accessible
-            - 'contractinfo': True if contract information table is accessible
+        Dict[str, bool]: Dictionary indicating which tables are accessible
     """
     accessibility = {
         'paymentinformation': False,
@@ -213,15 +206,7 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 """)
                 payment_structure = connection.execute(payment_columns).fetchall()
                 logger.info(f"Paymentinformation table structure: {payment_structure}")
-                
-                # Try to execute a simple query on paymentinformation
-                test_payment = text("SELECT COUNT(*) FROM paymentinformation LIMIT 1")
-                try:
-                    payment_count = connection.execute(test_payment).scalar()
-                    logger.info(f"Payment Information table is accessible. Sample count: {payment_count}")
-                    accessibility['paymentinformation'] = True
-                except Exception as e:
-                    logger.error(f"Payment Information table exists but is not accessible: {str(e)}")
+                accessibility['paymentinformation'] = True
             else:
                 logger.warning("Payment Information table does not exist")
             
@@ -245,15 +230,7 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 """)
                 contract_structure = connection.execute(contract_columns).fetchall()
                 logger.info(f"Contractinfo table structure: {contract_structure}")
-                
-                # Try to execute a simple query on contractinfo
-                test_contract = text("SELECT COUNT(*) FROM contractinfo LIMIT 1")
-                try:
-                    contract_count = connection.execute(test_contract).scalar()
-                    logger.info(f"Contract Information table is accessible. Sample count: {contract_count}")
-                    accessibility['contractinfo'] = True
-                except Exception as e:
-                    logger.error(f"Contract Information table exists but is not accessible: {str(e)}")
+                accessibility['contractinfo'] = True
             else:
                 logger.warning("Contract Information table does not exist")
             
@@ -272,6 +249,30 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
     except Exception as e:
         logger.error(f"Error checking table accessibility: {str(e)}")
         return accessibility
+
+def get_approximate_count(table_name: str, engine) -> int:
+    """
+    Gets an approximate count of records in a table using PostgreSQL's reltuples.
+    This is much faster than COUNT(*) for large tables.
+    
+    Args:
+        table_name (str): Name of the table to count
+        engine: SQLAlchemy engine instance
+        
+    Returns:
+        int: Approximate number of records in the table
+    """
+    try:
+        with engine.connect() as connection:
+            count_query = text(f"""
+                SELECT reltuples::bigint AS estimate
+                FROM pg_class
+                WHERE relname = '{table_name}';
+            """)
+            return connection.execute(count_query).scalar() or 0
+    except Exception as e:
+        logger.error(f"Error getting approximate count: {str(e)}")
+        return 0
 
 def execute_query(query: text, params: Dict, engine, page_size: int = 150, page: int = 1) -> Tuple[List[Dict], bool]:
     """

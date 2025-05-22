@@ -9,6 +9,7 @@ import time
 import zipfile
 from datetime import datetime, timedelta
 import tempfile
+from io import BytesIO
 
 # Configure pandas before importing
 import warnings
@@ -32,7 +33,8 @@ from query_utils import (
     get_filtered_data, 
     check_table_accessibility, 
     get_complete_filtered_data,
-    get_complete_data
+    get_complete_data,
+    get_approximate_count
 )
 from db_config import get_db_connection
 
@@ -1273,141 +1275,179 @@ def main():
                         logger.info(f"- engine: {engine}")
                         
                         try:
-                            # Get initial page of results
-                            df, has_more = get_filtered_data(filter_payload, table_choice, engine)
+                            # Get approximate count if needed
+                            table_name = table_choice.lower().replace(' ', '')
+                            approximate_count = get_approximate_count(table_name, engine)
                             
-                            # Get total count using a separate count query
-                            with st.spinner('Calculating total records...'):
-                                try:
-                                    # Build count query
-                                    count_query = text(f"""
-                                        SELECT COUNT(*) as total_count
-                                        FROM {table_choice.lower().replace(' ', '')}
-                                        WHERE 1=1
-                                    """)
-                                    
-                                    # Add filters to count query
-                                    if filter_payload:
-                                        where_conditions = []
-                                        for key, value in filter_payload.items():
-                                            if key == 'fiscal_year_start' and 'fiscal_year_end' in filter_payload:
-                                                where_conditions.append(f"fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-                                            elif key == 'fiscal_month_start' and 'fiscal_month_end' in filter_payload:
-                                                where_conditions.append(f"fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
-                                            elif key in ['agency', 'vendor']:
-                                                where_conditions.append(f"LOWER({key}) = LOWER(:{key})")
-                                            else:
-                                                where_conditions.append(f"{key} = :{key}")
-                                        
-                                        if where_conditions:
-                                            count_query = text(str(count_query) + " AND " + " AND ".join(where_conditions))
-                                    
-                                    # Execute count query
-                                    with engine.connect() as connection:
-                                        total_records = connection.execute(count_query, filter_payload).scalar()
-                                    
-                                    st.info(f"Showing {len(df)} records of {total_records:,} total records")
-                                except Exception as count_error:
-                                    logger.error(f"Error getting total count: {str(count_error)}")
-                                    st.info(f"Showing {len(df)} records")
+                            # Execute the main query with chunking
+                            df, has_more = get_filtered_data(filter_payload, table_choice, engine, page=1)
                             
-                            # Check if the result is too large
-                            if len(df) > 100000:  # If more than 100k rows
-                                st.warning("""
-                                ⚠️ **Large Result Set**
+                            if not df.empty:
+                                # Store the data in session state
+                                st.session_state.current_data = df
+                                st.session_state.has_more_results = has_more
+                                st.session_state.current_page = 1
                                 
-                                Your query returned a large number of records. For better performance:
-                                1. Try adding more specific filters
-                                2. Narrow down the date range
-                                3. Select specific agencies or vendors
+                                # Display the dataframe
+                                with st.spinner("Loading results..."):
+                                    # Calculate total rows and columns
+                                    total_rows = len(df)
+                                    total_cols = len(df.columns)
+                                    
+                                    # Display summary statistics
+                                    st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
+                                    
+                                    # Add data preview options
+                                    preview_options = st.radio(
+                                        "Data Preview Options",
+                                        ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
+                                        horizontal=True
+                                    )
+                                    
+                                    # Select data based on preview option
+                                    if preview_options == "First 1000 rows":
+                                        display_df = df.head(1000)
+                                    elif preview_options == "Last 1000 rows":
+                                        display_df = df.tail(1000)
+                                    else:
+                                        display_df = df.sample(min(1000, total_rows))
+                                    
+                                    # Add column selection
+                                    selected_columns = st.multiselect(
+                                        "Select columns to display",
+                                        options=df.columns.tolist(),
+                                        default=df.columns.tolist()[:5]  # Show first 5 columns by default
+                                    )
+                                    
+                                    if selected_columns:
+                                        display_df = display_df[selected_columns]
+                                    
+                                    # Add sorting options
+                                    sort_column = st.selectbox(
+                                        "Sort by column",
+                                        options=selected_columns,
+                                        index=0
+                                    )
+                                    
+                                    sort_order = st.radio(
+                                        "Sort order",
+                                        ["Ascending", "Descending"],
+                                        horizontal=True
+                                    )
+                                    
+                                    if sort_column:
+                                        display_df = display_df.sort_values(
+                                            by=sort_column,
+                                            ascending=(sort_order == "Ascending")
+                                        )
+                                    
+                                    # Display the data with optimized settings
+                                    st.dataframe(
+                                        display_df,
+                                        use_container_width=True,
+                                        height=400,  # Fixed height for better performance
+                                        hide_index=True,  # Hide index for cleaner display
+                                        column_config={
+                                            col: st.column_config.Column(
+                                                width="medium",
+                                                help=f"Column: {col}"
+                                            ) for col in display_df.columns
+                                        }
+                                    )
+                                    
+                                    # Add data summary
+                                    with st.expander("Data Summary"):
+                                        # Basic statistics
+                                        st.write("### Basic Statistics")
+                                        st.write(display_df.describe())
+                                        
+                                        # Missing values
+                                        st.write("### Missing Values")
+                                        missing_data = display_df.isnull().sum()
+                                        st.write(missing_data[missing_data > 0])
+                                        
+                                        # Data types
+                                        st.write("### Data Types")
+                                        st.write(display_df.dtypes)
+                                    
+                                    # Add download options
+                                    st.write("### Download Options")
+                                    col1, col2 = st.columns(2)
+                                    
+                                    with col1:
+                                        if st.button("Download CSV", key="download_csv"):
+                                            with st.spinner('Preparing CSV download...'):
+                                                try:
+                                                    # Process data in chunks
+                                                    chunk_size = 10000
+                                                    chunks = []
+                                                    page = 1
+                                                    while has_more:
+                                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
+                                                        chunks.append(df_chunk)
+                                                        page += 1
+                                                    
+                                                    # Combine chunks and create download
+                                                    download_df = pd.concat(chunks, ignore_index=True)
+                                                    csv_data = download_df.to_csv(index=False)
+                                                    st.download_button(
+                                                        label="Click to Download CSV",
+                                                        data=csv_data,
+                                                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                                                        mime="text/csv",
+                                                        key="download_csv_data"
+                                                    )
+                                                except Exception as e:
+                                                    logger.error(f"Error preparing CSV download: {str(e)}")
+                                                    st.error("Error preparing CSV download. Please try again.")
+                                    
+                                    with col2:
+                                        if st.button("Download ZIP", key="download_zip"):
+                                            with st.spinner('Preparing ZIP download...'):
+                                                try:
+                                                    # Process data in chunks
+                                                    chunk_size = 10000
+                                                    chunks = []
+                                                    page = 1
+                                                    while has_more:
+                                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
+                                                        chunks.append(df_chunk)
+                                                        page += 1
+                                                    
+                                                    # Combine chunks and create download
+                                                    download_df = pd.concat(chunks, ignore_index=True)
+                                                    
+                                                    # Create ZIP file
+                                                    zip_buffer = BytesIO()
+                                                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                        # Add CSV to ZIP
+                                                        csv_data = download_df.to_csv(index=False)
+                                                        zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                                        
+                                                        # Add Excel to ZIP
+                                                        excel_buffer = BytesIO()
+                                                        download_df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                                                        zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
+                                                    
+                                                    # Prepare ZIP for download
+                                                    zip_buffer.seek(0)
+                                                    st.download_button(
+                                                        label="Click to Download ZIP",
+                                                        data=zip_buffer,
+                                                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                        mime="application/zip",
+                                                        key="download_zip_data"
+                                                    )
+                                                except Exception as e:
+                                                    logger.error(f"Error preparing ZIP download: {str(e)}")
+                                                    st.error("Error preparing ZIP download. Please try again.")
+                            else:
+                                st.warning("No data found matching your criteria.")
                                 
-                                The results will still be displayed, but the application may be slower.
-                                """)
-                            
-                            # Store the current dataframe
-                            st.session_state['df'] = df
-                            st.session_state.has_more_results = has_more
-                            
-                            # Display the dataframe
-                            with st.spinner("Loading results..."):
-                                st.dataframe(df, use_container_width=True)
-                            
-                            # Download buttons in a row
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                try:
-                                    with st.spinner('Preparing CSV download...'):
-                                        # Use chunked data retrieval for CSV
-                                        chunk_size = 10000  # Process 10,000 rows at a time
-                                        total_rows = 0
-                                        chunks = []
-                                        
-                                        # Get first chunk
-                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=1)
-                                        chunks.append(df_chunk)
-                                        total_rows += len(df_chunk)
-                                        
-                                        # Continue getting chunks until we have all data
-                                        page = 2
-                                        while has_more:
-                                            df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
-                                            chunks.append(df_chunk)
-                                            total_rows += len(df_chunk)
-                                            page += 1
-                                        
-                                        # Combine all chunks
-                                        download_df = pd.concat(chunks, ignore_index=True)
-                                        csv_data = download_df.to_csv(index=False)
-                                        
-                                        st.download_button(
-                                            label="Download CSV",
-                                            data=csv_data,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                                            mime='text/csv',
-                                            key="download_csv_button_1"
-                                        )
-                                except Exception as e:
-                                    logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
-                                    st.error("Error preparing CSV download. Please try again.")
-                            
-                            with col2:
-                                try:
-                                    with st.spinner('Preparing ZIP download...'):
-                                        # Use chunked data retrieval for ZIP
-                                        chunk_size = 10000  # Process 10,000 rows at a time
-                                        total_rows = 0
-                                        chunks = []
-                                        
-                                        # Get first chunk
-                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=1)
-                                        chunks.append(df_chunk)
-                                        total_rows += len(df_chunk)
-                                        
-                                        # Continue getting chunks until we have all data
-                                        page = 2
-                                        while has_more:
-                                            df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
-                                            chunks.append(df_chunk)
-                                            total_rows += len(df_chunk)
-                                            page += 1
-                                        
-                                        # Combine all chunks
-                                        download_df = pd.concat(chunks, ignore_index=True)
-                                        zip_data = df_to_zip(download_df)
-                                        
-                                        st.download_button(
-                                            label="Download ZIP",
-                                            data=zip_data,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                                            mime='application/zip',
-                                            key="download_zip_button_1"
-                                        )
-                                except Exception as e:
-                                    logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
-                                    st.error("Error preparing ZIP download. Please try again.")
                         except Exception as e:
-                            logger.error(f"Error executing query: {str(e)}", exc_info=True)
-                            st.error("Error executing query. Please try again.")
+                            error_msg = f"Error executing query: {str(e)}"
+                            st.error(error_msg)
+                            logger.error(f"Query execution error: {str(e)}", exc_info=True)
                 except Exception as e:
                     logger.error(f"Error executing query: {str(e)}", exc_info=True)
                     st.error("Error executing query. Please try again.")
