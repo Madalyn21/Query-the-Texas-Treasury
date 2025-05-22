@@ -1193,8 +1193,15 @@ def main():
                 # Reset filters before preparing new query
                 reset_filters()
                 
-                # Initialize selected_vendor
+                # Initialize all filter variables
                 selected_vendor = None
+                selected_category = "All"
+                selected_procurement_method = "All"
+                selected_status = "All"
+                selected_subject = "All"
+                selected_appropriation = "All"
+                selected_payment_source = "All"
+                selected_appropriation_object = "All"
                 
                 # Update filters with current selections
                 if selected_agency != "All":
