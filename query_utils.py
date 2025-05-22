@@ -88,7 +88,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the original fiscal year range
             logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
             
-            # Convert 4-digit year to 2-digit year by removing first two digits
+            # Convert 4-digit year to 2-digit year
             start_year = str(filters['fiscal_year_start'])[-2:]
             end_year = str(filters['fiscal_year_end'])[-2:]
             
@@ -127,7 +127,7 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the original fiscal year range
             logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
             
-            # Convert 4-digit year to 2-digit year by removing first two digits
+            # Convert 4-digit year to 2-digit year
             start_year = str(filters['fiscal_year_start'])[-2:]
             end_year = str(filters['fiscal_year_end'])[-2:]
             
@@ -223,15 +223,26 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 payment_structure = connection.execute(payment_columns).fetchall()
                 logger.info(f"Paymentinformation table structure: {payment_structure}")
                 
-                # Check actual fiscal year values
+                # Check actual fiscal year values with counts
                 fiscal_year_check = text("""
-                    SELECT DISTINCT fiscal_year 
+                    SELECT fiscal_year, COUNT(*) as count
                     FROM paymentinformation 
                     WHERE fiscal_year IS NOT NULL 
+                    GROUP BY fiscal_year
                     ORDER BY fiscal_year;
                 """)
-                fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_check)]
-                logger.info(f"Actual fiscal years in paymentinformation: {fiscal_years}")
+                fiscal_years = connection.execute(fiscal_year_check).fetchall()
+                logger.info(f"Actual fiscal years in paymentinformation with counts: {fiscal_years}")
+                
+                # Check fiscal year data type
+                fiscal_year_type = text("""
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'paymentinformation' 
+                    AND column_name = 'fiscal_year';
+                """)
+                fiscal_year_type_result = connection.execute(fiscal_year_type).scalar()
+                logger.info(f"Fiscal year data type in paymentinformation: {fiscal_year_type_result}")
                 
                 accessibility['paymentinformation'] = True
             else:
@@ -258,15 +269,26 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 contract_structure = connection.execute(contract_columns).fetchall()
                 logger.info(f"Contractinfo table structure: {contract_structure}")
                 
-                # Check actual fiscal year values
+                # Check actual fiscal year values with counts
                 fiscal_year_check = text("""
-                    SELECT DISTINCT fiscal_year 
+                    SELECT fiscal_year, COUNT(*) as count
                     FROM contractinfo 
                     WHERE fiscal_year IS NOT NULL 
+                    GROUP BY fiscal_year
                     ORDER BY fiscal_year;
                 """)
-                fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_check)]
-                logger.info(f"Actual fiscal years in contractinfo: {fiscal_years}")
+                fiscal_years = connection.execute(fiscal_year_check).fetchall()
+                logger.info(f"Actual fiscal years in contractinfo with counts: {fiscal_years}")
+                
+                # Check fiscal year data type
+                fiscal_year_type = text("""
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'contractinfo' 
+                    AND column_name = 'fiscal_year';
+                """)
+                fiscal_year_type_result = connection.execute(fiscal_year_type).scalar()
+                logger.info(f"Fiscal year data type in contractinfo: {fiscal_year_type_result}")
                 
                 accessibility['contractinfo'] = True
             else:
