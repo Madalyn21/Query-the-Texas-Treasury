@@ -1055,7 +1055,16 @@ def main():
                     if vendors_df is None:
                         raise Exception("Could not read vendor file with any supported encoding")
                     
-                    vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
+                    # Determine the correct column name based on the file
+                    if table_choice == "Payment Information":
+                        vendor_column = 'Ven_NAME'  # Column name in payments_ven_namelist.csv
+                    else:
+                        vendor_column = 'Vendor'    # Column name in contract_vendor_list.csv
+                    
+                    # Verify the column exists
+                    if vendor_column not in vendors_df.columns:
+                        available_columns = vendors_df.columns.tolist()
+                        raise ValueError(f"Vendor column '{vendor_column}' not found. Available columns: {available_columns}")
                     
                     # Clean vendor names
                     vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
@@ -1084,7 +1093,7 @@ def main():
                         st.session_state.filters['vendor'] = None
                 except Exception as e:
                     logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
-                    st.error("Error searching vendors. Please try again with different search terms.")
+                    st.error(f"Error searching vendors: {str(e)}")
         
         with col2:
             st.subheader("Query Actions")

@@ -118,6 +118,15 @@ def create_vendor_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Cha
         amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         vendor_column = 'vendor_name' if table_choice == "Payment Information" else 'vendor'
         
+        # Verify columns exist
+        required_columns = [vendor_column, amount_column]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
+        
+        # Convert amount column to numeric, handling any errors
+        df[amount_column] = pd.to_numeric(df[amount_column], errors='coerce')
+        
         # Group by vendor and sum the amounts, get top 10
         vendor_totals = df.groupby(vendor_column)[amount_column].sum().reset_index()
         vendor_totals = vendor_totals.nlargest(10, amount_column)
