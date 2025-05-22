@@ -1243,9 +1243,6 @@ def main():
                     # Display results if they exist
                     if 'df' in st.session_state and not st.session_state['df'].empty:
                         try:
-                            # Display results count
-                            st.write(f"Showing {len(df)} records")
-                            
                             # Get total count from complete data
                             with st.spinner('Calculating total records...'):
                                 complete_df = get_complete_filtered_data(
@@ -1260,8 +1257,8 @@ def main():
                             with st.spinner("Loading results..."):
                                 st.dataframe(st.session_state['df'], use_container_width=True)
                             
-                            # Download buttons and Load More button in a row
-                            col1, col2, col3 = st.columns(3)
+                            # Download buttons in a row
+                            col1, col2 = st.columns(2)
                             with col1:
                                 try:
                                     with st.spinner('Preparing CSV download...'):
@@ -1301,44 +1298,6 @@ def main():
                                 except Exception as e:
                                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
                                     st.error("Error preparing ZIP download. Please try again.")
-                            
-                            with col3:
-                                # Add Load More button if there are more results
-                                if st.session_state.has_more_results:
-                                    if st.button("Load 150 More", use_container_width=True, key="load_more_button"):
-                                        try:
-                                            # Store current state
-                                            current_df = st.session_state['df']
-                                            current_filters = st.session_state.filters.copy()
-                                            
-                                            # Increment page number
-                                            st.session_state.current_page += 1
-                                            
-                                            # Get next page of results using the stored engine
-                                            with st.spinner('Loading more results...'):
-                                                next_df, has_more = get_filtered_data(
-                                                    current_filters, 
-                                                    table_choice, 
-                                                    st.session_state.db_engine, 
-                                                    page=st.session_state.current_page
-                                                )
-                                            
-                                            if not next_df.empty:
-                                                # Append new results to existing dataframe
-                                                st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
-                                                st.session_state.has_more_results = has_more
-                                                st.success(f"Loaded {len(next_df)} more records!")
-                                                # Force a rerun to update the display
-                                                st.rerun()
-                                            else:
-                                                st.warning("No more results to load.")
-                                                st.session_state.has_more_results = False
-                                                st.session_state.current_page -= 1  # Reset page number if no more results
-                                        except Exception as e:
-                                            logger.error(f"Error loading more results: {str(e)}", exc_info=True)
-                                            st.error(f"Error loading more results: {str(e)}")
-                                            # Reset page number on error
-                                            st.session_state.current_page -= 1
                         except Exception as e:
                             logger.error(f"Error displaying results: {str(e)}", exc_info=True)
                             st.error("Error displaying results. Please try again.")
