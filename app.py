@@ -1337,9 +1337,28 @@ def main():
                             with col1:
                                 try:
                                     with st.spinner('Preparing CSV download...'):
-                                        # Use get_complete_filtered_data for download
-                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
+                                        # Use chunked data retrieval for CSV
+                                        chunk_size = 10000  # Process 10,000 rows at a time
+                                        total_rows = 0
+                                        chunks = []
+                                        
+                                        # Get first chunk
+                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=1)
+                                        chunks.append(df_chunk)
+                                        total_rows += len(df_chunk)
+                                        
+                                        # Continue getting chunks until we have all data
+                                        page = 2
+                                        while has_more:
+                                            df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
+                                            chunks.append(df_chunk)
+                                            total_rows += len(df_chunk)
+                                            page += 1
+                                        
+                                        # Combine all chunks
+                                        download_df = pd.concat(chunks, ignore_index=True)
                                         csv_data = download_df.to_csv(index=False)
+                                        
                                         st.download_button(
                                             label="Download CSV",
                                             data=csv_data,
@@ -1354,9 +1373,28 @@ def main():
                             with col2:
                                 try:
                                     with st.spinner('Preparing ZIP download...'):
-                                        # Use get_complete_filtered_data for download
-                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
+                                        # Use chunked data retrieval for ZIP
+                                        chunk_size = 10000  # Process 10,000 rows at a time
+                                        total_rows = 0
+                                        chunks = []
+                                        
+                                        # Get first chunk
+                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=1)
+                                        chunks.append(df_chunk)
+                                        total_rows += len(df_chunk)
+                                        
+                                        # Continue getting chunks until we have all data
+                                        page = 2
+                                        while has_more:
+                                            df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
+                                            chunks.append(df_chunk)
+                                            total_rows += len(df_chunk)
+                                            page += 1
+                                        
+                                        # Combine all chunks
+                                        download_df = pd.concat(chunks, ignore_index=True)
                                         zip_data = df_to_zip(download_df)
+                                        
                                         st.download_button(
                                             label="Download ZIP",
                                             data=zip_data,
