@@ -1391,60 +1391,54 @@ def main():
         st.subheader("Visualization")
         st.info("Visualization Function Coming Soon!")
         
-        # Comment out the visualization code but keep it for future use
-        """
-        # Only show visualizations if we have data
-        if 'df' in st.session_state and not st.session_state['df'].empty:
-            # Create tabs for different visualizations
-            tab1, tab2, tab3, tab4 = st.tabs([
-                "Payment Distribution", 
-                "Trend Analysis", 
-                "Vendor Analysis",
-                "Category Analysis"
-            ])
-            
-            # Generate all visualizations
-            try:
-                visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
-                
-                with tab1:
-                    st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
-                
-                with tab2:
-                    st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-                
-                with tab3:
-                    st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-                
-                with tab4:
-                    if 'category_analysis' in visualizations:
-                        st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-                    else:
-                        st.info("Category analysis is only available for Contract Information.")
-                        
-            except Exception as e:
-                st.error(f"Error generating visualizations: {str(e)}")
-        else:
-            st.info("Run a query to see visualizations")
-        """
+        # Visualization code is temporarily disabled
+        # if 'df' in st.session_state and not st.session_state['df'].empty:
+        #     tab1, tab2, tab3, tab4 = st.tabs([
+        #         "Payment Distribution", 
+        #         "Trend Analysis", 
+        #         "Vendor Analysis",
+        #         "Category Analysis"
+        #     ])
+        #     
+        #     try:
+        #         visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
+        #         
+        #         with tab1:
+        #             st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
+        #         
+        #         with tab2:
+        #             st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
+        #         
+        #         with tab3:
+        #             st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
+        #         
+        #         with tab4:
+        #             if 'category_analysis' in visualizations:
+        #                 st.altair_chart(visualizations['category_analysis'], use_container_width=True)
+        #             else:
+        #                 st.info("Category analysis is only available for Contract Information.")
+        #                 
+        #     except Exception as e:
+        #         st.error(f"Error generating visualizations: {str(e)}")
+        # else:
+        #     st.info("Run a query to see visualizations")
 
-    # AI Analysis Container (only visible after query)
-    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
-        with st.container():
-            st.markdown("""
-                <style>
-                .ai-container {
-                    background-color: #ffffff;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    margin: 1rem 0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            st.header("AI Analysis")
-            st.info("AI-powered analysis and insights coming soon!")
+    # AI Analysis Container
+    with st.container():
+        st.markdown("""
+            <style>
+            .ai-container {
+                background-color: #ffffff;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.header("AI Analysis")
+        st.info("AI-powered analysis and insights coming soon!")
 
     # Logos Container (always visible)
     with st.container():
