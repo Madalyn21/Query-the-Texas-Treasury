@@ -1294,81 +1294,111 @@ def main():
                                     total_rows = len(df)
                                     total_cols = len(df.columns)
                                     
-                                    # Display summary statistics
-                                    st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
-                                    
-                                    # Add data preview options
-                                    preview_options = st.radio(
-                                        "Data Preview Options",
-                                        ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
-                                        horizontal=True
-                                    )
-                                    
-                                    # Select data based on preview option
-                                    if preview_options == "First 1000 rows":
-                                        display_df = df.head(1000)
-                                    elif preview_options == "Last 1000 rows":
-                                        display_df = df.tail(1000)
-                                    else:
-                                        display_df = df.sample(min(1000, total_rows))
-                                    
-                                    # Add column selection
-                                    selected_columns = st.multiselect(
-                                        "Select columns to display",
-                                        options=df.columns.tolist(),
-                                        default=df.columns.tolist()[:5]  # Show first 5 columns by default
-                                    )
-                                    
-                                    if selected_columns:
-                                        display_df = display_df[selected_columns]
-                                    
-                                    # Add sorting options
-                                    sort_column = st.selectbox(
-                                        "Sort by column",
-                                        options=selected_columns,
-                                        index=0
-                                    )
-                                    
-                                    sort_order = st.radio(
-                                        "Sort order",
-                                        ["Ascending", "Descending"],
-                                        horizontal=True
-                                    )
-                                    
-                                    if sort_column:
-                                        display_df = display_df.sort_values(
-                                            by=sort_column,
-                                            ascending=(sort_order == "Ascending")
+                                    # Clean and convert data types
+                                    try:
+                                        # Convert object columns to string type
+                                        for col in df.columns:
+                                            if df[col].dtype == 'object':
+                                                df[col] = df[col].astype(str)
+                                                # Replace problematic characters
+                                                df[col] = df[col].str.replace('\x00', '')  # Remove null bytes
+                                                df[col] = df[col].str.replace('\r', '')   # Remove carriage returns
+                                                df[col] = df[col].str.replace('\n', ' ')  # Replace newlines with spaces
+                                        
+                                        # Convert numeric columns
+                                        numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns
+                                        for col in numeric_columns:
+                                            df[col] = pd.to_numeric(df[col], errors='coerce')
+                                        
+                                        # Convert date columns if they exist
+                                        date_columns = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
+                                        for col in date_columns:
+                                            try:
+                                                df[col] = pd.to_datetime(df[col], errors='coerce')
+                                            except:
+                                                pass  # Skip if conversion fails
+                                        
+                                        # Display summary statistics
+                                        st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
+                                        
+                                        # Add data preview options
+                                        preview_options = st.radio(
+                                            "Data Preview Options",
+                                            ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
+                                            horizontal=True
                                         )
-                                    
-                                    # Display the data with optimized settings
-                                    st.dataframe(
-                                        display_df,
-                                        use_container_width=True,
-                                        height=400,  # Fixed height for better performance
-                                        hide_index=True,  # Hide index for cleaner display
-                                        column_config={
-                                            col: st.column_config.Column(
-                                                width="medium",
-                                                help=f"Column: {col}"
-                                            ) for col in display_df.columns
-                                        }
-                                    )
-                                    
-                                    # Add data summary
-                                    with st.expander("Data Summary"):
-                                        # Basic statistics
-                                        st.write("### Basic Statistics")
-                                        st.write(display_df.describe())
                                         
-                                        # Missing values
-                                        st.write("### Missing Values")
-                                        missing_data = display_df.isnull().sum()
-                                        st.write(missing_data[missing_data > 0])
+                                        # Select data based on preview option
+                                        if preview_options == "First 1000 rows":
+                                            display_df = df.head(1000)
+                                        elif preview_options == "Last 1000 rows":
+                                            display_df = df.tail(1000)
+                                        else:
+                                            display_df = df.sample(min(1000, total_rows))
                                         
-                                        # Data types
-                                        st.write("### Data Types")
-                                        st.write(display_df.dtypes)
+                                        # Add column selection
+                                        selected_columns = st.multiselect(
+                                            "Select columns to display",
+                                            options=df.columns.tolist(),
+                                            default=df.columns.tolist()[:5]  # Show first 5 columns by default
+                                        )
+                                        
+                                        if selected_columns:
+                                            display_df = display_df[selected_columns]
+                                        
+                                        # Add sorting options
+                                        sort_column = st.selectbox(
+                                            "Sort by column",
+                                            options=selected_columns,
+                                            index=0
+                                        )
+                                        
+                                        sort_order = st.radio(
+                                            "Sort order",
+                                            ["Ascending", "Descending"],
+                                            horizontal=True
+                                        )
+                                        
+                                        if sort_column:
+                                            display_df = display_df.sort_values(
+                                                by=sort_column,
+                                                ascending=(sort_order == "Ascending")
+                                            )
+                                        
+                                        # Display the data with optimized settings
+                                        st.dataframe(
+                                            display_df,
+                                            use_container_width=True,
+                                            height=400,  # Fixed height for better performance
+                                            hide_index=True,  # Hide index for cleaner display
+                                            column_config={
+                                                col: st.column_config.Column(
+                                                    width="medium",
+                                                    help=f"Column: {col}"
+                                                ) for col in display_df.columns
+                                            }
+                                        )
+                                        
+                                        # Add data summary
+                                        with st.expander("Data Summary"):
+                                            # Basic statistics
+                                            st.write("### Basic Statistics")
+                                            st.write(display_df.describe())
+                                            
+                                            # Missing values
+                                            st.write("### Missing Values")
+                                            missing_data = display_df.isnull().sum()
+                                            st.write(missing_data[missing_data > 0])
+                                            
+                                            # Data types
+                                            st.write("### Data Types")
+                                            st.write(display_df.dtypes)
+                                    
+                                    except Exception as e:
+                                        logger.error(f"Error processing DataFrame: {str(e)}")
+                                        st.error("Error processing data. Please try again.")
+                                        # Display raw data as fallback
+                                        st.dataframe(df, use_container_width=True)
                                     
                                     # Add download options
                                     st.write("### Download Options")
@@ -1387,6 +1417,14 @@ def main():
                                                         download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
                                                         
                                                         if not download_df.empty:
+                                                            # Clean data before download
+                                                            for col in download_df.columns:
+                                                                if download_df[col].dtype == 'object':
+                                                                    download_df[col] = download_df[col].astype(str)
+                                                                    download_df[col] = download_df[col].str.replace('\x00', '')
+                                                                    download_df[col] = download_df[col].str.replace('\r', '')
+                                                                    download_df[col] = download_df[col].str.replace('\n', ' ')
+                                                            
                                                             # Convert to CSV
                                                             csv_data = download_df.to_csv(index=False)
                                                             
@@ -1417,6 +1455,14 @@ def main():
                                                         download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
                                                         
                                                         if not download_df.empty:
+                                                            # Clean data before download
+                                                            for col in download_df.columns:
+                                                                if download_df[col].dtype == 'object':
+                                                                    download_df[col] = download_df[col].astype(str)
+                                                                    download_df[col] = download_df[col].str.replace('\x00', '')
+                                                                    download_df[col] = download_df[col].str.replace('\r', '')
+                                                                    download_df[col] = download_df[col].str.replace('\n', ' ')
+                                                            
                                                             # Create ZIP file
                                                             zip_buffer = BytesIO()
                                                             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
