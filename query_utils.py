@@ -275,7 +275,7 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
 
 def execute_query(query: text, params: Dict, engine, page_size: int = 150, page: int = 1) -> Tuple[List[Dict], bool]:
     """
-    Executes the SQL query with pagination to handle large result sets efficiently.
+    Executes the SQL query with chunking to handle large result sets efficiently.
     
     Args:
         query (text): The SQLAlchemy query to execute
@@ -288,7 +288,7 @@ def execute_query(query: text, params: Dict, engine, page_size: int = 150, page:
         Tuple[List[Dict], bool]: List of dictionaries containing the query results and a boolean indicating if more results exist
     """
     start_time = time.time()
-    logger.info(f"Executing query with pagination (page {page}, size {page_size})")
+    logger.info(f"Executing query with chunking (page {page}, size {page_size})")
     logger.info(f"Query: {str(query)}")
     logger.info(f"Parameters: {params}")
     
@@ -318,7 +318,7 @@ def execute_query(query: text, params: Dict, engine, page_size: int = 150, page:
             columns = [(row[0], row[1]) for row in connection.execute(columns_query)]
             logger.info(f"Available columns in {table_name}: {columns}")
             
-            # Remove any existing LIMIT clause and add our pagination
+            # Remove any existing LIMIT clause and add our chunking
             base_query = str(query)
             if "LIMIT" in base_query:
                 base_query = base_query.split("LIMIT")[0].strip()
@@ -326,13 +326,22 @@ def execute_query(query: text, params: Dict, engine, page_size: int = 150, page:
             # Calculate offset
             offset = (page - 1) * page_size
             
-            # Execute the query with pagination
-            paginated_query = text(f"{base_query} LIMIT {page_size + 1} OFFSET {offset}")
-            logger.info(f"Executing paginated query: {str(paginated_query)}")
+            # Execute the query with chunking
+            chunked_query = text(f"""
+                WITH chunked_results AS (
+                    SELECT *, ROW_NUMBER() OVER () as row_num
+                    FROM ({base_query}) as base_query
+                )
+                SELECT * FROM chunked_results
+                WHERE row_num > {offset}
+                AND row_num <= {offset + page_size + 1}
+            """)
+            
+            logger.info(f"Executing chunked query: {str(chunked_query)}")
             
             try:
                 query_start_time = time.time()
-                results = connection.execute(paginated_query, params).fetchall()
+                results = connection.execute(chunked_query, params).fetchall()
                 query_time = time.time() - query_start_time
                 logger.info(f"Query took {query_time:.2f} seconds")
                 
@@ -346,7 +355,8 @@ def execute_query(query: text, params: Dict, engine, page_size: int = 150, page:
                 for row in results:
                     row_dict = {}
                     for i, col in enumerate(row._mapping.keys()):
-                        row_dict[col] = row[i]
+                        if col != 'row_num':  # Skip the row_num column
+                            row_dict[col] = row[i]
                     data.append(row_dict)
                 
                 total_time = time.time() - start_time
@@ -466,7 +476,7 @@ def get_complete_data(query: text, params: Dict, engine) -> List[Dict]:
 
 def get_complete_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     """
-    Gets the complete filtered data from the database without pagination.
+    Gets the complete filtered data from the database using chunking.
     Used for downloading the full dataset.
     
     Args:
@@ -490,13 +500,31 @@ def get_complete_filtered_data(filters: Dict, table_choice: str, engine) -> pd.D
         logger.info(f"Query after adding filters: {str(query)}")
         logger.info(f"Parameters after adding filters: {params}")
         
-        # Execute the query without pagination
-        data = get_complete_data(query, params, engine)
-        logger.info(f"Query execution returned {len(data)} records")
+        # Initialize variables for chunked processing
+        chunk_size = 10000  # Process 10,000 records at a time
+        all_data = []
+        page = 1
+        has_more = True
+        
+        # Process data in chunks
+        while has_more:
+            logger.info(f"Processing chunk {page} with size {chunk_size}")
+            chunk_data, has_more = execute_query(query, params, engine, page_size=chunk_size, page=page)
+            
+            if chunk_data:
+                all_data.extend(chunk_data)
+                logger.info(f"Added {len(chunk_data)} records from chunk {page}")
+            
+            page += 1
+            
+            # Safety check - if we've processed too many records, stop
+            if len(all_data) > 1000000:  # 1 million records limit
+                logger.warning("Reached maximum record limit of 1,000,000 records")
+                break
         
         # Convert to DataFrame
-        if data:
-            df = pd.DataFrame(data)
+        if all_data:
+            df = pd.DataFrame(all_data)
             # Sanitize column names
             df.columns = [col.lower().replace(' ', '_') for col in df.columns]
             logger.info(f"DataFrame created with shape: {df.shape}")
