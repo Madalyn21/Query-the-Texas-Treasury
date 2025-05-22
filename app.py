@@ -1290,6 +1290,15 @@ def main():
                                 
                                 # Display the dataframe
                                 with st.spinner("Loading results..."):
+                                    # Initialize session state for display options if not exists
+                                    if 'display_options' not in st.session_state:
+                                        st.session_state.display_options = {
+                                            'preview': "First 1000 rows",
+                                            'selected_columns': df.columns.tolist()[:5],
+                                            'sort_column': None,
+                                            'sort_order': "Ascending"
+                                        }
+                                    
                                     # Calculate total rows and columns
                                     total_rows = len(df)
                                     total_cols = len(df.columns)
@@ -1301,9 +1310,9 @@ def main():
                                             if df[col].dtype == 'object':
                                                 df[col] = df[col].astype(str)
                                                 # Replace problematic characters
-                                                df[col] = df[col].str.replace('\x00', '')  # Remove null bytes
-                                                df[col] = df[col].str.replace('\r', '')   # Remove carriage returns
-                                                df[col] = df[col].str.replace('\n', ' ')  # Replace newlines with spaces
+                                                df[col] = df[col].str.replace('\x00', '')
+                                                df[col] = df[col].str.replace('\r', '')
+                                                df[col] = df[col].str.replace('\n', ' ')
                                         
                                         # Convert numeric columns
                                         numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns
@@ -1318,6 +1327,9 @@ def main():
                                             except:
                                                 pass  # Skip if conversion fails
                                         
+                                        # Store the processed DataFrame in session state
+                                        st.session_state.processed_df = df
+                                        
                                         # Display summary statistics
                                         st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
                                         
@@ -1325,8 +1337,16 @@ def main():
                                         preview_options = st.radio(
                                             "Data Preview Options",
                                             ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
-                                            horizontal=True
+                                            horizontal=True,
+                                            key="preview_options",
+                                            index=["First 1000 rows", "Last 1000 rows", "Random 1000 rows"].index(st.session_state.display_options['preview'])
                                         )
+                                        
+                                        # Update session state with preview option
+                                        st.session_state.display_options['preview'] = preview_options
+                                        
+                                        # Get the processed DataFrame from session state
+                                        df = st.session_state.processed_df
                                         
                                         # Select data based on preview option
                                         if preview_options == "First 1000 rows":
@@ -1340,8 +1360,12 @@ def main():
                                         selected_columns = st.multiselect(
                                             "Select columns to display",
                                             options=df.columns.tolist(),
-                                            default=df.columns.tolist()[:5]  # Show first 5 columns by default
+                                            default=st.session_state.display_options['selected_columns'],
+                                            key="column_selector"
                                         )
+                                        
+                                        # Update session state with selected columns
+                                        st.session_state.display_options['selected_columns'] = selected_columns
                                         
                                         if selected_columns:
                                             display_df = display_df[selected_columns]
@@ -1350,14 +1374,23 @@ def main():
                                         sort_column = st.selectbox(
                                             "Sort by column",
                                             options=selected_columns,
-                                            index=0
+                                            index=0 if not st.session_state.display_options['sort_column'] else selected_columns.index(st.session_state.display_options['sort_column']),
+                                            key="sort_column"
                                         )
+                                        
+                                        # Update session state with sort column
+                                        st.session_state.display_options['sort_column'] = sort_column
                                         
                                         sort_order = st.radio(
                                             "Sort order",
                                             ["Ascending", "Descending"],
-                                            horizontal=True
+                                            horizontal=True,
+                                            key="sort_order",
+                                            index=0 if st.session_state.display_options['sort_order'] == "Ascending" else 1
                                         )
+                                        
+                                        # Update session state with sort order
+                                        st.session_state.display_options['sort_order'] = sort_order
                                         
                                         if sort_column:
                                             display_df = display_df.sort_values(
