@@ -902,19 +902,6 @@ def main():
     except Exception as e:
         logger.error(f"Error in memory management: {str(e)}")
 
-    # Display version in sidebar
-    logger.info("Setting up sidebar")
-    st.sidebar.title("Database Status")
-    st.sidebar.info(f"App Version: {APP_VERSION}")
-    
-    # Add a button to clear session state
-    if st.sidebar.button("Clear Session Data"):
-        st.session_state.clear()
-        st.rerun()
-    
-    if st.sidebar.button("Test Database Connection"):
-        test_database_connection()
-
     # Health check endpoint
     if st.query_params.get('health') == 'check':
         health_status = check_deployment_health()
@@ -926,7 +913,7 @@ def main():
         system_status = get_system_status()
         st.json(system_status)
         return
-    
+
     # Privacy statement modal/checkbox with error handling
     try:
         if 'privacy_accepted' not in st.session_state:
