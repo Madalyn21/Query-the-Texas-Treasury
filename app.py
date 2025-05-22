@@ -1375,72 +1375,76 @@ def main():
                                     col1, col2 = st.columns(2)
                                     
                                     with col1:
-                                        if st.button("Download CSV", key="download_csv"):
-                                            with st.spinner('Preparing CSV download...'):
-                                                try:
-                                                    # Process data in chunks
-                                                    chunk_size = 10000
-                                                    chunks = []
-                                                    page = 1
-                                                    while has_more:
-                                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
-                                                        chunks.append(df_chunk)
-                                                        page += 1
-                                                    
-                                                    # Combine chunks and create download
-                                                    download_df = pd.concat(chunks, ignore_index=True)
-                                                    csv_data = download_df.to_csv(index=False)
-                                                    st.download_button(
-                                                        label="Click to Download CSV",
-                                                        data=csv_data,
-                                                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                                                        mime="text/csv",
-                                                        key="download_csv_data"
-                                                    )
-                                                except Exception as e:
-                                                    logger.error(f"Error preparing CSV download: {str(e)}")
-                                                    st.error("Error preparing CSV download. Please try again.")
+                                        # Create a unique key for the download button
+                                        download_csv_key = f"download_csv_{table_choice.lower().replace(' ', '_')}"
+                                        
+                                        # Use a form to handle the download button
+                                        with st.form(key="download_csv_form"):
+                                            if st.form_submit_button("Download CSV"):
+                                                with st.spinner('Preparing CSV download...'):
+                                                    try:
+                                                        # Get the complete data for download
+                                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
+                                                        
+                                                        if not download_df.empty:
+                                                            # Convert to CSV
+                                                            csv_data = download_df.to_csv(index=False)
+                                                            
+                                                            # Create download button
+                                                            st.download_button(
+                                                                label="Click to Download CSV",
+                                                                data=csv_data,
+                                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                                                                mime="text/csv",
+                                                                key=download_csv_key
+                                                            )
+                                                        else:
+                                                            st.error("No data available for download")
+                                                    except Exception as e:
+                                                        logger.error(f"Error preparing CSV download: {str(e)}")
+                                                        st.error("Error preparing CSV download. Please try again.")
                                     
                                     with col2:
-                                        if st.button("Download ZIP", key="download_zip"):
-                                            with st.spinner('Preparing ZIP download...'):
-                                                try:
-                                                    # Process data in chunks
-                                                    chunk_size = 10000
-                                                    chunks = []
-                                                    page = 1
-                                                    while has_more:
-                                                        df_chunk, has_more = get_filtered_data(filter_payload, table_choice, engine, page=page)
-                                                        chunks.append(df_chunk)
-                                                        page += 1
-                                                    
-                                                    # Combine chunks and create download
-                                                    download_df = pd.concat(chunks, ignore_index=True)
-                                                    
-                                                    # Create ZIP file
-                                                    zip_buffer = BytesIO()
-                                                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                                                        # Add CSV to ZIP
-                                                        csv_data = download_df.to_csv(index=False)
-                                                        zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                        # Create a unique key for the ZIP download button
+                                        download_zip_key = f"download_zip_{table_choice.lower().replace(' ', '_')}"
+                                        
+                                        # Use a form to handle the ZIP download button
+                                        with st.form(key="download_zip_form"):
+                                            if st.form_submit_button("Download ZIP"):
+                                                with st.spinner('Preparing ZIP download...'):
+                                                    try:
+                                                        # Get the complete data for download
+                                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
                                                         
-                                                        # Add Excel to ZIP
-                                                        excel_buffer = BytesIO()
-                                                        download_df.to_excel(excel_buffer, index=False, engine='openpyxl')
-                                                        zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
-                                                    
-                                                    # Prepare ZIP for download
-                                                    zip_buffer.seek(0)
-                                                    st.download_button(
-                                                        label="Click to Download ZIP",
-                                                        data=zip_buffer,
-                                                        file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                                                        mime="application/zip",
-                                                        key="download_zip_data"
-                                                    )
-                                                except Exception as e:
-                                                    logger.error(f"Error preparing ZIP download: {str(e)}")
-                                                    st.error("Error preparing ZIP download. Please try again.")
+                                                        if not download_df.empty:
+                                                            # Create ZIP file
+                                                            zip_buffer = BytesIO()
+                                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                                # Add CSV to ZIP
+                                                                csv_data = download_df.to_csv(index=False)
+                                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                                                
+                                                                # Add Excel to ZIP
+                                                                excel_buffer = BytesIO()
+                                                                download_df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
+                                                            
+                                                            # Prepare ZIP for download
+                                                            zip_buffer.seek(0)
+                                                            
+                                                            # Create download button
+                                                            st.download_button(
+                                                                label="Click to Download ZIP",
+                                                                data=zip_buffer,
+                                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                                mime="application/zip",
+                                                                key=download_zip_key
+                                                            )
+                                                        else:
+                                                            st.error("No data available for download")
+                                                    except Exception as e:
+                                                        logger.error(f"Error preparing ZIP download: {str(e)}")
+                                                        st.error("Error preparing ZIP download. Please try again.")
                             else:
                                 st.warning("No data found matching your criteria.")
                                 
