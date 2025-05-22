@@ -1435,22 +1435,8 @@ def main():
                                     
                                     # Show current page info
                                     st.write(f"Showing results {start_idx + 1} to {end_idx} of {total_rows}")
+
                                     
-                                    # Download section
-                                    st.write("### Download Options")
-                                    download_col1, download_col2 = st.columns([1, 1])  # Equal width columns
-                                    
-                                    with download_col1:
-                                        # CSV Download button
-                                        csv_data = st.session_state.processed_df.to_csv(index=False)
-                                        st.download_button(
-                                            label="Download CSV",
-                                            data=csv_data,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                                            mime="text/csv",
-                                            key=f"download_csv_{table_choice.lower().replace(' ', '_')}_{int(time.time())}",
-                                            use_container_width=True  # Make button fill container width
-                                        )
                                     
                                     with download_col2:
                                         # ZIP Download button
