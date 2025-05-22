@@ -103,7 +103,8 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            where_conditions.append("p.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
+            # Add fiscal month range filter
+            where_conditions.append("p.fiscal_month >= :fiscal_month_start AND p.fiscal_month <= :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
@@ -142,7 +143,8 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            where_conditions.append("c.fm BETWEEN :fiscal_month_start AND :fiscal_month_end")
+            # Add fiscal month range filter
+            where_conditions.append("c.fm >= :fiscal_month_start AND c.fm <= :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
