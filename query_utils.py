@@ -88,23 +88,22 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the original fiscal year range
             logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
             
-            # Convert 4-digit year to 2-digit year
-            start_year = str(filters['fiscal_year_start'])[-2:]
-            end_year = str(filters['fiscal_year_end'])[-2:]
+            # Convert calendar year to fiscal year (subtract 1 from the year)
+            start_year = int(filters['fiscal_year_start']) - 1
+            end_year = int(filters['fiscal_year_end']) - 1
             
             # Log the converted fiscal year range
             logger.info(f"Converted fiscal year range: {start_year} - {end_year}")
             
             where_conditions.append("p.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = start_year
-            params['fiscal_year_end'] = end_year
+            params['fiscal_year_start'] = str(start_year)
+            params['fiscal_year_end'] = str(end_year)
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            # Add fiscal month range filter
-            where_conditions.append("p.fiscal_month >= :fiscal_month_start AND p.fiscal_month <= :fiscal_month_end")
+            where_conditions.append("p.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
@@ -128,23 +127,22 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the original fiscal year range
             logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
             
-            # Convert 4-digit year to 2-digit year
-            start_year = str(filters['fiscal_year_start'])[-2:]
-            end_year = str(filters['fiscal_year_end'])[-2:]
+            # Convert calendar year to fiscal year (subtract 1 from the year)
+            start_year = int(filters['fiscal_year_start']) - 1
+            end_year = int(filters['fiscal_year_end']) - 1
             
             # Log the converted fiscal year range
             logger.info(f"Converted fiscal year range: {start_year} - {end_year}")
             
             where_conditions.append("c.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = start_year
-            params['fiscal_year_end'] = end_year
+            params['fiscal_year_start'] = str(start_year)
+            params['fiscal_year_end'] = str(end_year)
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            # Add fiscal month range filter
-            where_conditions.append("c.fm >= :fiscal_month_start AND c.fm <= :fiscal_month_end")
+            where_conditions.append("c.fm BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
