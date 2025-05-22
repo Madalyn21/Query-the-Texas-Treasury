@@ -1195,6 +1195,14 @@ def main():
                 # Reset filters before preparing new query
                 reset_filters()
                 
+                # Clear previous query results
+                if 'query_results' in st.session_state:
+                    del st.session_state.query_results
+                if 'processed_df' in st.session_state:
+                    del st.session_state.processed_df
+                if 'current_page' in st.session_state:
+                    del st.session_state.current_page
+                
                 # Initialize all filter variables
                 selected_vendor = None
                 selected_category = "All"
@@ -1328,6 +1336,9 @@ def main():
                                     
                                     # Display summary
                                     st.write(f"Showing {total_rows:,} total results")
+                                    
+                                    # Add note about display limit
+                                    st.info("Note: The table shows 150 rows at a time, but the full dataset is available for download.")
                                     
                                     # Calculate pagination
                                     page_size = 150
