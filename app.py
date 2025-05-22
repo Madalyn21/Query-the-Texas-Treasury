@@ -1342,6 +1342,15 @@ def main():
     with st.container():
         st.subheader("Visualization")
         
+        # Add note about visualization limitations
+        st.info("""
+        **Note about Visualizations:** 
+        - Visualizations work best with moderate amounts of data
+        - Very large or very small result sets may not display optimally
+        - For best results, try filtering your query to a specific time period or category
+        - If visualizations appear unclear, try adjusting your filters to get a more focused dataset
+        """)
+        
         # Only show visualizations if we have data
         if 'df' in st.session_state and not st.session_state['df'].empty:
             # Create tabs for different visualizations

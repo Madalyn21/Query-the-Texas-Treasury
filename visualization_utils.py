@@ -37,21 +37,26 @@ def create_payment_distribution_chart(df: pd.DataFrame, table_choice: str) -> al
         # Group by agency and sum the amounts
         agency_totals = df.groupby(agency_column)[amount_column].sum().reset_index()
         
-        # Sort by amount in descending order
-        agency_totals = agency_totals.sort_values(by=amount_column, ascending=False)
+        # Sort by amount in descending order and get top 15 agencies
+        agency_totals = agency_totals.sort_values(by=amount_column, ascending=False).head(15)
+        
+        # Format amounts in millions for better readability
+        agency_totals[amount_column] = agency_totals[amount_column] / 1_000_000
         
         # Create the chart
         chart = alt.Chart(agency_totals).mark_bar().encode(
             x=alt.X(f'{agency_column}:N', title='Agency', sort='-y'),
-            y=alt.Y(f'{amount_column}:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+            y=alt.Y(f'{amount_column}:Q', title='Total Amount (Millions $)', axis=alt.Axis(format='$,.1f')),
             tooltip=[
                 alt.Tooltip(f'{agency_column}:N', title='Agency'),
-                alt.Tooltip(f'{amount_column}:Q', title='Total Amount', format='$,.2f')
+                alt.Tooltip(f'{amount_column}:Q', title='Total Amount (Millions $)', format='$,.2f')
             ]
         ).properties(
-            title='Payment Distribution by Agency',
+            title='Top 15 Agencies by Payment Amount',
             width=600,
             height=400
+        ).configure_axis(
+            labelAngle=-45
         )
         
         return chart
@@ -99,15 +104,18 @@ def create_trend_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Char
         # Sort by fiscal year and month
         monthly_totals = monthly_totals.sort_values(by=[fiscal_year_col, fiscal_month_col])
         
+        # Format amounts in millions for better readability
+        monthly_totals[amount_column] = monthly_totals[amount_column] / 1_000_000
+        
         # Create the chart
-        chart = alt.Chart(monthly_totals).mark_line().encode(
+        chart = alt.Chart(monthly_totals).mark_line(point=True).encode(
             x=alt.X(f'{fiscal_month_col}:N', title='Month'),
-            y=alt.Y(f'{amount_column}:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+            y=alt.Y(f'{amount_column}:Q', title='Total Amount (Millions $)', axis=alt.Axis(format='$,.1f')),
             color=f'{fiscal_year_col}:N',
             tooltip=[
                 alt.Tooltip(f'{fiscal_year_col}:N', title='Fiscal Year'),
                 alt.Tooltip(f'{fiscal_month_col}:N', title='Month'),
-                alt.Tooltip(f'{amount_column}:Q', title='Total Amount', format='$,.2f')
+                alt.Tooltip(f'{amount_column}:Q', title='Total Amount (Millions $)', format='$,.2f')
             ]
         ).properties(
             title='Payment Trends Over Time',
@@ -154,13 +162,16 @@ def create_vendor_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Cha
         # Sort by amount in descending order and get top 10
         vendor_totals = vendor_totals.sort_values(by=amount_column, ascending=False).head(10)
         
+        # Format amounts in millions for better readability
+        vendor_totals[amount_column] = vendor_totals[amount_column] / 1_000_000
+        
         # Create the chart
         chart = alt.Chart(vendor_totals).mark_bar().encode(
-            x=alt.X(f'{amount_column}:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+            x=alt.X(f'{amount_column}:Q', title='Total Amount (Millions $)', axis=alt.Axis(format='$,.1f')),
             y=alt.Y(f'{vendor_column}:N', title='Vendor', sort='-x'),
             tooltip=[
                 alt.Tooltip(f'{vendor_column}:N', title='Vendor'),
-                alt.Tooltip(f'{amount_column}:Q', title='Total Amount', format='$,.2f')
+                alt.Tooltip(f'{amount_column}:Q', title='Total Amount (Millions $)', format='$,.2f')
             ]
         ).properties(
             title='Top 10 Vendors by Payment Amount',
@@ -200,17 +211,23 @@ def create_category_analysis_chart(df: pd.DataFrame, table_choice: str) -> Optio
         # Group by category and sum the amounts
         category_totals = df.groupby('category')[amount_column].sum().reset_index()
         
+        # Sort by amount in descending order
+        category_totals = category_totals.sort_values(by=amount_column, ascending=False)
+        
+        # Format amounts in millions for better readability
+        category_totals[amount_column] = category_totals[amount_column] / 1_000_000
+        
         # Create the chart
-        chart = alt.Chart(category_totals).mark_arc().encode(
-            theta=alt.Theta(field=amount_column, type="quantitative"),
-            color=alt.Color(field="category", type="nominal"),
+        chart = alt.Chart(category_totals).mark_bar().encode(
+            x=alt.X(f'{amount_column}:Q', title='Total Amount (Millions $)', axis=alt.Axis(format='$,.1f')),
+            y=alt.Y('category:N', title='Category', sort='-x'),
             tooltip=[
                 alt.Tooltip('category:N', title='Category'),
-                alt.Tooltip(f'{amount_column}:Q', title='Total Amount', format='$,.2f')
+                alt.Tooltip(f'{amount_column}:Q', title='Total Amount (Millions $)', format='$,.2f')
             ]
         ).properties(
             title='Contract Distribution by Category',
-            width=400,
+            width=600,
             height=400
         )
         
