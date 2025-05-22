@@ -1193,11 +1193,18 @@ def main():
                 # Reset filters before preparing new query
                 reset_filters()
                 
+                # Initialize selected_vendor
+                selected_vendor = None
+                
                 # Update filters with current selections
                 if selected_agency != "All":
                     st.session_state.filters['agency'] = selected_agency
-                if selected_vendor:
+                
+                # Get selected vendor from session state
+                if 'selected_vendor' in st.session_state and st.session_state.selected_vendor:
+                    selected_vendor = st.session_state.selected_vendor
                     st.session_state.filters['vendor'] = selected_vendor
+                
                 if selected_appropriation != "All":
                     st.session_state.filters['appropriation_title'] = selected_appropriation
                 if selected_payment_source != "All":
