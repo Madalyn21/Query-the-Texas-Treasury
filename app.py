@@ -1034,97 +1034,63 @@ def main():
             # Vendor search
             st.subheader("Vendor Search")
             
-            # Add a container for vendor search
-            with st.container():
-                # Create two columns for search and selection
-                search_col, select_col = st.columns([2, 1])
-                
-                with search_col:
-                    vendor_search = st.text_input(
-                        "Search for a vendor",
-                        help="Type at least 3 characters to search for vendors",
-                        key="vendor_search_input"
-                    )
-                
-                with select_col:
-                    # Add a clear button
-                    if st.button("Clear Selection", key="clear_vendor"):
-                        st.session_state.selected_vendor = None
-                        st.session_state.filters['vendor'] = None
-                        st.session_state.vendor_search_input = ""
-                        st.rerun()
+            # Initialize session state for vendor display limit if not exists
+            if 'vendor_display_limit' not in st.session_state:
+                st.session_state.vendor_display_limit = 15
+            
+            # Simple search input
+            vendor_search = st.text_input(
+                "Search for a vendor",
+                help="Type to search for vendors",
+                key="vendor_search_input"
+            )
+            
+            # Clear button
+            if st.button("Clear Selection", key="clear_vendor"):
+                st.session_state.selected_vendor = None
+                st.session_state.filters['vendor'] = None
+                st.session_state.vendor_search_input = ""
+                st.session_state.vendor_display_limit = 15  # Reset display limit
+                st.rerun()
             
             # Handle vendor search and selection
-            if vendor_search and len(vendor_search) >= 3:  # Only search if 3 or more characters
+            if vendor_search:
                 try:
-                    # Try different encodings
-                    encodings = ['latin1', 'cp1252', 'iso-8859-1', 'utf-8']
-                    vendors_df = None
+                    # Read the vendor file with a specific encoding
+                    vendors_df = pd.read_csv(
+                        vendor_file_path,
+                        encoding='latin1',
+                        usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor'],
+                        on_bad_lines='skip'
+                    )
                     
-                    for encoding in encodings:
-                        try:
-                            vendors_df = pd.read_csv(
-                                vendor_file_path,
-                                encoding=encoding,
-                                on_bad_lines='skip',
-                                usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor']  # Only read the vendor column
-                            )
-                            break
-                        except UnicodeDecodeError:
-                            continue
-                    
-                    if vendors_df is None:
-                        raise Exception("Could not read vendor file with any supported encoding")
-                    
-                    # Determine the correct column name
+                    # Get the correct column name
                     vendor_column = 'Ven_NAME' if table_choice == "Payment Information" else 'Vendor'
                     
-                    # Clean and prepare vendor names
+                    # Basic cleaning
                     vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
-                    vendors_df = vendors_df[vendors_df[vendor_column].str.len() > 0]  # Remove empty names
                     
-                    # Create a more sophisticated search
-                    search_terms = vendor_search.lower().split()
-                    matching_mask = pd.Series(True, index=vendors_df.index)
+                    # Simple search
+                    matching_vendors = vendors_df[
+                        vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
+                    ][vendor_column].unique().tolist()
                     
-                    for term in search_terms:
-                        matching_mask &= vendors_df[vendor_column].str.lower().str.contains(term, na=False)
-                    
-                    matching_vendors = vendors_df[matching_mask][vendor_column].unique().tolist()
+                    # Sort results
                     matching_vendors.sort()
                     
-                    # Limit results and add pagination
-                    page_size = st.session_state.vendor_limit
-                    total_pages = (len(matching_vendors) + page_size - 1) // page_size
+                    # Get total count
+                    total_vendors = len(matching_vendors)
                     
-                    if 'vendor_page' not in st.session_state:
-                        st.session_state.vendor_page = 1
+                    # Display current results
+                    current_vendors = matching_vendors[:st.session_state.vendor_display_limit]
                     
-                    # Show pagination controls if needed
-                    if total_pages > 1:
-                        col1, col2, col3 = st.columns([1, 2, 1])
-                        with col2:
-                            st.write(f"Page {st.session_state.vendor_page} of {total_pages}")
-                            if st.button("Previous Page") and st.session_state.vendor_page > 1:
-                                st.session_state.vendor_page -= 1
-                                st.rerun()
-                            if st.button("Next Page") and st.session_state.vendor_page < total_pages:
-                                st.session_state.vendor_page += 1
-                                st.rerun()
-                    
-                    # Get current page of results
-                    start_idx = (st.session_state.vendor_page - 1) * page_size
-                    end_idx = start_idx + page_size
-                    current_page_vendors = matching_vendors[start_idx:end_idx]
-                    
-                    if current_page_vendors:
+                    if current_vendors:
                         # Show results count
-                        st.write(f"Found {len(matching_vendors)} matching vendors")
+                        st.write(f"Showing {len(current_vendors)} of {total_vendors} matching vendors")
                         
-                        # Create a more compact selection interface
                         selected_vendor = st.selectbox(
                             "Select a vendor",
-                            options=[""] + current_page_vendors,
+                            options=[""] + current_vendors,
                             index=0,
                             key="vendor_select"
                         )
@@ -1133,21 +1099,24 @@ def main():
                             st.session_state.selected_vendor = selected_vendor
                             st.session_state.filters['vendor'] = selected_vendor
                             st.success(f"Selected vendor: {selected_vendor}")
+                        
+                        # Show "Show More" button if there are more results
+                        if total_vendors > st.session_state.vendor_display_limit:
+                            if st.button("Show More Vendors"):
+                                st.session_state.vendor_display_limit += 15
+                                st.rerun()
                     else:
                         st.info("No matching vendors found. Try different search terms.")
                         st.session_state.filters['vendor'] = None
                         
                 except Exception as e:
                     logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
-                    st.error(f"Error searching vendors: {str(e)}")
-            elif vendor_search and len(vendor_search) < 3:
-                st.info("Please enter at least 3 characters to search")
+                    st.error("Error searching vendors. Please try again.")
             else:
                 # Clear vendor selection when search is empty
                 st.session_state.selected_vendor = None
                 st.session_state.filters['vendor'] = None
-                if 'vendor_page' in st.session_state:
-                    del st.session_state.vendor_page
+                st.session_state.vendor_display_limit = 15  # Reset display limit
         
         with col2:
             st.subheader("Query Actions")
