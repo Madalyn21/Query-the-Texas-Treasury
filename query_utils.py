@@ -85,20 +85,27 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
     
     if table_choice == "Payment Information":
         if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-            # Convert calendar year to fiscal year (subtract 1 from the year)
-            start_year = int(filters['fiscal_year_start']) - 1
-            end_year = int(filters['fiscal_year_end']) - 1
+            # Log the original fiscal year range
+            logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
+            
+            # Convert 4-digit year to 2-digit year by removing first two digits
+            start_year = str(filters['fiscal_year_start'])[-2:]
+            end_year = str(filters['fiscal_year_end'])[-2:]
+            
+            # Log the converted fiscal year range
+            logger.info(f"Converted fiscal year range: {start_year} - {end_year}")
+            
             where_conditions.append("p.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = str(start_year)
-            params['fiscal_year_end'] = str(end_year)
-            logger.info(f"Payment Info - Added fiscal year range filter: {start_year} to {end_year}")
-            logger.info(f"Payment Info - Original fiscal year range: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
+            params['fiscal_year_start'] = start_year
+            params['fiscal_year_end'] = end_year
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
+            # Log the fiscal month range
+            logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
+            
             where_conditions.append("p.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
-            logger.info(f"Payment Info - Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(p.agency_title) = LOWER(:agency)")
@@ -117,20 +124,27 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             
     elif table_choice == "Contract Information":
         if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-            # Convert calendar year to fiscal year (subtract 1 from the year)
-            start_year = int(filters['fiscal_year_start']) - 1
-            end_year = int(filters['fiscal_year_end']) - 1
+            # Log the original fiscal year range
+            logger.info(f"Original fiscal year range: {filters['fiscal_year_start']} - {filters['fiscal_year_end']}")
+            
+            # Convert 4-digit year to 2-digit year by removing first two digits
+            start_year = str(filters['fiscal_year_start'])[-2:]
+            end_year = str(filters['fiscal_year_end'])[-2:]
+            
+            # Log the converted fiscal year range
+            logger.info(f"Converted fiscal year range: {start_year} - {end_year}")
+            
             where_conditions.append("c.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-            params['fiscal_year_start'] = str(start_year)
-            params['fiscal_year_end'] = str(end_year)
-            logger.info(f"Contract Info - Added fiscal year range filter: {start_year} to {end_year}")
-            logger.info(f"Contract Info - Original fiscal year range: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
+            params['fiscal_year_start'] = start_year
+            params['fiscal_year_end'] = end_year
             
         if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
+            # Log the fiscal month range
+            logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
+            
             where_conditions.append("c.fm BETWEEN :fiscal_month_start AND :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
-            logger.info(f"Contract Info - Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
             
         if filters.get('agency'):
             where_conditions.append("LOWER(c.agency) = LOWER(:agency)")
@@ -208,6 +222,17 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 """)
                 payment_structure = connection.execute(payment_columns).fetchall()
                 logger.info(f"Paymentinformation table structure: {payment_structure}")
+                
+                # Check actual fiscal year values
+                fiscal_year_check = text("""
+                    SELECT DISTINCT fiscal_year 
+                    FROM paymentinformation 
+                    WHERE fiscal_year IS NOT NULL 
+                    ORDER BY fiscal_year;
+                """)
+                fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_check)]
+                logger.info(f"Actual fiscal years in paymentinformation: {fiscal_years}")
+                
                 accessibility['paymentinformation'] = True
             else:
                 logger.warning("Payment Information table does not exist")
@@ -232,6 +257,17 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 """)
                 contract_structure = connection.execute(contract_columns).fetchall()
                 logger.info(f"Contractinfo table structure: {contract_structure}")
+                
+                # Check actual fiscal year values
+                fiscal_year_check = text("""
+                    SELECT DISTINCT fiscal_year 
+                    FROM contractinfo 
+                    WHERE fiscal_year IS NOT NULL 
+                    ORDER BY fiscal_year;
+                """)
+                fiscal_years = [str(row[0]) for row in connection.execute(fiscal_year_check)]
+                logger.info(f"Actual fiscal years in contractinfo: {fiscal_years}")
+                
                 accessibility['contractinfo'] = True
             else:
                 logger.warning("Contract Information table does not exist")
