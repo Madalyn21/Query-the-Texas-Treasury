@@ -1290,7 +1290,11 @@ def main():
                                 
                                 # Display the dataframe
                                 with st.spinner("Loading results..."):
-                                    # Initialize session state for display options if not exists
+                                    # Store the original query results in session state if not already stored
+                                    if 'query_results' not in st.session_state:
+                                        st.session_state.query_results = df.copy()
+                                    
+                                    # Initialize display options if not exists
                                     if 'display_options' not in st.session_state:
                                         st.session_state.display_options = {
                                             'preview': "First 1000 rows",
@@ -1300,232 +1304,136 @@ def main():
                                         }
                                     
                                     # Calculate total rows and columns
-                                    total_rows = len(df)
-                                    total_cols = len(df.columns)
+                                    total_rows = len(st.session_state.query_results)
+                                    total_cols = len(st.session_state.query_results.columns)
                                     
-                                    # Clean and convert data types
-                                    try:
-                                        # Convert object columns to string type
-                                        for col in df.columns:
-                                            if df[col].dtype == 'object':
-                                                df[col] = df[col].astype(str)
-                                                # Replace problematic characters
-                                                df[col] = df[col].str.replace('\x00', '')
-                                                df[col] = df[col].str.replace('\r', '')
-                                                df[col] = df[col].str.replace('\n', ' ')
-                                        
-                                        # Convert numeric columns
-                                        numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns
-                                        for col in numeric_columns:
-                                            df[col] = pd.to_numeric(df[col], errors='coerce')
-                                        
-                                        # Convert date columns if they exist
-                                        date_columns = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
-                                        for col in date_columns:
-                                            try:
-                                                df[col] = pd.to_datetime(df[col], errors='coerce')
-                                            except:
-                                                pass  # Skip if conversion fails
-                                        
-                                        # Store the processed DataFrame in session state
-                                        st.session_state.processed_df = df
-                                        
-                                        # Display summary statistics
-                                        st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
-                                        
-                                        # Add data preview options
-                                        preview_options = st.radio(
-                                            "Data Preview Options",
-                                            ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
-                                            horizontal=True,
-                                            key="preview_options",
-                                            index=["First 1000 rows", "Last 1000 rows", "Random 1000 rows"].index(st.session_state.display_options['preview'])
-                                        )
-                                        
-                                        # Update session state with preview option
-                                        st.session_state.display_options['preview'] = preview_options
-                                        
-                                        # Get the processed DataFrame from session state
-                                        df = st.session_state.processed_df
-                                        
-                                        # Select data based on preview option
-                                        if preview_options == "First 1000 rows":
-                                            display_df = df.head(1000)
-                                        elif preview_options == "Last 1000 rows":
-                                            display_df = df.tail(1000)
-                                        else:
-                                            display_df = df.sample(min(1000, total_rows))
-                                        
-                                        # Add column selection
-                                        selected_columns = st.multiselect(
-                                            "Select columns to display",
-                                            options=df.columns.tolist(),
-                                            default=st.session_state.display_options['selected_columns'],
-                                            key="column_selector"
-                                        )
-                                        
-                                        # Update session state with selected columns
-                                        st.session_state.display_options['selected_columns'] = selected_columns
-                                        
-                                        if selected_columns:
-                                            display_df = display_df[selected_columns]
-                                        
-                                        # Add sorting options
-                                        sort_column = st.selectbox(
-                                            "Sort by column",
-                                            options=selected_columns,
-                                            index=0 if not st.session_state.display_options['sort_column'] else selected_columns.index(st.session_state.display_options['sort_column']),
-                                            key="sort_column"
-                                        )
-                                        
-                                        # Update session state with sort column
-                                        st.session_state.display_options['sort_column'] = sort_column
-                                        
-                                        sort_order = st.radio(
-                                            "Sort order",
-                                            ["Ascending", "Descending"],
-                                            horizontal=True,
-                                            key="sort_order",
-                                            index=0 if st.session_state.display_options['sort_order'] == "Ascending" else 1
-                                        )
-                                        
-                                        # Update session state with sort order
-                                        st.session_state.display_options['sort_order'] = sort_order
-                                        
-                                        if sort_column:
-                                            display_df = display_df.sort_values(
-                                                by=sort_column,
-                                                ascending=(sort_order == "Ascending")
-                                            )
-                                        
-                                        # Display the data with optimized settings
-                                        st.dataframe(
-                                            display_df,
-                                            use_container_width=True,
-                                            height=400,  # Fixed height for better performance
-                                            hide_index=True,  # Hide index for cleaner display
-                                            column_config={
-                                                col: st.column_config.Column(
-                                                    width="medium",
-                                                    help=f"Column: {col}"
-                                                ) for col in display_df.columns
-                                            }
-                                        )
-                                        
-                                        # Add data summary
-                                        with st.expander("Data Summary"):
-                                            # Basic statistics
-                                            st.write("### Basic Statistics")
-                                            st.write(display_df.describe())
+                                    # Clean and convert data types only once
+                                    if 'processed_df' not in st.session_state:
+                                        try:
+                                            # Convert object columns to string type
+                                            processed_df = st.session_state.query_results.copy()
+                                            for col in processed_df.columns:
+                                                if processed_df[col].dtype == 'object':
+                                                    processed_df[col] = processed_df[col].astype(str)
+                                                    processed_df[col] = processed_df[col].str.replace('\x00', '')
+                                                    processed_df[col] = processed_df[col].str.replace('\r', '')
+                                                    processed_df[col] = processed_df[col].str.replace('\n', ' ')
                                             
-                                            # Missing values
-                                            st.write("### Missing Values")
-                                            missing_data = display_df.isnull().sum()
-                                            st.write(missing_data[missing_data > 0])
+                                            # Convert numeric columns
+                                            numeric_columns = processed_df.select_dtypes(include=['int64', 'float64']).columns
+                                            for col in numeric_columns:
+                                                processed_df[col] = pd.to_numeric(processed_df[col], errors='coerce')
                                             
-                                            # Data types
-                                            st.write("### Data Types")
-                                            st.write(display_df.dtypes)
+                                            # Convert date columns if they exist
+                                            date_columns = [col for col in processed_df.columns if 'date' in col.lower() or 'time' in col.lower()]
+                                            for col in date_columns:
+                                                try:
+                                                    processed_df[col] = pd.to_datetime(processed_df[col], errors='coerce')
+                                                except:
+                                                    pass
+                                            
+                                            st.session_state.processed_df = processed_df
+                                        except Exception as e:
+                                            logger.error(f"Error processing DataFrame: {str(e)}")
+                                            st.error("Error processing data. Please try again.")
+                                            st.session_state.processed_df = st.session_state.query_results
                                     
-                                    except Exception as e:
-                                        logger.error(f"Error processing DataFrame: {str(e)}")
-                                        st.error("Error processing data. Please try again.")
-                                        # Display raw data as fallback
-                                        st.dataframe(df, use_container_width=True)
+                                    # Display summary statistics
+                                    st.write(f"Showing {total_rows:,} rows and {total_cols} columns")
                                     
-                                    # Add download options
-                                    st.write("### Download Options")
-                                    col1, col2 = st.columns(2)
+                                    # Add data preview options
+                                    preview_options = st.radio(
+                                        "Data Preview Options",
+                                        ["First 1000 rows", "Last 1000 rows", "Random 1000 rows"],
+                                        horizontal=True,
+                                        key="preview_options",
+                                        index=["First 1000 rows", "Last 1000 rows", "Random 1000 rows"].index(st.session_state.display_options['preview'])
+                                    )
                                     
-                                    with col1:
-                                        # Create a unique key for the download button
-                                        download_csv_key = f"download_csv_{table_choice.lower().replace(' ', '_')}"
+                                    # Update session state with preview option
+                                    st.session_state.display_options['preview'] = preview_options
+                                    
+                                    # Get the processed DataFrame
+                                    df = st.session_state.processed_df
+                                    
+                                    # Select data based on preview option
+                                    if preview_options == "First 1000 rows":
+                                        display_df = df.head(1000)
+                                    elif preview_options == "Last 1000 rows":
+                                        display_df = df.tail(1000)
+                                    else:
+                                        display_df = df.sample(min(1000, total_rows))
+                                    
+                                    # Add column selection
+                                    selected_columns = st.multiselect(
+                                        "Select columns to display",
+                                        options=df.columns.tolist(),
+                                        default=st.session_state.display_options['selected_columns'],
+                                        key="column_selector"
+                                    )
+                                    
+                                    # Update session state with selected columns
+                                    st.session_state.display_options['selected_columns'] = selected_columns
+                                    
+                                    if selected_columns:
+                                        display_df = display_df[selected_columns]
+                                    
+                                    # Add sorting options
+                                    sort_column = st.selectbox(
+                                        "Sort by column",
+                                        options=selected_columns,
+                                        index=0 if not st.session_state.display_options['sort_column'] else selected_columns.index(st.session_state.display_options['sort_column']),
+                                        key="sort_column"
+                                    )
+                                    
+                                    # Update session state with sort column
+                                    st.session_state.display_options['sort_column'] = sort_column
+                                    
+                                    sort_order = st.radio(
+                                        "Sort order",
+                                        ["Ascending", "Descending"],
+                                        horizontal=True,
+                                        key="sort_order",
+                                        index=0 if st.session_state.display_options['sort_order'] == "Ascending" else 1
+                                    )
+                                    
+                                    # Update session state with sort order
+                                    st.session_state.display_options['sort_order'] = sort_order
+                                    
+                                    if sort_column:
+                                        display_df = display_df.sort_values(
+                                            by=sort_column,
+                                            ascending=(sort_order == "Ascending")
+                                        )
+                                    
+                                    # Display the data with optimized settings
+                                    st.dataframe(
+                                        display_df,
+                                        use_container_width=True,
+                                        height=400,
+                                        hide_index=True,
+                                        column_config={
+                                            col: st.column_config.Column(
+                                                width="medium",
+                                                help=f"Column: {col}"
+                                            ) for col in display_df.columns
+                                        }
+                                    )
+                                    
+                                    # Add data summary
+                                    with st.expander("Data Summary"):
+                                        # Basic statistics
+                                        st.write("### Basic Statistics")
+                                        st.write(display_df.describe())
                                         
-                                        # Use a form to handle the download button
-                                        with st.form(key="download_csv_form"):
-                                            if st.form_submit_button("Download CSV"):
-                                                with st.spinner('Preparing CSV download...'):
-                                                    try:
-                                                        # Get the complete data for download
-                                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
-                                                        
-                                                        if not download_df.empty:
-                                                            # Clean data before download
-                                                            for col in download_df.columns:
-                                                                if download_df[col].dtype == 'object':
-                                                                    download_df[col] = download_df[col].astype(str)
-                                                                    download_df[col] = download_df[col].str.replace('\x00', '')
-                                                                    download_df[col] = download_df[col].str.replace('\r', '')
-                                                                    download_df[col] = download_df[col].str.replace('\n', ' ')
-                                                            
-                                                            # Convert to CSV
-                                                            csv_data = download_df.to_csv(index=False)
-                                                            
-                                                            # Create download button
-                                                            st.download_button(
-                                                                label="Click to Download CSV",
-                                                                data=csv_data,
-                                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                                                                mime="text/csv",
-                                                                key=download_csv_key
-                                                            )
-                                                        else:
-                                                            st.error("No data available for download")
-                                                    except Exception as e:
-                                                        logger.error(f"Error preparing CSV download: {str(e)}")
-                                                        st.error("Error preparing CSV download. Please try again.")
-                                    
-                                    with col2:
-                                        # Create a unique key for the ZIP download button
-                                        download_zip_key = f"download_zip_{table_choice.lower().replace(' ', '_')}"
+                                        # Missing values
+                                        st.write("### Missing Values")
+                                        missing_data = display_df.isnull().sum()
+                                        st.write(missing_data[missing_data > 0])
                                         
-                                        # Use a form to handle the ZIP download button
-                                        with st.form(key="download_zip_form"):
-                                            if st.form_submit_button("Download ZIP"):
-                                                with st.spinner('Preparing ZIP download...'):
-                                                    try:
-                                                        # Get the complete data for download
-                                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
-                                                        
-                                                        if not download_df.empty:
-                                                            # Clean data before download
-                                                            for col in download_df.columns:
-                                                                if download_df[col].dtype == 'object':
-                                                                    download_df[col] = download_df[col].astype(str)
-                                                                    download_df[col] = download_df[col].str.replace('\x00', '')
-                                                                    download_df[col] = download_df[col].str.replace('\r', '')
-                                                                    download_df[col] = download_df[col].str.replace('\n', ' ')
-                                                            
-                                                            # Create ZIP file
-                                                            zip_buffer = BytesIO()
-                                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                                                                # Add CSV to ZIP
-                                                                csv_data = download_df.to_csv(index=False)
-                                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
-                                                                
-                                                                # Add Excel to ZIP
-                                                                excel_buffer = BytesIO()
-                                                                download_df.to_excel(excel_buffer, index=False, engine='openpyxl')
-                                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
-                                                            
-                                                            # Prepare ZIP for download
-                                                            zip_buffer.seek(0)
-                                                            
-                                                            # Create download button
-                                                            st.download_button(
-                                                                label="Click to Download ZIP",
-                                                                data=zip_buffer,
-                                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                                                                mime="application/zip",
-                                                                key=download_zip_key
-                                                            )
-                                                        else:
-                                                            st.error("No data available for download")
-                                                    except Exception as e:
-                                                        logger.error(f"Error preparing ZIP download: {str(e)}")
-                                                        st.error("Error preparing ZIP download. Please try again.")
-                            else:
-                                st.warning("No data found matching your criteria.")
+                                        # Data types
+                                        st.write("### Data Types")
+                                        st.write(display_df.dtypes)
                                 
                         except Exception as e:
                             error_msg = f"Error executing query: {str(e)}"
