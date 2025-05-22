@@ -1068,6 +1068,8 @@ def main():
                 # Initialize session state for vendor display limit if not exists
                 if 'vendor_display_limit' not in st.session_state:
                     st.session_state.vendor_display_limit = 15
+                if 'matching_vendors' not in st.session_state:
+                    st.session_state.matching_vendors = []
                 
                 # Create columns for search input and clear button
                 search_col1, search_col2 = st.columns([3, 1])
@@ -1087,41 +1089,45 @@ def main():
                         st.session_state.filters['vendor'] = None
                         st.session_state.vendor_search_input = ""
                         st.session_state.vendor_display_limit = 15  # Reset display limit
+                        st.session_state.matching_vendors = []  # Clear matching vendors
                         st.rerun()
                 
                 # Handle vendor search and selection
-                if vendor_search and len(vendor_search.strip()) > 0:  # Only proceed if there's actual search text
+                if vendor_search:
                     try:
-                        # Read the vendor file with a specific encoding
-                        vendors_df = pd.read_csv(
-                            vendor_file_path,
-                            encoding='latin1',
-                            usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor'],
-                            on_bad_lines='skip'
-                        )
-                        
-                        # Get the correct column name
-                        vendor_column = 'Ven_NAME' if table_choice == "Payment Information" else 'Vendor'
-                        
-                        # Basic cleaning
-                        vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
-                        
-                        # Simple search
-                        matching_vendors = vendors_df[
-                            vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
-                        ][vendor_column].unique().tolist()
-                        
-                        # Sort results
-                        matching_vendors.sort()
+                        # Only perform search if we don't have results or search term changed
+                        if not st.session_state.matching_vendors or vendor_search != st.session_state.get('last_search', ''):
+                            # Read the vendor file with a specific encoding
+                            vendors_df = pd.read_csv(
+                                vendor_file_path,
+                                encoding='latin1',
+                                usecols=['Ven_NAME' if table_choice == "Payment Information" else 'Vendor'],
+                                on_bad_lines='skip'
+                            )
+                            
+                            # Get the correct column name
+                            vendor_column = 'Ven_NAME' if table_choice == "Payment Information" else 'Vendor'
+                            
+                            # Basic cleaning
+                            vendors_df[vendor_column] = vendors_df[vendor_column].astype(str).str.strip()
+                            
+                            # Simple search
+                            matching_vendors = vendors_df[
+                                vendors_df[vendor_column].str.contains(vendor_search, case=False, na=False)
+                            ][vendor_column].unique().tolist()
+                            
+                            # Sort results and store in session state
+                            st.session_state.matching_vendors = sorted(matching_vendors)
+                            st.session_state.last_search = vendor_search
+                            st.session_state.vendor_display_limit = 15  # Reset display limit
                         
                         # Get total count
-                        total_vendors = len(matching_vendors)
+                        total_vendors = len(st.session_state.matching_vendors)
                         
-                        # Only show results if we have matches
-                        if total_vendors > 0:
-                            # Display current results
-                            current_vendors = matching_vendors[:st.session_state.vendor_display_limit]
-                            
+                        # Display current results
+                        current_vendors = st.session_state.matching_vendors[:st.session_state.vendor_display_limit]
+                        
+                        if current_vendors:
                             # Show results count
                             st.write(f"Found {total_vendors} matching vendors")
                             
@@ -1142,7 +1148,8 @@ def main():
                             if total_vendors > st.session_state.vendor_display_limit:
                                 if st.button("Show More Vendors"):
                                     st.session_state.vendor_display_limit += 15
-                                    st.rerun()
+                                    # No need to rerun, just update the display
+                                    st.experimental_rerun()
                         else:
                             st.info("No matching vendors found. Try different search terms.")
                             st.session_state.filters['vendor'] = None
@@ -1155,6 +1162,7 @@ def main():
                     st.session_state.selected_vendor = None
                     st.session_state.filters['vendor'] = None
                     st.session_state.vendor_display_limit = 15  # Reset display limit
+                    st.session_state.matching_vendors = []  # Clear matching vendors
         
         with col2:
             st.subheader("Query Actions")
