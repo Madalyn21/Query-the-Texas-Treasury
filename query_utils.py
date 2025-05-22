@@ -103,7 +103,8 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            where_conditions.append("p.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
+            # Add fiscal month range filter with explicit comparison
+            where_conditions.append("p.fiscal_month >= :fiscal_month_start AND p.fiscal_month <= :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
@@ -142,7 +143,8 @@ def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice:
             # Log the fiscal month range
             logger.info(f"Fiscal month range: {filters['fiscal_month_start']} - {filters['fiscal_month_end']}")
             
-            where_conditions.append("c.fm BETWEEN :fiscal_month_start AND :fiscal_month_end")
+            # Add fiscal month range filter with explicit comparison
+            where_conditions.append("c.fm >= :fiscal_month_start AND c.fm <= :fiscal_month_end")
             params['fiscal_month_start'] = filters['fiscal_month_start']
             params['fiscal_month_end'] = filters['fiscal_month_end']
             
@@ -223,26 +225,26 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 payment_structure = connection.execute(payment_columns).fetchall()
                 logger.info(f"Paymentinformation table structure: {payment_structure}")
                 
-                # Check actual fiscal year values with counts
-                fiscal_year_check = text("""
-                    SELECT fiscal_year, COUNT(*) as count
+                # Check actual fiscal month values with counts
+                fiscal_month_check = text("""
+                    SELECT fiscal_month, COUNT(*) as count
                     FROM paymentinformation 
-                    WHERE fiscal_year IS NOT NULL 
-                    GROUP BY fiscal_year
-                    ORDER BY fiscal_year;
+                    WHERE fiscal_month IS NOT NULL 
+                    GROUP BY fiscal_month
+                    ORDER BY fiscal_month;
                 """)
-                fiscal_years = connection.execute(fiscal_year_check).fetchall()
-                logger.info(f"Actual fiscal years in paymentinformation with counts: {fiscal_years}")
+                fiscal_months = connection.execute(fiscal_month_check).fetchall()
+                logger.info(f"Actual fiscal months in paymentinformation with counts: {fiscal_months}")
                 
-                # Check fiscal year data type
-                fiscal_year_type = text("""
+                # Check fiscal month data type
+                fiscal_month_type = text("""
                     SELECT data_type 
                     FROM information_schema.columns 
                     WHERE table_name = 'paymentinformation' 
-                    AND column_name = 'fiscal_year';
+                    AND column_name = 'fiscal_month';
                 """)
-                fiscal_year_type_result = connection.execute(fiscal_year_type).scalar()
-                logger.info(f"Fiscal year data type in paymentinformation: {fiscal_year_type_result}")
+                fiscal_month_type_result = connection.execute(fiscal_month_type).scalar()
+                logger.info(f"Fiscal month data type in paymentinformation: {fiscal_month_type_result}")
                 
                 accessibility['paymentinformation'] = True
             else:
@@ -269,26 +271,26 @@ def check_table_accessibility(engine) -> Dict[str, bool]:
                 contract_structure = connection.execute(contract_columns).fetchall()
                 logger.info(f"Contractinfo table structure: {contract_structure}")
                 
-                # Check actual fiscal year values with counts
-                fiscal_year_check = text("""
-                    SELECT fiscal_year, COUNT(*) as count
+                # Check actual fiscal month values with counts
+                fiscal_month_check = text("""
+                    SELECT fm, COUNT(*) as count
                     FROM contractinfo 
-                    WHERE fiscal_year IS NOT NULL 
-                    GROUP BY fiscal_year
-                    ORDER BY fiscal_year;
+                    WHERE fm IS NOT NULL 
+                    GROUP BY fm
+                    ORDER BY fm;
                 """)
-                fiscal_years = connection.execute(fiscal_year_check).fetchall()
-                logger.info(f"Actual fiscal years in contractinfo with counts: {fiscal_years}")
+                fiscal_months = connection.execute(fiscal_month_check).fetchall()
+                logger.info(f"Actual fiscal months in contractinfo with counts: {fiscal_months}")
                 
-                # Check fiscal year data type
-                fiscal_year_type = text("""
+                # Check fiscal month data type
+                fiscal_month_type = text("""
                     SELECT data_type 
                     FROM information_schema.columns 
                     WHERE table_name = 'contractinfo' 
-                    AND column_name = 'fiscal_year';
+                    AND column_name = 'fm';
                 """)
-                fiscal_year_type_result = connection.execute(fiscal_year_type).scalar()
-                logger.info(f"Fiscal year data type in contractinfo: {fiscal_year_type_result}")
+                fiscal_month_type_result = connection.execute(fiscal_month_type).scalar()
+                logger.info(f"Fiscal month data type in contractinfo: {fiscal_month_type_result}")
                 
                 accessibility['contractinfo'] = True
             else:
