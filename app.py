@@ -491,7 +491,7 @@ def download_csv(df):
                     data=csv_data,
                     file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                     mime="text/csv",
-                    key="download_csv"
+                    key="download_csv_button_1"
                 )
             except Exception as e:
                 logger.error(f"Error creating CSV: {str(e)}")
@@ -1250,7 +1250,7 @@ def main():
                                             data=csv_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
                                             mime='text/csv',
-                                            key="download_csv_button"
+                                            key="download_csv_button_1"
                                         )
                                 except Exception as e:
                                     logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
@@ -1270,7 +1270,7 @@ def main():
                                             data=zip_data,
                                             file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
                                             mime='application/zip',
-                                            key="download_zip_button"
+                                            key="download_zip_button_1"
                                         )
                                 except Exception as e:
                                     logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
@@ -1322,106 +1322,10 @@ def main():
                     logger.error(f"Error executing query: {str(e)}", exc_info=True)
                     st.error("Error executing query. Please try again.")
 
-    # Results Container (only visible after query)
-    if submit_clicked and 'df' in st.session_state and not st.session_state['df'].empty:
-        with st.container():
-            st.markdown("""
-                <style>
-                .results-container {
-                    background-color: #ffffff;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    margin: 1rem 0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            st.header("Query Results")
-            st.write(f"Showing {len(st.session_state['df'])} records")
-            
-            # Display the dataframe
-            with st.spinner("Loading results..."):
-                st.dataframe(st.session_state['df'], use_container_width=True)
-            
-            # Download buttons
-            col1, col2 = st.columns(2)
-            with col1:
-                try:
-                    with st.spinner('Preparing CSV download...'):
-                        complete_df = get_complete_filtered_data(
-                            st.session_state.filters, 
-                            table_choice, 
-                            st.session_state.db_engine
-                        )
-                        csv_data = complete_df.to_csv(index=False)
-                        st.download_button(
-                            label="Download CSV",
-                            data=csv_data,
-                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
-                            mime='text/csv',
-                            key="download_csv_button"
-                        )
-                except Exception as e:
-                    logger.error(f"Error preparing CSV download: {str(e)}", exc_info=True)
-                    st.error("Error preparing CSV download. Please try again.")
-            
-            with col2:
-                try:
-                    with st.spinner('Preparing ZIP download...'):
-                        complete_df = get_complete_filtered_data(
-                            st.session_state.filters, 
-                            table_choice, 
-                            st.session_state.db_engine
-                        )
-                        zip_data = df_to_zip(complete_df)
-                        st.download_button(
-                            label="Download ZIP",
-                            data=zip_data,
-                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                            mime='application/zip',
-                            key="download_zip_button"
-                        )
-                except Exception as e:
-                    logger.error(f"Error preparing ZIP download: {str(e)}", exc_info=True)
-                    st.error("Error preparing ZIP download. Please try again.")
-
     # Visualization Section
     with st.container():
         st.subheader("Visualization")
         st.info("Visualization Function Coming Soon!")
-        
-        # Visualization code is temporarily disabled
-        # if 'df' in st.session_state and not st.session_state['df'].empty:
-        #     tab1, tab2, tab3, tab4 = st.tabs([
-        #         "Payment Distribution", 
-        #         "Trend Analysis", 
-        #         "Vendor Analysis",
-        #         "Category Analysis"
-        #     ])
-        #     
-        #     try:
-        #         visualizations = generate_all_visualizations(st.session_state['df'], table_choice)
-        #         
-        #         with tab1:
-        #             st.altair_chart(visualizations['payment_distribution'], use_container_width=True)
-        #         
-        #         with tab2:
-        #             st.altair_chart(visualizations['trend_analysis'], use_container_width=True)
-        #         
-        #         with tab3:
-        #             st.altair_chart(visualizations['vendor_analysis'], use_container_width=True)
-        #         
-        #         with tab4:
-        #             if 'category_analysis' in visualizations:
-        #                 st.altair_chart(visualizations['category_analysis'], use_container_width=True)
-        #             else:
-        #                 st.info("Category analysis is only available for Contract Information.")
-        #                 
-        #     except Exception as e:
-        #         st.error(f"Error generating visualizations: {str(e)}")
-        # else:
-        #     st.info("Run a query to see visualizations")
 
     # AI Analysis Container
     with st.container():
