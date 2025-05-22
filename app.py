@@ -500,6 +500,27 @@ def download_csv(df):
         logger.error(f"Error creating CSV download: {str(e)}", exc_info=True)
         st.error("Error creating CSV download")
 
+def reset_filters():
+    """Reset all filters to their default values"""
+    st.session_state.filters = {
+        'agency': None,
+        'vendor': None,
+        'appropriation_title': None,
+        'payment_source': None,
+        'appropriation_object': None,
+        'fiscal_year_start': None,
+        'fiscal_year_end': None,
+        'fiscal_month_start': None,
+        'fiscal_month_end': None,
+        'category': None,
+        'procurement_method': None,
+        'status': None,
+        'subject': None
+    }
+    st.session_state.selected_vendor = None
+    st.session_state.matching_vendors = []
+    st.session_state.last_search = ""
+
 def initialize_session_state():
     """Initialize session state variables"""
     if 'filter_options' not in st.session_state:
@@ -510,21 +531,7 @@ def initialize_session_state():
     if 'data_loaded' not in st.session_state:
         st.session_state.data_loaded = False
     if 'filters' not in st.session_state:
-        st.session_state.filters = {
-            'agency': None,
-            'vendor': None,
-            'appropriation_title': None,
-            'payment_source': None,
-            'appropriation_object': None,
-            'fiscal_year_start': None,
-            'fiscal_year_end': None,
-            'fiscal_month_start': None,
-            'fiscal_month_end': None,
-            'category': None,
-            'procurement_method': None,
-            'status': None,
-            'subject': None
-        }
+        reset_filters()
     if 'vendor_limit' not in st.session_state:
         st.session_state.vendor_limit = 15  # Default limit for vendor search results
     if 'selected_vendor' not in st.session_state:
@@ -1183,11 +1190,34 @@ def main():
             # Handle query submission
             if submit_clicked:
                 logger.info("Query submitted")
+                # Reset filters before preparing new query
+                reset_filters()
+                
+                # Update filters with current selections
+                if selected_agency != "All":
+                    st.session_state.filters['agency'] = selected_agency
+                if selected_vendor:
+                    st.session_state.filters['vendor'] = selected_vendor
+                if selected_appropriation != "All":
+                    st.session_state.filters['appropriation_title'] = selected_appropriation
+                if selected_payment_source != "All":
+                    st.session_state.filters['payment_source'] = selected_payment_source
+                if selected_appropriation_object != "All":
+                    st.session_state.filters['appropriation_object'] = selected_appropriation_object
+                if selected_category != "All":
+                    st.session_state.filters['category'] = selected_category
+                if selected_procurement_method != "All":
+                    st.session_state.filters['procurement_method'] = selected_procurement_method
+                if selected_status != "All":
+                    st.session_state.filters['status'] = selected_status
+                if selected_subject != "All":
+                    st.session_state.filters['subject'] = selected_subject
+                
                 # Prepare and validate the filter payload
                 filter_payload = {
                     k: validate_input(v) 
                     for k, v in st.session_state.filters.items() 
-                    if v != 'All' and v is not None
+                    if v is not None
                 }
                 
                 logger.info(f"Filter payload: {filter_payload}")
@@ -1293,8 +1323,8 @@ def main():
                             with col1:
                                 try:
                                     with st.spinner('Preparing CSV download...'):
-                                        # Use the same query but without pagination for download
-                                        download_df = get_filtered_data(filter_payload, table_choice, engine, page_size=None)[0]
+                                        # Use get_complete_filtered_data for download
+                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
                                         csv_data = download_df.to_csv(index=False)
                                         st.download_button(
                                             label="Download CSV",
@@ -1310,8 +1340,8 @@ def main():
                             with col2:
                                 try:
                                     with st.spinner('Preparing ZIP download...'):
-                                        # Use the same query but without pagination for download
-                                        download_df = get_filtered_data(filter_payload, table_choice, engine, page_size=None)[0]
+                                        # Use get_complete_filtered_data for download
+                                        download_df = get_complete_filtered_data(filter_payload, table_choice, engine)
                                         zip_data = df_to_zip(download_df)
                                         st.download_button(
                                             label="Download ZIP",
