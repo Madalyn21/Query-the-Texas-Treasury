@@ -1334,11 +1334,8 @@ def main():
                                             st.error("Error processing data. Please try again.")
                                             st.session_state.processed_df = st.session_state.query_results
                                     
-                                    # Display summary
-                                    st.write(f"Showing {total_rows:,} total results")
-                                    
                                     # Add note about display limit
-                                    st.info("Note: The table shows 150 rows at a time, but the full dataset is available for download.")
+                                    st.info("Note: The table shows the top 150 rows at a time, but the full dataset is available for download.")
                                     
                                     # Calculate pagination
                                     page_size = 150
@@ -1435,6 +1432,64 @@ def main():
                                     
                                     # Show current page info
                                     st.write(f"Showing results {start_idx + 1} to {end_idx} of {total_rows}")
+                                    
+                                    # Download section
+                                    st.write("### Download Options")
+                                    download_col1, download_col2 = st.columns(2)
+                                    
+                                    with download_col1:
+                                        # CSV Download button
+                                        csv_data = st.session_state.processed_df.to_csv(index=False)
+                                        st.download_button(
+                                            label="Download CSV",
+                                            data=csv_data,
+                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.csv",
+                                            mime="text/csv",
+                                            key="download_csv"
+                                        )
+                                    
+                                    with download_col2:
+                                        # ZIP Download button
+                                        try:
+                                            # Try to import openpyxl
+                                            import openpyxl
+                                            
+                                            zip_buffer = BytesIO()
+                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                # Add CSV to ZIP
+                                                csv_data = st.session_state.processed_df.to_csv(index=False)
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                                
+                                                # Add Excel to ZIP
+                                                excel_buffer = BytesIO()
+                                                st.session_state.processed_df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
+                                            
+                                            zip_buffer.seek(0)
+                                            st.download_button(
+                                                label="Download ZIP (CSV + Excel)",
+                                                data=zip_buffer,
+                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                mime="application/zip",
+                                                key="download_zip"
+                                            )
+                                        except ImportError:
+                                            # Fallback to CSV-only ZIP if openpyxl is not available
+                                            zip_buffer = BytesIO()
+                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                # Add CSV to ZIP
+                                                csv_data = st.session_state.processed_df.to_csv(index=False)
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                            
+                                            zip_buffer.seek(0)
+                                            st.download_button(
+                                                label="Download ZIP (CSV only)",
+                                                data=zip_buffer,
+                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                mime="application/zip",
+                                                key="download_zip"
+                                            )
+                                            st.info("Excel format not available. Install openpyxl package for Excel support.")
                                 
                         except Exception as e:
                             error_msg = f"Error executing query: {str(e)}"
