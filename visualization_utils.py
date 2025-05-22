@@ -25,8 +25,20 @@ def create_payment_distribution_chart(df: pd.DataFrame, table_choice: str) -> al
         amount_column = 'amount_payed' if table_choice == "Payment Information" else 'curvalue'
         agency_column = 'agency_title' if table_choice == "Payment Information" else 'agency'
         
+        # Verify columns exist
+        required_columns = [agency_column, amount_column]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
+        
+        # Convert amount to numeric and handle any errors
+        df[amount_column] = pd.to_numeric(df[amount_column], errors='coerce')
+        
         # Group by agency and sum the amounts
         agency_totals = df.groupby(agency_column)[amount_column].sum().reset_index()
+        
+        # Sort by amount in descending order
+        agency_totals = agency_totals.sort_values(by=amount_column, ascending=False)
         
         # Create the chart
         chart = alt.Chart(agency_totals).mark_bar().encode(
@@ -75,8 +87,17 @@ def create_trend_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Char
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
         
+        # Convert amount to numeric and handle any errors
+        df[amount_column] = pd.to_numeric(df[amount_column], errors='coerce')
+        
+        # Convert fiscal year to string for proper grouping
+        df[fiscal_year_col] = df[fiscal_year_col].astype(str)
+        
         # Group by fiscal year and month, sum the amounts
         monthly_totals = df.groupby([fiscal_year_col, fiscal_month_col])[amount_column].sum().reset_index()
+        
+        # Sort by fiscal year and month
+        monthly_totals = monthly_totals.sort_values(by=[fiscal_year_col, fiscal_month_col])
         
         # Create the chart
         chart = alt.Chart(monthly_totals).mark_line().encode(
@@ -124,12 +145,14 @@ def create_vendor_analysis_chart(df: pd.DataFrame, table_choice: str) -> alt.Cha
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
         
-        # Convert amount column to numeric, handling any errors
+        # Convert amount to numeric and handle any errors
         df[amount_column] = pd.to_numeric(df[amount_column], errors='coerce')
         
-        # Group by vendor and sum the amounts, get top 10
+        # Group by vendor and sum the amounts
         vendor_totals = df.groupby(vendor_column)[amount_column].sum().reset_index()
-        vendor_totals = vendor_totals.nlargest(10, amount_column)
+        
+        # Sort by amount in descending order and get top 10
+        vendor_totals = vendor_totals.sort_values(by=amount_column, ascending=False).head(10)
         
         # Create the chart
         chart = alt.Chart(vendor_totals).mark_bar().encode(

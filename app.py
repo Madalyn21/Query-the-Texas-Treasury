@@ -498,6 +498,10 @@ def initialize_session_state():
             'status': None,
             'subject': None
         }
+    if 'vendor_limit' not in st.session_state:
+        st.session_state.vendor_limit = 15  # Default limit for vendor search results
+    if 'selected_vendor' not in st.session_state:
+        st.session_state.selected_vendor = None
 
     # Initialize session state for pagination if not exists
     if 'current_page' not in st.session_state:
@@ -1037,6 +1041,10 @@ def main():
             # Handle vendor search and selection
             if vendor_search:
                 try:
+                    # Clear previous vendor selection when new search is made
+                    st.session_state.selected_vendor = None
+                    st.session_state.filters['vendor'] = None
+                    
                     # Try different encodings
                     encodings = ['latin1', 'cp1252', 'iso-8859-1', 'utf-8']
                     vendors_df = None
@@ -1081,19 +1089,24 @@ def main():
                         selected_vendor = st.selectbox(
                             "Select Vendor",
                             options=[""] + matching_vendors,
-                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                            index=0,  # Always start with empty selection
                             key="vendor_select"
                         )
                         
-                        if selected_vendor != st.session_state.selected_vendor:
+                        if selected_vendor:
                             st.session_state.selected_vendor = selected_vendor
-                            st.session_state.filters['vendor'] = selected_vendor if selected_vendor else None
+                            st.session_state.filters['vendor'] = selected_vendor
+                            st.success(f"Selected vendor: {selected_vendor}")
                     else:
                         st.info("No matching vendors found.")
                         st.session_state.filters['vendor'] = None
                 except Exception as e:
                     logger.error(f"Error searching vendors: {str(e)}", exc_info=True)
                     st.error(f"Error searching vendors: {str(e)}")
+            else:
+                # Clear vendor selection when search is empty
+                st.session_state.selected_vendor = None
+                st.session_state.filters['vendor'] = None
         
         with col2:
             st.subheader("Query Actions")
