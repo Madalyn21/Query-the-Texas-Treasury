@@ -1327,25 +1327,9 @@ def main():
                                                 # Append new results to existing dataframe
                                                 st.session_state['df'] = pd.concat([current_df, next_df], ignore_index=True)
                                                 st.session_state.has_more_results = has_more
-                                                
-                                                # Update the display without rerunning the entire app
                                                 st.success(f"Loaded {len(next_df)} more records!")
-                                                
-                                                # Update the dataframe display
-                                                st.dataframe(st.session_state['df'], use_container_width=True)
-                                                
-                                                # Update the record count
-                                                st.write(f"Showing {len(st.session_state['df'])} records")
-                                                
-                                                # Get total count from complete data
-                                                with st.spinner('Calculating total records...'):
-                                                    complete_df = get_complete_filtered_data(
-                                                        st.session_state.filters, 
-                                                        table_choice, 
-                                                        st.session_state.db_engine
-                                                    )
-                                                    total_records = len(complete_df)
-                                                    st.info(f"Showing {len(st.session_state['df'])} records of {total_records:,} total records")
+                                                # Force a rerun to update the display
+                                                st.rerun()
                                             else:
                                                 st.warning("No more results to load.")
                                                 st.session_state.has_more_results = False
