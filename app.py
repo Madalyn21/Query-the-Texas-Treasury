@@ -1367,25 +1367,46 @@ def main():
                                     
                                     with col2:
                                         # ZIP Download button
-                                        zip_buffer = BytesIO()
-                                        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                                            # Add CSV to ZIP
-                                            csv_data = st.session_state.processed_df.to_csv(index=False)
-                                            zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                        try:
+                                            # Try to import openpyxl
+                                            import openpyxl
                                             
-                                            # Add Excel to ZIP
-                                            excel_buffer = BytesIO()
-                                            st.session_state.processed_df.to_excel(excel_buffer, index=False, engine='openpyxl')
-                                            zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
-                                        
-                                        zip_buffer.seek(0)
-                                        st.download_button(
-                                            label="Download ZIP",
-                                            data=zip_buffer,
-                                            file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
-                                            mime="application/zip",
-                                            key="download_zip"
-                                        )
+                                            zip_buffer = BytesIO()
+                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                # Add CSV to ZIP
+                                                csv_data = st.session_state.processed_df.to_csv(index=False)
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                                
+                                                # Add Excel to ZIP
+                                                excel_buffer = BytesIO()
+                                                st.session_state.processed_df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.xlsx", excel_buffer.getvalue())
+                                            
+                                            zip_buffer.seek(0)
+                                            st.download_button(
+                                                label="Download ZIP (CSV + Excel)",
+                                                data=zip_buffer,
+                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                mime="application/zip",
+                                                key="download_zip"
+                                            )
+                                        except ImportError:
+                                            # Fallback to CSV-only ZIP if openpyxl is not available
+                                            zip_buffer = BytesIO()
+                                            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                                # Add CSV to ZIP
+                                                csv_data = st.session_state.processed_df.to_csv(index=False)
+                                                zip_file.writestr(f"{table_choice.lower().replace(' ', '_')}_data.csv", csv_data)
+                                            
+                                            zip_buffer.seek(0)
+                                            st.download_button(
+                                                label="Download ZIP (CSV only)",
+                                                data=zip_buffer,
+                                                file_name=f"{table_choice.lower().replace(' ', '_')}_data.zip",
+                                                mime="application/zip",
+                                                key="download_zip"
+                                            )
+                                            st.info("Excel format not available. Install openpyxl package for Excel support.")
                                     
                                     with col3:
                                         # Next page button
