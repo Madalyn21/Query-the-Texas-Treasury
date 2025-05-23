@@ -1357,7 +1357,8 @@ def display_main_content():
                     with col3:
                         st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
                     with col4:
-                        st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+                        if('category' in df.columns):
+                            st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
             else:
                 # Show placeholder when no query has been submitted
                 st.info("Submit a Query to see Visualizations")
