@@ -1415,7 +1415,7 @@ def display_main_content():
                 - Highlights anything notable about vendors, programs, or agencies
                 """
                 logger.info("test5 Successfull")
-                try:#im going to lose it lose it - Suicidal King Julien
+                try:
                     response = openai.ChatCompletion.create(
                         model="gpt-4",
                         messages=[
@@ -1423,7 +1423,7 @@ def display_main_content():
                             {"role": "user", "content": prompt}
                             ],
                             temperature=0.5,
-                            max_tokens=400
+                            max_tokens=1000
                             )
                     logger.info("test6 Successfull")
                     analysis = response["choices"][0]["message"]["content"]
