@@ -104,7 +104,6 @@ def create_category_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 def generate_all_visualizations(df: pd.DataFrame) -> Dict[str, alt.Chart]:
     """Generate all visualizations for the given data."""
     # Convert amount column to numeric, handling any non-numeric values
-    logger.info(f"Columns in DataFrame: {df.columns.tolist()}")
     df['dollar_value'] = pd.to_numeric(df['dollar_value'], errors='coerce')
     
     # Log data types after conversion

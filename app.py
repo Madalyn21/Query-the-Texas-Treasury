@@ -255,6 +255,7 @@ def get_filter_options():
         }
 
 def df_to_zip(df):
+    logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
     csv_bytes = df.to_csv(index=False).encode('utf-8')
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
@@ -454,6 +455,7 @@ def download_csv(df):
     """Convert DataFrame to CSV and create download button"""
     try:
         # Convert DataFrame to CSV
+        logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
         csv = df.to_csv(index=False)
         
         # Create download button
@@ -1296,6 +1298,7 @@ def display_main_content():
                                 with st.spinner("Preparing download..."):
                                     try:
                                         if st.session_state.download_format == "csv":
+                                            logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
                                             csv = st.session_state.queried_data.to_csv(index=False)
                                             st.download_button(
                                                 label="Click to download CSV",
@@ -1309,6 +1312,7 @@ def display_main_content():
                                             with tempfile.TemporaryDirectory() as tmpdir:
                                                 # Save CSV
                                                 csv_path = os.path.join(tmpdir, "data.csv")
+                                                logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
                                                 st.session_state.queried_data.to_csv(csv_path, index=False)
                                                 
                                                 # Create ZIP file
