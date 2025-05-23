@@ -22,10 +22,10 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     # Determine table alias and name
     table_info = {
-        "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value, p.fund_title, \
+        "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, \
         p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator, \
         p.confidential, p.program_cost_account, p.mail_code"),
-        "Contract Information": ("c", "contractinfo", "c.contract_id, c.vendor, c.vendorid_num, c.agency, c.dollar_value, c.subject, c.status, c.award_date, \
+        "Contract Information": ("c", "contractinfo", "c.contract_id, c.vendor, c.vendorid_num, c.agency, c.dollar_value::numeric as dollar_value, c.subject, c.status, c.award_date, \
         c.completion_date, c.fiscal_year, c.fiscal_month, c.procurement_method, c.category, c.ngip_cnc")
     }
     
