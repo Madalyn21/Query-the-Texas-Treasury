@@ -1390,20 +1390,22 @@ def display_main_content():
         # Create a container for AI Analysis that will be populated later
         ai_container = st.container()
         with ai_container:
+            print("test -1")
             if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                print("test0")
                 if st.button("Run AI Analysis"):
-                    st.write("test1 Successfull")
+                    print("test1 Successfull")
                     # Placeholder for future AI analysis
                     openai.api_key = process.env.API_KEY  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
-                    st.write("test2 Successfull")
+                    print("test2 Successfull")
                     dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
                     # Clean amount column for analysis (remove dollar signs, convert to float)
-                    st.write("test3 Successfull")
+                    print("test3 Successfull")
                     if 'amount_payed' in dataframe1.columns:
                         dataframe1['amount_payed'] = dataframe1['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                     markdown_table = dataframe1.to_markdown(index=False)
-                    st.write("test4 Successfull")
+                    print("test4 Successfull")
                     prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
                     {markdown_table}
                     Write a paragraph (3–5 sentences) that:
@@ -1411,7 +1413,7 @@ def display_main_content():
                     - Notes any outliers or unusually high/low values
                     - Highlights anything notable about vendors, programs, or agencies
                     """
-                    st.write("test5 Successfull")
+                    print("test5 Successfull")
                     try:#im going to lose it lose it - Suicidal King Julien
                         response = openai.ChatCompletion.create(
                             model="gpt-4",
@@ -1422,10 +1424,10 @@ def display_main_content():
                                 temperature=0.5,
                                 max_tokens=400
                                 )
-                        st.write("test6 Successfull")
+                        print("test6 Successfull")
                         analysis = response["choices"][0]["message"]["content"]
                         st.markdown("### AI Generated Analysis")
-                        st.write("test8 Successfull")
+                        print("test8 Successfull")
                         st.write(analysis)
                     except Exception as e:
                         st.error(f"AI Analysis failed: {e}")
