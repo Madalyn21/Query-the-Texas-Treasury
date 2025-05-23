@@ -1038,10 +1038,10 @@ def display_main_content():
                     selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
                     
                     payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
-                    selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+                    selected_payment_source = st.selectbox("Fund Title", payment_source_options)
                     
                     appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
-                    selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+                    selected_appropriation_object = st.selectbox("Objective Title", appropriation_object_options)
                     
                     # Add vendor file path for payment information
                     vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
