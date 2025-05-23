@@ -1288,7 +1288,7 @@ def display_main_content():
                     with col2:
                         st.session_state.download_format = st.radio(
                             "Download Format",
-                            ["csv", "zip"],
+                            ["zip"],
                             horizontal=True,
                             index=0 if st.session_state.download_format == 'csv' else 1
                         )
@@ -1317,7 +1317,7 @@ def display_main_content():
                                                 
                                                 # Create ZIP file
                                                 zip_path = os.path.join(tmpdir, "data.zip")
-                                                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                                                     zipf.write(csv_path, "data.csv")
                                                 
                                                 # Read ZIP file and create download button
