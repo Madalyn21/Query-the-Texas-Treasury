@@ -35,11 +35,11 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
 def add_filters_to_query(queryArgs, filters):
     newArgs = "WHERE 1=1"
     # FY
-    if (filters.get('fiscal_year_start') and filters.get('fiscal_year_end')) and (filters.get('fiscal_year_start') != 2016 and filters.get('fiscal_year_end')!=2025):
+    if (filters.get('fiscal_year_start') and filters.get('fiscal_year_end')):
         newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN " + str(filters.get('fiscal_year_start')).replace("20", '', 1) \
             + " AND " + str(filters.get('fiscal_year_end')).replace("20", '', 1)
     # FM
-    if (filters.get('fiscal_month_start') and filters.get('fiscal_month_end')) and (filters.get('fiscal_month_start')!=1 and filters.get('fiscal_month_end')!=12):
+    if (filters.get('fiscal_month_start') and filters.get('fiscal_month_end')):
         if ((filters.get('fiscal_month_start')-9)%12)+1 <= ((filters.get('fiscal_month_end')-9)%12)+1:
             newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(((filters.get('fiscal_month_start')-9)%12)+1) \
                 + " AND " + str(((filters.get('fiscal_month_end')-9)%12)+1)
