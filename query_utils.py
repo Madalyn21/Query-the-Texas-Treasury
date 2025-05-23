@@ -40,8 +40,8 @@ def add_filters_to_query(queryArgs, filters):
             + " AND " + str(filters.get('fiscal_year_end')).replace("20", '', 1)
     # FM
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
-        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(filters.get('fiscal_month_start')).replace("20", '', 1) \
-            + " AND " + str(filters.get('fiscal_month_end')).replace("20", '', 1)
+        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(((filters.get('fiscal_month_start')-9)%12)+1) \
+            + " AND " + str(filters.get(((('fiscal_month_end')-9)%12)+1))
     # Agency
     if filters.get('agency'):
         newArgs = newArgs + " AND " + queryArgs[0] + ".agency = '" + filters.get('agency') + "'"
