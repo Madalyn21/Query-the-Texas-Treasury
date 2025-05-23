@@ -1288,7 +1288,7 @@ def display_main_content():
                     with col2:
                         st.session_state.download_format = st.radio(
                             "Download Format",
-                            ["zip"],
+                            ["csv", "zip"],
                             horizontal=True,
                             index=0 if st.session_state.download_format == 'csv' else 1
                         )
