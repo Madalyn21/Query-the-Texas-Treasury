@@ -85,7 +85,7 @@ def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 
 @handle_chart_errors
 def create_category_analysis_chart(df: pd.DataFrame) -> alt.Chart:
-    if'category' in df.colummns:
+    if'category' in df.columns:
         """Create a chart showing payment distribution by category."""
         category_totals = df.groupby('category')['dollar_value'].sum().reset_index()
         
