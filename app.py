@@ -1431,9 +1431,7 @@ def display_main_content():
                 except Exception as e:
                     st.error(f"AI Analysis failed: {e}")
             else:
-                st.info("Button Failed?!")
-        else:
-            st.info("Load Query for AI Analysis!")
+                st.info("Load Query for AI Analysis!")
 
 
         # Add logos section after AI Analysis
