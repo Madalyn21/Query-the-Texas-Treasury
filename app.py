@@ -36,6 +36,7 @@ import numpy as np
 import altair as alt
 import streamlit.components.v1 as components
 import base64
+import openai
 
 # Configure pandas options
 pd.options.mode.chained_assignment = None  # default='warn'
