@@ -814,7 +814,7 @@ def display_logos():
         is_dark = theme == "dark"
         
         # Choose logo based on theme - FIXED LOGIC
-        logo_filename = "Texas DOGE_White.png" if is_dark else "Texas DOGE_Black.png"
+        logo_filename = "Texas DOGE_Black.png" if is_dark else "Texas DOGE_White.png"
         logo_path = os.path.join(os.path.dirname(__file__), logo_filename)
         
         doge_img_html = ""
@@ -920,7 +920,7 @@ def display_logos():
                 unsafe_allow_html=True
             )
             # Add Find us on X section with theme-based logo
-            x_logo_filename = "x_logo.png" if is_dark else "x_logo_black.png"
+            x_logo_filename = "x_logo_black.png" if is_dark else "x_logo.png"
             x_logo_path = os.path.join(os.path.dirname(__file__), x_logo_filename)
             x_logo_html = ""
             if os.path.exists(x_logo_path):
