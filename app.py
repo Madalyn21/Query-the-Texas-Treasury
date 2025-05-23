@@ -503,7 +503,7 @@ def initialize_session_state():
     if 'last_query_time' not in st.session_state:
         st.session_state.last_query_time = None
     if 'download_format' not in st.session_state:
-        st.session_state.download_format = 'csv'
+        st.session_state.download_format = 'zip'
 
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
@@ -1286,12 +1286,12 @@ def display_main_content():
                                     logger.error(f"Error executing query: {str(e)}", exc_info=True)
                     
                     with col2:
-                        st.session_state.download_format = st.radio(
-                            "Download Format",
-                            ["csv", "zip"],
-                            horizontal=True,
-                            index=0 if st.session_state.download_format == 'csv' else 1
-                        )
+                        # st.session_state.download_format = st.radio(
+                        #     "Download Format",
+                        #     ["csv", "zip"],
+                        #     horizontal=True,
+                        #     index=0 if st.session_state.download_format == 'csv' else 1
+                        # )
                         
                         if st.button("Download Data"):
                             if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
@@ -1456,7 +1456,7 @@ def main():
         if 'visualizations' not in st.session_state:
             st.session_state.visualizations = {}
         if 'download_format' not in st.session_state:
-            st.session_state.download_format = 'csv'
+            st.session_state.download_format = 'zip'
         # Add AI Analysis placeholder to session state if not exists
         if 'ai_analysis' not in st.session_state:
             st.session_state.ai_analysis = {

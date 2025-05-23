@@ -35,11 +35,11 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
 def add_filters_to_query(queryArgs, filters):
     newArgs = "WHERE 1=1"
     # FY
-    if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
+    if (filters.get('fiscal_year_start') and filters.get('fiscal_year_end')) and (filters.get('fiscal_year_start') != 16 and filters.get('fiscal_year_end')!=25):
         newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN " + str(filters.get('fiscal_year_start')).replace("20", '', 1) \
             + " AND " + str(filters.get('fiscal_year_end')).replace("20", '', 1)
     # FM
-    if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
+    if (filters.get('fiscal_month_start') and filters.get('fiscal_month_end')) and (filters.get('fiscal_month_start')!=1 and filters.get('fiscal_month_end')!=12):
         if ((filters.get('fiscal_month_start')-9)%12)+1 <= ((filters.get('fiscal_month_end')-9)%12)+1:
             newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(((filters.get('fiscal_month_start')-9)%12)+1) \
                 + " AND " + str(((filters.get('fiscal_month_end')-9)%12)+1)
@@ -91,7 +91,7 @@ def execute_query(query, params, engine) -> List[Dict]:
         
         # Convert parameters to a list of tuples for SQLAlchemy
         #statement = select(text(query[1]).label(query[0])).where(text(params))
-        statement = "select " + query[2] + " FROM " + query[1] + " as " + query[0] + "\n" + params
+        statement = "select " + query[2] + " FROM " + query[1] + " as " + query[0] + "\n" + params + " LIMIT 1000000"
         logger.info(statement)
         with engine.connect() as connection:
             # Execute query with parameters as a list of tuples
