@@ -69,14 +69,14 @@ def create_trend_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 @handle_chart_errors
 def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing top vendors by payment amount."""
-    vendor_totals = df.groupby('vendor_name')['dollar_value'].sum().reset_index()
+    vendor_totals = df.groupby('vendor')['dollar_value'].sum().reset_index()
     vendor_totals = vendor_totals.nlargest(10, 'dollar_value')
     
     chart = alt.Chart(vendor_totals).mark_bar().encode(
         x=alt.X('dollar_value:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
-        y=alt.Y('vendor_name:N', title='Vendor', sort='-x'),
+        y=alt.Y('vendor:N', title='Vendor', sort='-x'),
         tooltip=[
-            alt.Tooltip('vendor_name:N', title='Vendor'),
+            alt.Tooltip('vendor:N', title='Vendor'),
             *get_amount_tooltip()
         ]
     ).properties(**get_default_chart_properties('Top 10 Vendors by Payment Amount'))
