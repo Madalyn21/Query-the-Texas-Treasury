@@ -30,18 +30,18 @@ def get_default_chart_properties(title: str, width: int = 600, height: int = 400
 
 def get_amount_tooltip() -> List[alt.Tooltip]:
     """Get standard tooltip for amount fields."""
-    return [alt.Tooltip('amount:Q', title='Total Amount', format='$,.2f')]
+    return [alt.Tooltip('dollar_value:Q', title='Total Amount', format='$,.2f')]
 
 @handle_chart_errors
 def create_payment_distribution_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing the distribution of payments."""
-    agency_totals = df.groupby('agency_name')['dollar_value'].sum().reset_index()
+    agency_totals = df.groupby('agency')['dollar_value'].sum().reset_index()
     
     chart = alt.Chart(agency_totals).mark_bar().encode(
-        x=alt.X('agency_name:N', title='Agency', sort='-y'),
-        y=alt.Y('amount:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+        x=alt.X('agency:N', title='Agency', sort='-y'),
+        y=alt.Y('dollar_value:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
         tooltip=[
-            alt.Tooltip('agency_name:N', title='Agency'),
+            alt.Tooltip('agency:N', title='Agency'),
             *get_amount_tooltip()
         ]
     ).properties(**get_default_chart_properties('Payment Distribution by Agency'))
@@ -55,7 +55,7 @@ def create_trend_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     
     chart = alt.Chart(monthly_totals).mark_line().encode(
         x=alt.X('fiscal_month:N', title='Month'),
-        y=alt.Y('amount:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+        y=alt.Y('dollar_value:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
         color='fiscal_year:N',
         tooltip=[
             alt.Tooltip('fiscal_year:N', title='Fiscal Year'),
@@ -69,11 +69,11 @@ def create_trend_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 @handle_chart_errors
 def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing top vendors by payment amount."""
-    vendor_totals = df.groupby('vendor_name')['amount_payed'].sum().reset_index()
+    vendor_totals = df.groupby('vendor_name')['dollar_value'].sum().reset_index()
     vendor_totals = vendor_totals.nlargest(10, 'dollar_value')
     
     chart = alt.Chart(vendor_totals).mark_bar().encode(
-        x=alt.X('amount:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
+        x=alt.X('dollar_value:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
         y=alt.Y('vendor_name:N', title='Vendor', sort='-x'),
         tooltip=[
             alt.Tooltip('vendor_name:N', title='Vendor'),
@@ -89,7 +89,7 @@ def create_category_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     category_totals = df.groupby('category')['dollar_value'].sum().reset_index()
     
     chart = alt.Chart(category_totals).mark_arc().encode(
-        theta=alt.Theta(field="amount", type="quantitative"),
+        theta=alt.Theta(field="dollar_value", type="quantitative"),
         color=alt.Color(field="category", type="nominal"),
         tooltip=[
             alt.Tooltip('category:N', title='Category'),
