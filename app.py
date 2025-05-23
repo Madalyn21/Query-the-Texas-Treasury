@@ -1395,12 +1395,12 @@ def display_main_content():
                     # Placeholder for future AI analysis
                     openai.api_key = process.env.API_KEY  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
-                    filters = request.json.get("filters", None)
-                    df = get_dataframe_from_query(filters)
+
+                    dataframe1 = df = get_filtered_data(st.session_state.filters, table_choice, engine)
                     # Clean amount column for analysis (remove dollar signs, convert to float)
-                    if 'amount_payed' in df.columns:
-                        df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
-                    markdown_table = df.to_markdown(index=False)
+                    if 'amount_payed' in dataframe1.columns:
+                        dataframe1['amount_payed'] = dataframe1['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                    markdown_table = dataframe1.to_markdown(index=False)
 
                     prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
                     {markdown_table}
