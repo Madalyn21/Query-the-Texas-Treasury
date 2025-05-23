@@ -255,6 +255,7 @@ def get_filter_options():
         }
 
 def df_to_zip(df):
+    logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
     csv_bytes = df.to_csv(index=False).encode('utf-8')
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
@@ -454,6 +455,7 @@ def download_csv(df):
     """Convert DataFrame to CSV and create download button"""
     try:
         # Convert DataFrame to CSV
+        logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
         csv = df.to_csv(index=False)
         
         # Create download button
@@ -1038,10 +1040,10 @@ def display_main_content():
                     selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
                     
                     payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
-                    selected_payment_source = st.selectbox("Payment Source", payment_source_options)
+                    selected_payment_source = st.selectbox("Fund Title", payment_source_options)
                     
                     appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
-                    selected_appropriation_object = st.selectbox("Appropriation Object", appropriation_object_options)
+                    selected_appropriation_object = st.selectbox("Objective Title", appropriation_object_options)
                     
                     # Add vendor file path for payment information
                     vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
@@ -1296,6 +1298,7 @@ def display_main_content():
                                 with st.spinner("Preparing download..."):
                                     try:
                                         if st.session_state.download_format == "csv":
+                                            logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
                                             csv = st.session_state.queried_data.to_csv(index=False)
                                             st.download_button(
                                                 label="Click to download CSV",
@@ -1309,6 +1312,7 @@ def display_main_content():
                                             with tempfile.TemporaryDirectory() as tmpdir:
                                                 # Save CSV
                                                 csv_path = os.path.join(tmpdir, "data.csv")
+                                                logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
                                                 st.session_state.queried_data.to_csv(csv_path, index=False)
                                                 
                                                 # Create ZIP file
@@ -1353,7 +1357,8 @@ def display_main_content():
                     with col3:
                         st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
                     with col4:
-                        st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+                        if('category' in df.columns):
+                            st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
             else:
                 # Show placeholder when no query has been submitted
                 st.info("Submit a Query to see Visualizations")
@@ -1444,7 +1449,14 @@ def main():
     try:
         # Initialize session state at the start
         initialize_session_state()
-        
+        if 'filters' not in st.session_state:
+            st.session_state.filters = {}
+        if 'queried_data' not in st.session_state:
+            st.session_state.queried_data = pd.DataFrame()
+        if 'visualizations' not in st.session_state:
+            st.session_state.visualizations = {}
+        if 'download_format' not in st.session_state:
+            st.session_state.download_format = 'csv'
         # Add AI Analysis placeholder to session state if not exists
         if 'ai_analysis' not in st.session_state:
             st.session_state.ai_analysis = {

@@ -1,4 +1,5 @@
 from sqlalchemy import text
+from sqlalchemy import select
 from logger_config import get_logger
 import pandas as pd
 from typing import Dict, List, Optional, Union, Tuple
@@ -21,148 +22,66 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     # Determine table alias and name
     table_info = {
-        "Payment Information": ("p", "paymentinformation"),
-        "Contract Information": ("c", "contractinfo")
+        "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, \
+        p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator, \
+        p.confidential, p.program_cost_account, p.mail_code"),
+        "Contract Information": ("c", "contractinfo", "c.contract_id, c.vendor, c.vendorid_num, c.agency, c.dollar_value::numeric as dollar_value, c.subject, c.status, c.award_date, \
+        c.completion_date, c.fiscal_year, c.fiscal_month, c.procurement_method, c.category, c.ngip_cnc")
     }
     
-    alias, table_name = table_info.get(table_choice, ("p", "paymentinformation"))
-    
-    # Build a more detailed base query
-    query = text(f"""
-        SELECT {alias}.*
-        FROM {table_name} {alias}
-        WHERE 1=1
-    """)
-    
-    logger.info(f"Base query built: {str(query)}")
-    return query, {}
+    thing = table_info.get(table_choice)
+    return thing
 
-def add_filters_to_query(query: text, filters: Dict, params: Dict, table_choice: str) -> Tuple[text, Dict]:
-    """
-    Add filters to the query based on the selected table.
-    """
-    logger.info(f"Adding filters for {table_choice}")
-    logger.info(f"Filters received: {filters}")
-    
-    # Determine table alias
-    alias = "p" if table_choice == "Payment Information" else "c"
-    
-    # Create a new params dictionary
-    new_params = {}
-    
-    # Add fiscal year range filter
+def add_filters_to_query(queryArgs, filters):
+    newArgs = "WHERE 1=1"
+    # FY
     if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-        query = text(str(query) + f" AND {alias}.fiscal_year BETWEEN :fiscal_year_start AND :fiscal_year_end")
-        new_params['fiscal_year_start'] = int(filters['fiscal_year_start'])
-        new_params['fiscal_year_end'] = int(filters['fiscal_year_end'])
-        logger.info(f"Added fiscal year range filter: {filters['fiscal_year_start']} to {filters['fiscal_year_end']}")
-    
-    # Add fiscal month range filter
+        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN " + str(filters.get('fiscal_year_start')).replace("20", '', 1) \
+            + " AND " + str(filters.get('fiscal_year_end')).replace("20", '', 1)
+    # FM
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
-        query = text(str(query) + f" AND {alias}.fiscal_month BETWEEN :fiscal_month_start AND :fiscal_month_end")
-        new_params['fiscal_month_start'] = int(filters['fiscal_month_start'])
-        new_params['fiscal_month_end'] = int(filters['fiscal_month_end'])
-        logger.info(f"Added fiscal month range filter: {filters['fiscal_month_start']} to {filters['fiscal_month_end']}")
-    
-    # Add vendor filter
-    if filters.get('vendor') and len(filters['vendor']) > 0:
-        query = text(str(query) + f" AND LOWER({alias}.vendor_name) = LOWER(:vendor)")
-        new_params['vendor'] = str(filters['vendor'][0]).strip()
-        logger.info(f"Added vendor filter: {filters['vendor'][0]}")
-    
-    # Add other filters based on table choice
-    if table_choice == "Payment Information":
-        if filters.get('agency'):
-            # Agency number is numeric, so we'll cast the input to integer
-            try:
-                agency_number = int(filters['agency'])
-                query = text(str(query) + f" AND {alias}.agency_number = :agency")
-                new_params['agency'] = agency_number
-                logger.info(f"Added agency filter: {agency_number}")
-            except ValueError:
-                # If agency is not a number, try to match by agency title/name
-                column_name = "agency_title" if table_choice == "Payment Information" else "agency"
-                query = text(str(query) + f" AND LOWER({alias}.{column_name}) = LOWER(:agency)")
-                new_params['agency'] = str(filters['agency']).strip()
-                logger.info(f"Added agency filter using {column_name}: {filters['agency']}")
-        
+        if ((filters.get('fiscal_month_start')-9)%12)+1 <= ((filters.get('fiscal_month_end')-9)%12)+1:
+            newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(((filters.get('fiscal_month_start')-9)%12)+1) \
+                + " AND " + str(((filters.get('fiscal_month_end')-9)%12)+1)
+        else:
+            newArgs = newArgs + " AND (" + queryArgs[0] + ".fiscal_month BETWEEN " + str(((filters.get('fiscal_month_start')-9)%12)+1) \
+                + " AND 12"
+            newArgs = newArgs + " OR " + queryArgs[0] + ".fiscal_month BETWEEN 1" \
+                + " AND " + str(((filters.get('fiscal_month_end')-9)%12)+1) + ")"
+    # Agency
+    if filters.get('agency'):
+        newArgs = newArgs + " AND " + queryArgs[0] + ".agency = '" + filters.get('agency') + "'"
+        #Vendor
+    if filters.get('vendor'):
+        for i in filters.get('vendor'):
+            newArgs = newArgs + " AND " + queryArgs[0] + ".vendor = '" + i + "'"
+    #by table basis
+    if queryArgs[0] == 'p':
+        #Aprop Title
         if filters.get('appropriation_title'):
-            # Appropriation number is numeric
-            try:
-                appropriation_number = int(filters['appropriation_title'])
-                query = text(str(query) + f" AND {alias}.appropriation_number = :appropriation_title")
-                new_params['appropriation_title'] = appropriation_number
-                logger.info(f"Added appropriation number filter: {appropriation_number}")
-            except ValueError:
-                # If not a number, try to match by title
-                query = text(str(query) + f" AND LOWER({alias}.appropriation_title) = LOWER(:appropriation_title)")
-                new_params['appropriation_title'] = str(filters['appropriation_title']).strip()
-                logger.info(f"Added appropriation title filter: {filters['appropriation_title']}")
-        
+            newArgs = newArgs + " AND " + queryArgs[0] + ".appropriation_title = '" + filters.get('appropriation_title') + "'"
+        #Payment Source
         if filters.get('payment_source'):
-            # Fund number is numeric
-            try:
-                fund_number = int(filters['payment_source'])
-                query = text(str(query) + f" AND {alias}.fund_number = :payment_source")
-                new_params['payment_source'] = fund_number
-                logger.info(f"Added fund number filter: {fund_number}")
-            except ValueError:
-                # If not a number, try to match by name
-                query = text(str(query) + f" AND LOWER({alias}.fund_name) = LOWER(:payment_source)")
-                new_params['payment_source'] = str(filters['payment_source']).strip()
-                logger.info(f"Added fund name filter: {filters['payment_source']}")
-        
+            newArgs = newArgs + " AND " + queryArgs[0] + ".fund_title = '" + filters.get('payment_source') + "'"
+        #Aprop Object
         if filters.get('appropriation_object'):
-            # Object number is numeric
-            try:
-                object_number = int(filters['appropriation_object'])
-                query = text(str(query) + f" AND {alias}.object_number = :appropriation_object")
-                new_params['appropriation_object'] = object_number
-                logger.info(f"Added object number filter: {object_number}")
-            except ValueError:
-                # If not a number, try to match by title
-                query = text(str(query) + f" AND LOWER({alias}.object_title) = LOWER(:appropriation_object)")
-                new_params['appropriation_object'] = str(filters['appropriation_object']).strip()
-                logger.info(f"Added object title filter: {filters['appropriation_object']}")
+            newArgs = newArgs + " AND " + queryArgs[0] + ".object_title = '" + filters.get('appropriation_object') + "'"
     else:
-        if filters.get('agency'):
-            # Agency number is numeric
-            try:
-                agency_number = int(filters['agency'])
-                query = text(str(query) + f" AND {alias}.agency_number = :agency")
-                new_params['agency'] = agency_number
-                logger.info(f"Added agency filter: {agency_number}")
-            except ValueError:
-                # If agency is not a number, try to match by agency name
-                query = text(str(query) + f" AND LOWER({alias}.agency_name) = LOWER(:agency)")
-                new_params['agency'] = str(filters['agency']).strip()
-                logger.info(f"Added agency name filter: {filters['agency']}")
-        
+        #Category
         if filters.get('category'):
-            query = text(str(query) + f" AND LOWER({alias}.category) = LOWER(:category)")
-            new_params['category'] = str(filters['category']).strip()
-            logger.info(f"Added category filter: {filters['category']}")
-        
+            newArgs = newArgs + " AND " + queryArgs[0] + ".category = '" + filters.get('category') + "'"
+        #Procurement Method
         if filters.get('procurement_method'):
-            query = text(str(query) + f" AND LOWER({alias}.procurement_method) = LOWER(:procurement_method)")
-            new_params['procurement_method'] = str(filters['procurement_method']).strip()
-            logger.info(f"Added procurement method filter: {filters['procurement_method']}")
-        
+            newArgs = newArgs + " AND " + queryArgs[0] + ".procurement_method = '" + filters.get('procurement_method') + "'"
+        #Status
         if filters.get('status'):
-            query = text(str(query) + f" AND LOWER({alias}.status) = LOWER(:status)")
-            new_params['status'] = str(filters['status']).strip()
-            logger.info(f"Added status filter: {filters['status']}")
-        
+            newArgs = newArgs + " AND " + queryArgs[0] + ".status = '" + filters.get('status') + "'"
+        #Subject
         if filters.get('subject'):
-            query = text(str(query) + f" AND LOWER({alias}.subject) = LOWER(:subject)")
-            new_params['subject'] = str(filters['subject']).strip()
-            logger.info(f"Added subject filter: {filters['subject']}")
-    
-    logger.info(f"Final query: {str(query)}")
-    logger.info(f"Query parameters: {new_params}")
-    return query, new_params
+            newArgs = newArgs + " AND " + queryArgs[0] + ".subject = '" + filters.get('subject') + "'"
+    return newArgs
 
-def execute_query(query: text, params: Dict, engine) -> List[Dict]:
+def execute_query(query, params, engine) -> List[Dict]:
     """
     Execute a query and return results as a list of dictionaries.
     """
@@ -171,12 +90,12 @@ def execute_query(query: text, params: Dict, engine) -> List[Dict]:
         logger.info(f"Parameters: {params}")
         
         # Convert parameters to a list of tuples for SQLAlchemy
-        param_list = [(k, v) for k, v in params.items()]
-        logger.info(f"Parameter list: {param_list}")
-        
+        #statement = select(text(query[1]).label(query[0])).where(text(params))
+        statement = "select " + query[2] + " FROM " + query[1] + " as " + query[0] + "\n" + params + " LIMIT 100"
+        logger.info(statement)
         with engine.connect() as connection:
             # Execute query with parameters as a list of tuples
-            result = connection.execute(query, dict(param_list))
+            result = connection.execute(text(statement)).mappings()
             return [dict(row) for row in result]
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")
@@ -193,14 +112,11 @@ def get_filtered_data(filters: Dict, table_choice: str, engine) -> pd.DataFrame:
     
     try:
         # Build and execute query
-        query, params = build_base_query(table_choice)
-        logger.info(f"Base query: {str(query)}")
+        queryBase = build_base_query(table_choice)
         
-        query, params = add_filters_to_query(query, filters, params, table_choice)
-        logger.info(f"Query after adding filters: {str(query)}")
-        logger.info(f"Parameters after adding filters: {params}")
+        queryArgs = add_filters_to_query(queryBase, filters)
         
-        results = execute_query(query, params, engine)
+        results = execute_query(queryBase, queryArgs, engine)
         
         # Convert to DataFrame
         if results:
