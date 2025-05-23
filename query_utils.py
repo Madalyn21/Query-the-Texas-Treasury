@@ -36,10 +36,10 @@ def add_filters_to_query(queryArgs, filters):
     newArgs = "WHERE 1=1"
     # FY
     if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN :" + filters.get('fiscal_year_start') + " AND :" + filters.get('fiscal_year_end')
+        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN :" + str(filters.get('fiscal_year_start')) + " AND :" + str(filters.get('fiscal_year_end'))
     # FM
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
-        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN :" + filters.get('fiscal_month_start') + " AND :" + filters.get('fiscal_month_end')
+        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN :" + str(filters.get('fiscal_month_start')) + " AND :" + str(filters.get('fiscal_month_end'))
     # Agency
     if filters.get('agency'):
         newArgs = newArgs + " AND " + queryArgs[0] + ".agency = " + filters.get('agency')
