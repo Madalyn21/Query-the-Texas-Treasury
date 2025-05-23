@@ -1396,7 +1396,7 @@ def display_main_content():
                     openai.api_key = process.env.API_KEY  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
 
-                    dataframe1 = df = get_filtered_data(st.session_state.filters, table_choice, engine)
+                    dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     if 'amount_payed' in dataframe1.columns:
                         dataframe1['amount_payed'] = dataframe1['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
@@ -1420,11 +1420,12 @@ def display_main_content():
                                 max_tokens=400
                                 )
                         analysis = response["choices"][0]["message"]["content"]
-                        return jsonify({"analysis": analysis})
+                        st.markdown("### AI Generated Analysis")
+                        st.write(analysis)
                     except Exception as e:
-                        return jsonify({"error": str(e)}), 500
-                    else:
-                        st.info("Functionality coming soon!")
+                        st.error(f"AI Analysis failed: {e}")
+            else:
+                st.info("Functionality coming soon!")
 
 
         # Add logos section after AI Analysis
