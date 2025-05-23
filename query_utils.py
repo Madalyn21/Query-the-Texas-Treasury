@@ -36,10 +36,12 @@ def add_filters_to_query(queryArgs, filters):
     newArgs = "WHERE 1=1"
     # FY
     if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN :" + str(filters.get('fiscal_year_start')) + " AND :" + str(filters.get('fiscal_year_end'))
+        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN :" + str(filters.get('fiscal_year_start')).replace("%(", '', 1).replace(")s", '', 1) \
+            + " AND :" + str(filters.get('fiscal_year_end')).replace("%(", '', 1).replace(")s", '', 1)
     # FM
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
-        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN :" + str(filters.get('fiscal_month_start')) + " AND :" + str(filters.get('fiscal_month_end'))
+        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN :" + str(filters.get('fiscal_month_start')).replace("%(", '', 1).replace(")s", '', 1) \
+            + " AND :" + str(filters.get('fiscal_month_end')).replace("%(", '', 1).replace(")s", '', 1)
     # Agency
     if filters.get('agency'):
         newArgs = newArgs + " AND " + queryArgs[0] + ".agency = " + filters.get('agency')
@@ -82,7 +84,7 @@ def execute_query(query, params, engine) -> List[Dict]:
         
         # Convert parameters to a list of tuples for SQLAlchemy
         #statement = select(text(query[1]).label(query[0])).where(text(params))
-        statement = "select " + query[1] + "as " + query[0] + "\n" + params
+        statement = "select " + query[1] + " as " + query[0] + "\n" + params
         with engine.connect() as connection:
             # Execute query with parameters as a list of tuples
             result = connection.execute(text(statement))
