@@ -1400,7 +1400,7 @@ def display_main_content():
                 # Simulated function to get a pandas DataFrame from elsewhere in your code
                 logger.info("test2 Successfull")
                 dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
-                dataframe2=dataframe1.head(100)
+                dataframe2=dataframe1.head(50)
                 # Clean amount column for analysis (remove dollar signs, convert to float)
                 logger.info("test3 Successfull")
                 if 'amount_payed' in dataframe2.columns:
