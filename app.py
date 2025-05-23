@@ -503,7 +503,7 @@ def initialize_session_state():
     if 'last_query_time' not in st.session_state:
         st.session_state.last_query_time = None
     if 'download_format' not in st.session_state:
-        st.session_state.download_format = 'csv'
+        st.session_state.download_format = 'zip'
 
 def load_filter_options(table_choice):
     """Load all filter options for a given table choice"""
@@ -814,7 +814,7 @@ def display_logos():
         is_dark = theme == "dark"
         
         # Choose logo based on theme - FIXED LOGIC
-        logo_filename = "Texas DOGE_White.png" if is_dark else "Texas DOGE_Black.png"
+        logo_filename = "Texas DOGE_Black.png" if is_dark else "Texas DOGE_White.png"
         logo_path = os.path.join(os.path.dirname(__file__), logo_filename)
         
         doge_img_html = ""
@@ -920,7 +920,7 @@ def display_logos():
                 unsafe_allow_html=True
             )
             # Add Find us on X section with theme-based logo
-            x_logo_filename = "x_logo.png" if is_dark else "x_logo_black.png"
+            x_logo_filename = "x_logo_black.png" if is_dark else "x_logo.png"
             x_logo_path = os.path.join(os.path.dirname(__file__), x_logo_filename)
             x_logo_html = ""
             if os.path.exists(x_logo_path):
@@ -1286,12 +1286,12 @@ def display_main_content():
                                     logger.error(f"Error executing query: {str(e)}", exc_info=True)
                     
                     with col2:
-                        st.session_state.download_format = st.radio(
-                            "Download Format",
-                            ["csv", "zip"],
-                            horizontal=True,
-                            index=0 if st.session_state.download_format == 'csv' else 1
-                        )
+                        # st.session_state.download_format = st.radio(
+                        #     "Download Format",
+                        #     ["csv", "zip"],
+                        #     horizontal=True,
+                        #     index=0 if st.session_state.download_format == 'csv' else 1
+                        # )
                         
                         if st.button("Download Data"):
                             if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
@@ -1317,7 +1317,7 @@ def display_main_content():
                                                 
                                                 # Create ZIP file
                                                 zip_path = os.path.join(tmpdir, "data.zip")
-                                                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                                                     zipf.write(csv_path, "data.csv")
                                                 
                                                 # Read ZIP file and create download button
@@ -1456,7 +1456,7 @@ def main():
         if 'visualizations' not in st.session_state:
             st.session_state.visualizations = {}
         if 'download_format' not in st.session_state:
-            st.session_state.download_format = 'csv'
+            st.session_state.download_format = 'zip'
         # Add AI Analysis placeholder to session state if not exists
         if 'ai_analysis' not in st.session_state:
             st.session_state.ai_analysis = {
