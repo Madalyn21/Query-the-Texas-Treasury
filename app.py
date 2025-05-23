@@ -1400,10 +1400,11 @@ def display_main_content():
                 # Simulated function to get a pandas DataFrame from elsewhere in your code
                 logger.info("test2 Successfull")
                 dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
+                dataframe2=dataframe1.head(100)
                 # Clean amount column for analysis (remove dollar signs, convert to float)
                 logger.info("test3 Successfull")
-                if 'amount_payed' in dataframe1.columns:
-                    dataframe1['amount_payed'] = dataframe1['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                if 'amount_payed' in dataframe2.columns:
+                    dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                 markdown_table = dataframe1.to_markdown(index=False)
                 logger.info("test4 Successfull")
                 prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
