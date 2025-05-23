@@ -1389,44 +1389,43 @@ def display_main_content():
         
         # Create a container for AI Analysis that will be populated later
         ai_container = st.container()
-        with ai_container:
-            if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-                # Placeholder for future AI analysis
-                st.info("""
-                AI analysis will be available here once implemented. The analysis will include:
-                - Key insights from the query results
-                - Trend analysis and patterns
-                - Anomaly detection
-                - Recommendations and observations
-                """)
-                
-                # Add a placeholder for future analysis results
-                with st.expander("Future AI Analysis Features", expanded=False):
-                    st.markdown("""
-                    ### Planned Analysis Features:
-                    
-                    #### 1. Data Insights
-                    - Summary statistics and key metrics
-                    - Distribution analysis
-                    - Correlation analysis
-                    
-                    #### 2. Trend Analysis
-                    - Temporal patterns
-                    - Seasonal variations
-                    - Growth trends
-                    
-                    #### 3. Anomaly Detection
-                    - Unusual patterns
-                    - Outlier identification
-                    - Potential data quality issues
-                    
-                    #### 4. Recommendations
-                    - Data-driven insights
-                    - Actionable observations
-                    - Best practices
-                    """)
-            else:
-                st.info("Functionality coming soon!")
+                with ai_container:
+                    if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                        if st.button("Run AI Analysis"):
+                            # Placeholder for future AI analysis
+                            openai.api_key = process.env.API_KEY  # Replace with your actual API key
+                            # Simulated function to get a pandas DataFrame from elsewhere in your code
+                            filters = request.json.get("filters", None)
+                            df = get_dataframe_from_query(filters)
+                            # Clean amount column for analysis (remove dollar signs, convert to float)
+                            if 'amount_payed' in df.columns:
+                                df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                            markdown_table = df.to_markdown(index=False)
+
+                            prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
+                            {markdown_table}
+                            Write a paragraph (3–5 sentences) that:
+                            - Identifies trends (e.g., increasing, decreasing, stable payments)
+                            - Notes any outliers or unusually high/low values
+                            - Highlights anything notable about vendors, programs, or agencies
+                            """
+                            try:#im going to lose it lose it - Suicidal King Julien
+                                response = openai.ChatCompletion.create(
+                                    model="gpt-4",
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful data analyst."},
+                                        {"role": "user", "content": prompt}
+                                        ],
+                                        temperature=0.5,
+                                        max_tokens=400
+                                        )
+                                analysis = response["choices"][0]["message"]["content"]
+                                return jsonify({"analysis": analysis})
+                            except Exception as e:
+                                return jsonify({"error": str(e)}), 500
+                            else:
+                                st.info("Functionality coming soon!")
+
 
         # Add logos section after AI Analysis
         st.markdown("<br><br>", unsafe_allow_html=True)
