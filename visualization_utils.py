@@ -85,19 +85,20 @@ def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 
 @handle_chart_errors
 def create_category_analysis_chart(df: pd.DataFrame) -> alt.Chart:
-    """Create a chart showing payment distribution by category."""
-    category_totals = df.groupby('category')['dollar_value'].sum().reset_index()
-    
-    chart = alt.Chart(category_totals).mark_arc().encode(
-        theta=alt.Theta(field="dollar_value", type="quantitative"),
-        color=alt.Color(field="category", type="nominal"),
-        tooltip=[
-            alt.Tooltip('category:N', title='Category'),
-            *get_amount_tooltip()
-        ]
-    ).properties(**get_default_chart_properties('Payment Distribution by Category', width=400, height=400))
-    
-    return chart
+    if'category' in df.colummns:
+        """Create a chart showing payment distribution by category."""
+        category_totals = df.groupby('category')['dollar_value'].sum().reset_index()
+        
+        chart = alt.Chart(category_totals).mark_arc().encode(
+            theta=alt.Theta(field="dollar_value", type="quantitative"),
+            color=alt.Color(field="category", type="nominal"),
+            tooltip=[
+                alt.Tooltip('category:N', title='Category'),
+                *get_amount_tooltip()
+            ]
+        ).properties(**get_default_chart_properties('Payment Distribution by Category', width=400, height=400))
+        
+        return chart
 
 @handle_chart_errors
 def generate_all_visualizations(df: pd.DataFrame) -> Dict[str, alt.Chart]:
