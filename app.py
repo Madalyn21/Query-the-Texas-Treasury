@@ -1395,7 +1395,7 @@ def display_main_content():
                 logger.info("test0")
                 logger.info("test1 Successfull")
                 # Placeholder for future AI analysis
-                openai.api_key = process.env.API_KEY  # Replace with your actual API key
+                openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
                 # Simulated function to get a pandas DataFrame from elsewhere in your code
                 logger.info("test2 Successfull")
                 dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
