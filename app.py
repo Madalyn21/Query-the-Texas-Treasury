@@ -1409,9 +1409,9 @@ def display_main_content():
                             - Notes any outliers or unusually high/low values
                             - Highlights anything notable about vendors, programs, or agencies
                             """
-                            try:#im going to lose it lose it - Suicidal King Julien
+                            try:
                                 response = openai.ChatCompletion.create(
-                                    model="gpt-4",
+                                    model="gpt-4", #
                                     messages=[
                                         {"role": "system", "content": "You are a helpful data analyst."},
                                         {"role": "user", "content": prompt}
