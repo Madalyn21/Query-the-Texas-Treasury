@@ -46,8 +46,9 @@ def add_filters_to_query(queryArgs, filters):
     if filters.get('agency'):
         newArgs = newArgs + " AND " + queryArgs[0] + ".agency = '" + filters.get('agency') + "'"
         #Vendor
-    if filters.get('vendor') and len(filters['vendor']) > 0:
-        newArgs = newArgs + " AND " + queryArgs[0] + ".vendor = '" + filters.get('vendor') + "'"
+    if filters.get('vendor'):
+        for i in filters.get('vendor'):
+            newArgs = newArgs + " AND " + queryArgs[0] + ".vendor = '" + i + "'"
     #by table basis
     if queryArgs[0] == 'p':
         #Aprop Title

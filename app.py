@@ -1449,7 +1449,14 @@ def main():
     try:
         # Initialize session state at the start
         initialize_session_state()
-        
+        if 'filters' not in st.session_state:
+            st.session_state.filters = {}
+        if 'queried_data' not in st.session_state:
+            st.session_state.queried_data = pd.DataFrame()
+        if 'visualizations' not in st.session_state:
+            st.session_state.visualizations = {}
+        if 'download_format' not in st.session_state:
+            st.session_state.download_format = 'csv'
         # Add AI Analysis placeholder to session state if not exists
         if 'ai_analysis' not in st.session_state:
             st.session_state.ai_analysis = {
