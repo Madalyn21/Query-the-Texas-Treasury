@@ -35,7 +35,7 @@ def get_amount_tooltip() -> List[alt.Tooltip]:
 @handle_chart_errors
 def create_payment_distribution_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing the distribution of payments."""
-    agency_totals = df.groupby('agency_name')['amount'].sum().reset_index()
+    agency_totals = df.groupby('agency_name')['dollar_value'].sum().reset_index()
     
     chart = alt.Chart(agency_totals).mark_bar().encode(
         x=alt.X('agency_name:N', title='Agency', sort='-y'),
@@ -51,7 +51,7 @@ def create_payment_distribution_chart(df: pd.DataFrame) -> alt.Chart:
 @handle_chart_errors
 def create_trend_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing payment trends over time."""
-    monthly_totals = df.groupby(['fiscal_year', 'fiscal_month'])['amount'].sum().reset_index()
+    monthly_totals = df.groupby(['fiscal_year', 'fiscal_month'])['dollar_value'].sum().reset_index()
     
     chart = alt.Chart(monthly_totals).mark_line().encode(
         x=alt.X('fiscal_month:N', title='Month'),
@@ -69,8 +69,8 @@ def create_trend_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 @handle_chart_errors
 def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing top vendors by payment amount."""
-    vendor_totals = df.groupby('vendor_name')['amount'].sum().reset_index()
-    vendor_totals = vendor_totals.nlargest(10, 'amount')
+    vendor_totals = df.groupby('vendor_name')['amount_payed'].sum().reset_index()
+    vendor_totals = vendor_totals.nlargest(10, 'dollar_value')
     
     chart = alt.Chart(vendor_totals).mark_bar().encode(
         x=alt.X('amount:Q', title='Total Amount ($)', axis=alt.Axis(format='$,.0f')),
@@ -86,7 +86,7 @@ def create_vendor_analysis_chart(df: pd.DataFrame) -> alt.Chart:
 @handle_chart_errors
 def create_category_analysis_chart(df: pd.DataFrame) -> alt.Chart:
     """Create a chart showing payment distribution by category."""
-    category_totals = df.groupby('category')['amount'].sum().reset_index()
+    category_totals = df.groupby('category')['dollar_value'].sum().reset_index()
     
     chart = alt.Chart(category_totals).mark_arc().encode(
         theta=alt.Theta(field="amount", type="quantitative"),
@@ -104,7 +104,7 @@ def generate_all_visualizations(df: pd.DataFrame) -> Dict[str, alt.Chart]:
     """Generate all visualizations for the given data."""
     # Convert amount column to numeric, handling any non-numeric values
     logger.info(f"Columns in DataFrame: {df.columns.tolist()}")
-    df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+    df['dollar_value'] = pd.to_numeric(df['dollar_value'], errors='coerce')
     
     # Log data types after conversion
     logger.info(f"Data types after conversion: {df.dtypes}")
