@@ -22,11 +22,11 @@ def build_base_query(table_choice: str) -> Tuple[str, Dict]:
     
     # Determine table alias and name
     table_info = {
-        "Payment Information": ("p", "paymentinformation", ["vendor", "vendor_number", "agency", "agency_number", "amount_payed", "fund_title", \
-        "fund_number", "appropriation_year", "fiscal_year", "fiscal_month", "appropriation_title", "object_title", "object_number", "revision_indicator", \
-        "confidential", "program_cost_account", "mail_code"]),
-        "Contract Information": ("c", "contractinfo", ["contract_id", "vendor", "vendorid_num", "agency", "curvalue", "subject", "status", "award_date"\
-        "completion_date", "fiscal_year", "fiscal_month", "procurement_method", "category", "ngip_cnc", ])
+        "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.amount_payed, p.fund_title, \
+        p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator, \
+        p.confidential, p.program_cost_account, p.mail_code"),
+        "Contract Information": ("c", "contractinfo", "c.contract_id, c.vendor, c.vendorid_num, c.agency, c.curvalue, c.subject, c.status, c.award_date, \
+        c.completion_date, c.fiscal_year, c.fiscal_month, c.procurement_method, c.category, c.ngip_cnc")
     }
     
     thing = table_info.get(table_choice)
@@ -36,42 +36,42 @@ def add_filters_to_query(queryArgs, filters):
     newArgs = "WHERE 1=1"
     # FY
     if filters.get('fiscal_year_start') and filters.get('fiscal_year_end'):
-        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN :" + str(filters.get('fiscal_year_start')).replace("%(", '', 1).replace(")s", '', 1) \
-            + " AND :" + str(filters.get('fiscal_year_end')).replace("%(", '', 1).replace(")s", '', 1)
+        newArgs = newArgs +" AND " + queryArgs[0] + ".fiscal_year BETWEEN " + str(filters.get('fiscal_year_start')).replace("20", '', 1) \
+            + " AND " + str(filters.get('fiscal_year_end')).replace("20", '', 1)
     # FM
     if filters.get('fiscal_month_start') and filters.get('fiscal_month_end'):
-        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN :" + str(filters.get('fiscal_month_start')).replace("%(", '', 1).replace(")s", '', 1) \
-            + " AND :" + str(filters.get('fiscal_month_end')).replace("%(", '', 1).replace(")s", '', 1)
+        newArgs = newArgs + " AND " + queryArgs[0] + ".fiscal_month BETWEEN " + str(filters.get('fiscal_month_start')).replace("20", '', 1) \
+            + " AND " + str(filters.get('fiscal_month_end')).replace("20", '', 1)
     # Agency
     if filters.get('agency'):
-        newArgs = newArgs + " AND " + queryArgs[0] + ".agency = " + filters.get('agency')
+        newArgs = newArgs + " AND " + queryArgs[0] + ".agency = '" + filters.get('agency') + "'"
         #Vendor
     if filters.get('vendor') and len(filters['vendor']) > 0:
-        newArgs = newArgs + " AND " + queryArgs[0] + ".vendor = " + filters.get('vendor')
+        newArgs = newArgs + " AND " + queryArgs[0] + ".vendor = '" + filters.get('vendor') + "'"
     #by table basis
     if queryArgs[0] == 'p':
         #Aprop Title
         if filters.get('appropriation_title'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".appropriation_title = " + filters.get('appropriation_title')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".appropriation_title = '" + filters.get('appropriation_title') + "'"
         #Payment Source
         if filters.get('payment_source'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".fund_title = " + filters.get('payment_source')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".fund_title = '" + filters.get('payment_source') + "'"
         #Aprop Object
         if filters.get('appropriation_object'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".object_title = " + filters.get('appropriation_object')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".object_title = '" + filters.get('appropriation_object') + "'"
     else:
         #Category
         if filters.get('category'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".category = " + filters.get('category')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".category = '" + filters.get('category') + "'"
         #Procurement Method
         if filters.get('procurement_method'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".procurement_method = " + filters.get('procurement_method')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".procurement_method = '" + filters.get('procurement_method') + "'"
         #Status
         if filters.get('status'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".status = " + filters.get('status')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".status = '" + filters.get('status') + "'"
         #Subject
         if filters.get('subject'):
-            newArgs = newArgs + " AND " + queryArgs[0] + ".subject = " + filters.get('subject')
+            newArgs = newArgs + " AND " + queryArgs[0] + ".subject = '" + filters.get('subject') + "'"
     return newArgs
 
 def execute_query(query, params, engine) -> List[Dict]:
@@ -84,7 +84,7 @@ def execute_query(query, params, engine) -> List[Dict]:
         
         # Convert parameters to a list of tuples for SQLAlchemy
         #statement = select(text(query[1]).label(query[0])).where(text(params))
-        statement = "select " + query[1] + " as " + query[0] + "\n" + params
+        statement = "select " + query[2] + " FROM" + query[1] + " as " + query[0] + "\n" + params + " LIMIT 100"
         with engine.connect() as connection:
             # Execute query with parameters as a list of tuples
             result = connection.execute(text(statement))
