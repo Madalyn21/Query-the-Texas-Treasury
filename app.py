@@ -1409,7 +1409,7 @@ def display_main_content():
                 logger.info("test4 Successfull")
                 prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
                 {markdown_table}
-                Write a paragraph (3–5 sentences) that:
+                Write a brief paragraph (1–2 sentences) that:
                 - Identifies trends (e.g., increasing, decreasing, stable payments)
                 - Notes any outliers or unusually high/low values
                 - Highlights anything notable about vendors, programs, or agencies
@@ -1417,7 +1417,7 @@ def display_main_content():
                 logger.info("test5 Successfull")
                 try:
                     response = openai.ChatCompletion.create(
-                        model="gpt-4",
+                        model="gpt-4.1-mini",
                         messages=[
                             {"role": "system", "content": "You are a helpful data analyst."},
                             {"role": "user", "content": prompt}
