@@ -977,7 +977,7 @@ def display_main_content():
                                     # First, let's check if we can access the table
                                     result = connection.execute(text(sql_query)).mappings()
                                     rows = list(result)  # or use the `first_row + list(result)` optimization
-                                    first_row = next(rows, None)
+                                    first_row = next(rows, None)#Yass
                                     if first_row is None:
                                         st.warning("No data found.")
                                     else:
