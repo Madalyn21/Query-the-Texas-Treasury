@@ -1433,7 +1433,7 @@ def display_main_content():
         ai_container = st.container()
         with ai_container:
             logger.info("test -1")
-            if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+            if (st.session_state.queried_data is not None and not st.session_state.queried_data.empty) or NLP is True:
                 logger.info("test0")
                 if st.button("AI Analysis"):
                     logger.info("test1 Successfull")
@@ -1441,13 +1441,14 @@ def display_main_content():
                     openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
                     logger.info("test2 Successfull")
-                    dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
-                    dataframe2=dataframe1.head(5)
+                    #dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
+                    #dataframe2=dataframe1.head(5)
+                    dataframe2 = df.head(5)
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
                     if 'amount_payed' in dataframe2.columns:
                         dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
-                    markdown_table = dataframe1.to_markdown(index=False)
+                    markdown_table = dataframe2.to_markdown(index=False)
                     logger.info("test4 Successfull")
                     prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
                     {markdown_table}
