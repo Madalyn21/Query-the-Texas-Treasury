@@ -19,9 +19,7 @@ table_info = {
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
 Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Here is an example (
-SELECT *
-FROM paymentinformation
-WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
+SELECT * FROM paymentinformation WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
 
 Schema:
 {schema_description}
