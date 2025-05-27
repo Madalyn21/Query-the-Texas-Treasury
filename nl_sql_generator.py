@@ -21,6 +21,8 @@ Given the following database schema and user question, generate a valid and safe
 
 Formatting Rule:
 - Use two-digit fiscal year formats only (e.g., 24 for 2024, 25 for 2025). Do not use four-digit years.
+- When writing WHERE conditions, prefix all column names with `p.` (e.g., `p.fiscal_year = 24`, `p.agency = 'ABC'`).
+- Do NOT use the `p.` prefix anywhere else in the query (e.g., not in SELECT, FROM, or GROUP BY clauses).
 
 Example Output:
 SELECT * 
