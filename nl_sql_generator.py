@@ -19,6 +19,9 @@ table_info = {
     user_prompt = f"""
 Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement.
 
+Formatting Rule:
+- Use two-digit fiscal year formats only (e.g., 24 for 2024, 25 for 2025). Do not use four-digit years.
+
 Example Output:
 SELECT * 
 FROM paymentinformation
