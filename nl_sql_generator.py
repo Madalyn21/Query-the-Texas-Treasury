@@ -8,31 +8,12 @@ def generate_sql_from_nl(user_question: str) -> str:
     schema_description = """
 Table: transactions
 Columns:
-- confidential (TEXT)
-- agency_number (INTEGER)
-- fund_number (INTEGER)
-- appropriation_number (INTEGER)
-- appropriation_year (INTEGER)
-- fiscal_year (INTEGER)
-- fiscal_month (INTEGER)
-- program_cost_account (INTEGER)
-- object_number (INTEGER)
-- vendor_number (TEXT)
-- mail_code (TEXT)
-- vendor_name (TEXT)
-- revision_indicator (TEXT)
-- amount_payed (TEXT) — currency, like "$492.48"
-- agency_title (TEXT)
-- appropriation_title (TEXT)
-- object_title (TEXT)
-- fund_title (TEXT)
-- agency_title_lower (TEXT)
-- id (INTEGER)
+p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator,         p.confidential, p.program_cost_account, p.mail_code
 """
 
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
-Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information.
+Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information. If information on schema descriptions is not explicitly given, use best judgement"
 
 Schema:
 {schema_description}
