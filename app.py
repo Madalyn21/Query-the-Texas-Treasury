@@ -984,7 +984,7 @@ def display_main_content():
                                         df=pd.DataFrame(rows)
                                         if 'amount_payed' in df.columns:
                                             df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
-                                        get_filtered_data()
+
                                         st.subheader("Query Results")
                                         st.session_state.queried_data = df
                                         st.dataframe(df, use_container_width=True)
