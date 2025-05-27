@@ -966,16 +966,21 @@ def display_main_content():
                 user_question = st.text_input("Enter your question about the data:", key="nl_question")
                 if user_question:
                     if st.button("Generate SQL and Query", key="run_nl_query"):
+                        logger.info("test -2")
                         with st.spinner("Generating SQL and executing query..."):
                             try:
                                 engine = get_db_connection()
+                                logger.info("test -1")
                                 sql_query = generate_sql_from_nl(user_question)
+                                logger.info("test 0")
                                 df = pd.read_sql_query(sql_query, con=engine)
+                                logger.info("test 1")
                                 if not df.empty:
                                     st.session_state.queried_data = df
                                     st.session_state.last_query_time = datetime.now()
                                     st.session_state.visualizations = generate_all_visualizations(df)
                                     st.success(f"Retrieved {len(df)} rows using natural language query.")
+                                    logger.info("test 2")
                                 else:
                                     st.warning("No data found.")
                             except Exception as e:
