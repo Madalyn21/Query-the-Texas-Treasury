@@ -1,5 +1,6 @@
 import openai
 import os
+import re
 def generate_sql_from_nl(user_question: str) -> str:
     openai.api_key = os.getenv("API_KEY")
 
@@ -50,16 +51,12 @@ SQL Query:
         )
 
         sql_text = response["choices"][0]["message"]["content"].strip()
+        final_sql = re.sub(r"^```sql|```$", "", sql_text.strip(), flags=re.IGNORECASE).strip()
+        if not final_sql.lower().startswith("select"):
+            raise ValueError("Only SELECT queries are allowed. Generated query was:\n" + final_sql)
 
-        # Extract the first SQL-like block, just in case
-        lines = sql_text.splitlines()
-        code_lines = [line for line in lines if line.strip()]
-        if code_lines[0].lower().startswith("sql"):
-            code_lines = code_lines[1:]
 
-        final_sql = "\n".join(code_lines).strip()
-
-        # Basic safety check
+    # Basic safety check
         if not final_sql.lower().startswith("select"):
             raise ValueError("Only SELECT queries are allowed. Generated query was:\n" + final_sql)
 
