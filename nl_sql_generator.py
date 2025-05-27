@@ -5,7 +5,7 @@ def generate_sql_from_nl(user_question: str) -> str:
     """Generate an SQL query from a natural language question using GPT-4."""
 openai.api_key = os.getenv("API_KEY")
 
-    schema_description = """
+schema_description = """
 Table: transactions
 Columns:
 - confidential (TEXT)
@@ -30,8 +30,8 @@ Columns:
 - id (INTEGER)
 """
 
-    system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
-    user_prompt = f"""
+system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
+user_prompt = f"""
 Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information.
 
 Schema:
@@ -43,32 +43,32 @@ User Question:
 SQL Query:
 """
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0,
-            max_tokens=300
-        )
+try:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0,
+        max_tokens=300
+    )
 
-        sql_text = response["choices"][0]["message"]["content"].strip()
+    sql_text = response["choices"][0]["message"]["content"].strip()
 
-        # Extract the first SQL-like block, just in case
-        lines = sql_text.splitlines()
-        code_lines = [line for line in lines if line.strip()]
-        if code_lines[0].lower().startswith("sql"):
-            code_lines = code_lines[1:]
+    # Extract the first SQL-like block, just in case
+    lines = sql_text.splitlines()
+    code_lines = [line for line in lines if line.strip()]
+    if code_lines[0].lower().startswith("sql"):
+        code_lines = code_lines[1:]
 
-        final_sql = "\n".join(code_lines).strip()
+    final_sql = "\n".join(code_lines).strip()
 
-        # Basic safety check
-        if not final_sql.lower().startswith("select"):
-            raise ValueError("Only SELECT queries are allowed. Generated query was:\n" + final_sql)
+    # Basic safety check
+    if not final_sql.lower().startswith("select"):
+        raise ValueError("Only SELECT queries are allowed. Generated query was:\n" + final_sql)
 
-        return final_sql
+    return final_sql
 
-    except Exception as e:
-        raise RuntimeError(f"Error generating SQL: {str(e)}")
+except Exception as e:
+    raise RuntimeError(f"Error generating SQL: {str(e)}")
