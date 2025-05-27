@@ -951,7 +951,7 @@ def display_logos():
 
 def display_main_content():
     from nl_sql_generator import generate_sql_from_nl
-    """Display the main content of the application"""
+
     try:
         logger.info("Displaying main title")
         st.title("Query the Texas Treasury")
@@ -980,9 +980,9 @@ def display_main_content():
                                     if not rows:
                                         st.warning("No data found.")
                                     else:
-                                        logger.info(f"Paymentinformation table exists: {rows}")
-                                        st.session_state.visualizations = generate_all_visualizations(rows)
-                                        st.success(f"Retrieved {len(rows)} rows using natural language query.")
+                                        df=pd.DataFrame(rows)
+                                        st.session_state.visualizations = generate_all_visualizations(df)
+                                        st.success(f"Retrieved {len(df)} rows using natural language query.")
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
