@@ -7,13 +7,21 @@ def generate_sql_from_nl(user_question: str) -> str:
 
     schema_description = """
 Table: transactions
-Columns:
-p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator,         p.confidential, p.program_cost_account, p.mail_code
+table_info = {
+        "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, \
+        p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator, \
+        p.confidential, p.program_cost_account, p.mail_code"),
+        "Contract Information": ("c", "contractinfo", "c.contract_id, c.vendor, c.vendorid_num, c.agency, c.dollar_value::numeric as dollar_value, c.subject, c.status, c.award_date, \
+        c.completion_date, c.fiscal_year, c.fiscal_month, c.procurement_method, c.category, c.ngip_cnc")
+    }
 """
 
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
-Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Start the query with (SELECT * FROM information_schema.columns WHERE 1=1) and have the rest generate with AND statements"
+Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Here is an example (
+SELECT *
+FROM paymentinformation
+WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
 
 Schema:
 {schema_description}
