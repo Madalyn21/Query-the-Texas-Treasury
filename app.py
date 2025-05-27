@@ -1475,6 +1475,8 @@ def display_main_content():
                         st.write(analysis)
                     except Exception as e:
                         st.error(f"AI Analysis failed: {e}")
+                else:
+                    st.info("button fail :(")
             else:
                 st.info("Load Query for AI Analysis!")
 
