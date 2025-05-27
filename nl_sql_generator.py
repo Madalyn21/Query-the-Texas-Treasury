@@ -1,6 +1,5 @@
 import openai
 import os
-from logger_config import get_logger
 import re
 def generate_sql_from_nl(user_question: str) -> str:
     openai.api_key = os.getenv("API_KEY")
@@ -53,7 +52,7 @@ SQL Query:
 
         sql_text = response["choices"][0]["message"]["content"].strip()
         final_sql = re.sub(r"^```sql|```$", "", sql_text.strip(), flags=re.IGNORECASE).strip()
-        logger.info(f"Here is the NLP SQL Query: {sql_query}")
+
 
     # Basic safety check
         if not final_sql.lower().startswith("select"):
