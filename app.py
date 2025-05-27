@@ -976,13 +976,15 @@ def display_main_content():
                                     logger.info(f"Here is the NLP SQL Query: {sql_query}")
                                     # First, let's check if we can access the table
                                     df = connection.execute(text(sql_query)).mappings()
-                                    #df = connection.execute(sql_query)
-                                    if not df.empty:
+
+                                    first_row = next(df, None)
+                                    if first_row is None:
+                                        st.warning("No data found.")
+                                    else:
                                         logger.info(f"Paymentinformation table exists: {df}")
                                         st.session_state.visualizations = generate_all_visualizations(df)
                                         st.success(f"Retrieved {len(df)} rows using natural language query.")
-                                    else:
-                                        st.warning("No data found.")
+
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
