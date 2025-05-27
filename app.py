@@ -973,6 +973,7 @@ def display_main_content():
                                 with engine.connect() as connection:
                                     logger.info("Database connection established with NL")
                                     sql_query = generate_sql_from_nl(user_question)
+                                    logger.info(f"Here is the NLP SQL Query: {sql_query}")
                                     # First, let's check if we can access the table
                                     df = connection.execute(text(sql_query)).mappings()
                                     #df = connection.execute(sql_query)
