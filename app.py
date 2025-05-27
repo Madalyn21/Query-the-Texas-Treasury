@@ -971,7 +971,7 @@ def display_main_content():
                             try:
                                 engine = get_db_connection()
                                 with engine.connect() as connection:
-                                    NLP=False
+
                                     logger.info("Database connection established with NL")
                                     sql_query = generate_sql_from_nl(user_question)
                                     logger.info(f"Here is the NLP SQL Query: {sql_query}")
@@ -983,10 +983,11 @@ def display_main_content():
                                     else:
                                         df=pd.DataFrame(rows)
                                         st.subheader("Query Results")
+                                        st.session_state.queried_data = df
                                         st.dataframe(df, use_container_width=True)
                                         st.session_state.visualizations = generate_all_visualizations(df)
                                         st.success(f"Retrieved {len(df)} rows using natural language query.")
-                                        NLP=True
+
 
 
 
@@ -1377,7 +1378,7 @@ def display_main_content():
         # Create a container for visualizations
         viz_container = st.container()
         with viz_container:
-            if (st.session_state.queried_data is not None and not st.session_state.queried_data.empty) or (NLP is True):
+            if (st.session_state.queried_data is not None and not st.session_state.queried_data.empty):
                 # Display visualizations in a full-width layout
                 if st.session_state.visualizations:
                     # First row of visualizations
