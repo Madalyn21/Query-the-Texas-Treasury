@@ -983,9 +983,11 @@ def display_main_content():
                                         logger.info(f"Paymentinformation table exists: {rows}")
                                         st.session_state.visualizations = generate_all_visualizations(rows)
                                         st.success(f"Retrieved {len(rows)} rows using natural language query.")
-    except Exception as e:
+                            except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
+
+
             col1, col2 = st.columns([2, 1])
         
             with col1:
