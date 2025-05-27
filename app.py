@@ -983,6 +983,7 @@ def display_main_content():
                                     else:
                                         st.warning("No data found.")
                             except Exception as e:
+                                logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
             col1, col2 = st.columns([2, 1])
         
@@ -1417,44 +1418,45 @@ def display_main_content():
             logger.info("test -1")
             if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
                 logger.info("test0")
-                logger.info("test1 Successfull")
-                # Placeholder for future AI analysis
-                openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
-                # Simulated function to get a pandas DataFrame from elsewhere in your code
-                logger.info("test2 Successfull")
-                dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
-                dataframe2=dataframe1.head(5)
-                # Clean amount column for analysis (remove dollar signs, convert to float)
-                logger.info("test3 Successfull")
-                if 'amount_payed' in dataframe2.columns:
-                    dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
-                markdown_table = dataframe1.to_markdown(index=False)
-                logger.info("test4 Successfull")
-                prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
-                {markdown_table}
-                Write a brief paragraph (1–2 sentences) that:
-                - Identifies trends (e.g., increasing, decreasing, stable payments)
-                - Notes any outliers or unusually high/low values
-                - Highlights anything notable about vendors, programs, or agencies
-                """
-                logger.info("test5 Successfull")
-                try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-4.1-mini",
-                        messages=[
-                            {"role": "system", "content": "You are a helpful data analyst."},
-                            {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.5,
-                            max_tokens=1000
-                            )
-                    logger.info("test6 Successfull")
-                    analysis = response["choices"][0]["message"]["content"]
-                    st.markdown("### AI Generated Analysis")
-                    logger.info("test8 Successfull")
-                    st.write(analysis)
-                except Exception as e:
-                    st.error(f"AI Analysis failed: {e}")
+                if st.button("AI Analysis"):
+                    logger.info("test1 Successfull")
+                    # Placeholder for future AI analysis
+                    openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
+                    # Simulated function to get a pandas DataFrame from elsewhere in your code
+                    logger.info("test2 Successfull")
+                    dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
+                    dataframe2=dataframe1.head(5)
+                    # Clean amount column for analysis (remove dollar signs, convert to float)
+                    logger.info("test3 Successfull")
+                    if 'amount_payed' in dataframe2.columns:
+                        dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                    markdown_table = dataframe1.to_markdown(index=False)
+                    logger.info("test4 Successfull")
+                    prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
+                    {markdown_table}
+                    Write a brief paragraph (1–2 sentences) that:
+                    - Identifies trends (e.g., increasing, decreasing, stable payments)
+                    - Notes any outliers or unusually high/low values
+                    - Highlights anything notable about vendors, programs, or agencies
+                    """
+                    logger.info("test5 Successfull")
+                    try:
+                        response = openai.ChatCompletion.create(
+                            model="gpt-4.1-mini",
+                            messages=[
+                                {"role": "system", "content": "You are a helpful data analyst."},
+                                {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.5,
+                                max_tokens=1000
+                                )
+                        logger.info("test6 Successfull")
+                        analysis = response["choices"][0]["message"]["content"]
+                        st.markdown("### AI Generated Analysis")
+                        logger.info("test8 Successfull")
+                        st.write(analysis)
+                    except Exception as e:
+                        st.error(f"AI Analysis failed: {e}")
             else:
                 st.info("Load Query for AI Analysis!")
 
