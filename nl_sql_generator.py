@@ -20,10 +20,11 @@ table_info = {
 Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information. If information on schema descriptions is not explicitly given, use best judgement.
 
 Formatting Rule:
+- Start the WHERE clause with `1=1` (e.g., `WHERE 1=1 AND p.fiscal_year = 24`).
 - Use two-digit fiscal year formats only (e.g., 24 for 2024, 25 for 2025). Do not use four-digit years.
 - When writing WHERE conditions, prefix all column names with `p.` (e.g., `p.fiscal_year = 24`, `p.agency = 'ABC'`).
 - Do NOT use the `p.` prefix anywhere else in the query (e.g., not in SELECT, FROM, or GROUP BY clauses).
-- Do not use escape sequences or \\n in the prompt, instead have it all out on one line
+- Do not use escape sequences or \\n in the prompt, instead have it all out on one line.
 Example Output:
 SELECT * 
 FROM paymentinformation
