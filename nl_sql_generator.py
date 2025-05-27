@@ -25,6 +25,8 @@ Formatting Rule:
 - When writing WHERE conditions, prefix all column names with `p.` (e.g., `p.fiscal_year = 24`, `p.agency = 'ABC'`).
 - Do NOT use the `p.` prefix anywhere else in the query (e.g., not in SELECT, FROM, or GROUP BY clauses).
 - Do not use escape sequences or \\n in the prompt, instead have it all out on one line.
+- Use `AS p` to alias the main table in the FROM clause (e.g., `FROM transactions AS p`).
+
 Example Output: SELECT * FROM paymentinformation WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
 
 Schema:
