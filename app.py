@@ -975,9 +975,9 @@ def display_main_content():
                                     sql_query = generate_sql_from_nl(user_question)
                                     logger.info(f"Here is the NLP SQL Query: {sql_query}")
                                     # First, let's check if we can access the table
-                                    df = connection.execute(text(sql_query)).mappings()
-
-                                    first_row = next(df, None)
+                                    result = connection.execute(text(sql_query)).mappings()
+                                    rows = list(result)  # or use the `first_row + list(result)` optimization
+                                    first_row = next(rows, None)
                                     if first_row is None:
                                         st.warning("No data found.")
                                     else:
