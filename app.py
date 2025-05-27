@@ -981,7 +981,7 @@ def display_main_content():
                                     if not rows:
                                         st.warning("No data found.")
                                     else:
-                                        df=pd.DataFrame(rows)
+                                        df = pd.DataFrame(rows)
                                         if 'dollar_value' in df.columns:
                                             df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
                                         if 'amount_payed' in df.columns:
@@ -1441,9 +1441,9 @@ def display_main_content():
                     openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
                     logger.info("test2 Successfull")
-                    #dataframe1 = get_filtered_data(st.session_state.filters, table_choice, engine)
-                    #dataframe2=dataframe1.head(5)
-                    dataframe2 = df.head(5)
+                    dataframe1 = get_filtered_data(st.session_state.queried_data, table_choice, engine)
+                    dataframe2=dataframe1.head(5)
+                    #dataframe2 = df.head(5)
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
                     if 'amount_payed' in dataframe2.columns:
