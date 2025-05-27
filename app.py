@@ -966,12 +966,12 @@ def display_main_content():
                 user_question = st.text_input("Enter your question about the data:", key="nl_question")
                 if user_question:
                     if st.button("Generate SQL and Query", key="run_nl_query"):
-                        logger.info("test -2")
+
                         with st.spinner("Generating SQL and executing query..."):
                             try:
                                 engine = get_db_connection()
                                 with engine.connect() as connection:
-                                    logger.info("Database connection established")
+                                    logger.info("Database connection established with NL")
                                     sql_query = generate_sql_from_nl(user_question)
                                     # First, let's check if we can access the table
                                     df = connection.execute(sql_query).scalar()

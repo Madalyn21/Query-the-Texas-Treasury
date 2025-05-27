@@ -13,7 +13,7 @@ p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as
 
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
-Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information. If information on schema descriptions is not explicitly given, use best judgement"
+Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information. If information on schema descriptions is not explicitly given, use best judgement. Here is an example for give me all data from fiscal year 2024 to 2025 from the court of criminal appeals agency: SELECT * WHERE 1=1 AND p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS' "
 
 Schema:
 {schema_description}
