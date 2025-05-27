@@ -52,9 +52,11 @@ SQL Query:
 
         sql_text = response["choices"][0]["message"]["content"].strip()
         final_sql = re.sub(r"^```sql|```$", "", sql_text.strip(), flags=re.IGNORECASE).strip()
+        final_sql = final_sql.strip().strip('`"')
 
 
-    # Basic safety check
+
+        # Basic safety check
         if not final_sql.lower().startswith("select"):
             raise ValueError("Only SELECT queries are allowed. Generated query was:\n" + final_sql)
 
