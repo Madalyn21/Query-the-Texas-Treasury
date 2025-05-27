@@ -13,7 +13,7 @@ p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as
 
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
-Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Follow the formatting exactly: SELECT * FROM information_schema.columns WHERE 1=1 AND p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS' "
+Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Start the query with (SELECT * FROM information_schema.columns WHERE 1=1) and have the rest generate with AND statements"
 
 Schema:
 {schema_description}
