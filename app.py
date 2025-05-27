@@ -950,6 +950,7 @@ def display_logos():
         logger.error(f"Error in logos section: {str(e)}", exc_info=True)
 
 def display_main_content():
+    from nl_sql_generator import generate_sql_from_nl
     """Display the main content of the application"""
     try:
         logger.info("Displaying main title")
@@ -961,6 +962,24 @@ def display_main_content():
         
         with main_container:
             # Create columns for the filter interface with adjusted widths
+            with st.expander("Ask Your Question in Natural Language"):
+                user_question = st.text_input("Enter your question about the data:", key="nl_question")
+                if user_question:
+                    if st.button("Generate SQL and Query", key="run_nl_query"):
+                        with st.spinner("Generating SQL and executing query..."):
+                            try:
+                                engine = get_db_connection()
+                                sql_query = generate_sql_from_nl(user_question)
+                                df = pd.read_sql_query(sql_query, con=engine)
+                                if not df.empty:
+                                    st.session_state.queried_data = df
+                                    st.session_state.last_query_time = datetime.now()
+                                    st.session_state.visualizations = generate_all_visualizations(df)
+                                    st.success(f"Retrieved {len(df)} rows using natural language query.")
+                                else:
+                                    st.warning("No data found.")
+                            except Exception as e:
+                                st.error(f"Failed to generate or run query: {str(e)}")
             col1, col2 = st.columns([2, 1])
         
             with col1:
