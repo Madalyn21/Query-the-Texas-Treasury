@@ -6,7 +6,6 @@ def generate_sql_from_nl(user_question: str) -> str:
     """Generate an SQL query from a natural language question using GPT-4."""
 
     schema_description = """
-Table: transactions
 table_info = {
         "Payment Information": ("p", "paymentinformation", "p.vendor, p.vendor_number, p.agency, p.agency_number, p.dollar_value::numeric as dollar_value, p.fund_title, \
         p.fund_number, p.appropriation_year, p.fiscal_year, p.fiscal_month, p.appropriation_title, p.object_title, p.object_number, p.revision_indicator, \
@@ -18,8 +17,12 @@ table_info = {
 
     system_message = "You are an expert SQL assistant. Generate SQL queries based on natural language questions and a database schema."
     user_prompt = f"""
-Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement. Here is an example (
-SELECT * FROM paymentinformation WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
+Given the following database schema and user question, generate a valid and safe SQL SELECT query that retrieves relevant information and does not contain \\n. If information on schema descriptions is not explicitly given, use best judgement.
+
+Example Output:
+SELECT * 
+FROM paymentinformation
+WHERE p.fiscal_year BETWEEN 24 AND 25 AND p.agency = 'COURT OF CRIMINAL APPEALS')"
 
 Schema:
 {schema_description}

@@ -974,7 +974,7 @@ def display_main_content():
                                     logger.info("Database connection established with NL")
                                     sql_query = generate_sql_from_nl(user_question)
                                     # First, let's check if we can access the table
-                                    df = connection.execute(sql_query).scalar()
+                                    df = connection.execute(sql_query)
                                     if not df.empty:
                                         logger.info(f"Paymentinformation table exists: {df}")
                                         st.session_state.visualizations = generate_all_visualizations(df)
