@@ -1433,7 +1433,7 @@ def display_main_content():
         ai_container = st.container()
         with ai_container:
             logger.info("test -1")
-            if (st.session_state.queried_data is not None and not st.session_state.queried_data.empty) or NLP is True:
+            if (st.session_state.queried_data is not None and not st.session_state.queried_data.empty):
                 logger.info("test0")
                 if st.button("AI Analysis"):
                     logger.info("test1 Successfull")
@@ -1443,7 +1443,7 @@ def display_main_content():
                     logger.info("test2 Successfull")
                     dataframe1 = get_filtered_data(st.session_state.queried_data, table_choice, engine)
                     dataframe2=dataframe1.head(5)
-                    #dataframe2 = df.head(5)
+
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
                     if 'amount_payed' in dataframe2.columns:
