@@ -1340,12 +1340,6 @@ def display_main_content():
                                         st.error(f"Error preparing download: {str(e)}")
                             else:
                                 st.warning("Please run a query first to download data.")
-        if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-            st.subheader("Query Results")
-            if st.session_state.last_query_time:
-                st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            st.dataframe(st.session_state.queried_data)
-
 
             with st.expander("Ask Your Question in Natural Language"):
                 user_question = st.text_input("Enter your question about the data:", key="nl_question")
@@ -1386,6 +1380,15 @@ def display_main_content():
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 #st.error(f"Failed to generate or run query: {str(e)}")
+
+        if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+            st.subheader("Query Results")
+            if st.session_state.last_query_time:
+                st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.dataframe(st.session_state.queried_data)
+
+
+
 
         # Add Visualizations section after query section
         st.markdown("<br><br>", unsafe_allow_html=True)
