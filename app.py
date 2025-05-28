@@ -1211,173 +1211,173 @@ def display_main_content():
 
                     # Query Actions
 
-                        col1, col2 = st.columns(2)
+                    col1, col2 = st.columns(2)
 
-                        with col1:
-                            if st.button("Run Query", type="primary"):
-                                with st.spinner("Executing query... This may take a few moments."):
+                    with col1:
+                        if st.button("Run Query", type="primary"):
+                            with st.spinner("Executing query... This may take a few moments."):
+                                try:
+                                    # Get database connection
+                                    engine = get_db_connection()
+
+                                    # Update filters with selected values
+                                    if table_choice == "Payment Information":
+                                        # Create a new dictionary with validated values
+                                        new_filters = {}
+
+                                        # Add agency if not "All"
+                                        if selected_agency and selected_agency != "All":
+                                            new_filters['agency'] = str(selected_agency)
+
+                                        # Add appropriation title if not "All"
+                                        if selected_appropriation and selected_appropriation != "All":
+                                            new_filters['appropriation_title'] = str(selected_appropriation)
+
+                                        # Add payment source if not "All"
+                                        if selected_payment_source and selected_payment_source != "All":
+                                            new_filters['payment_source'] = str(selected_payment_source)
+
+                                        # Add appropriation object if not "All"
+                                        if selected_appropriation_object and selected_appropriation_object != "All":
+                                            new_filters['appropriation_object'] = str(selected_appropriation_object)
+
+                                        # Add fiscal year range if available
+                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                        if fiscal_year_start is not None and fiscal_year_end is not None:
+                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
+
+                                        # Add fiscal month range if available
+                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                        if fiscal_month_start is not None and fiscal_month_end is not None:
+                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
+
+                                        # Add vendor if selected
+                                        if st.session_state.selected_vendor:
+                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                        else:
+                                            new_filters['vendor'] = []
+
+                                        # Update session state with validated filters
+                                        st.session_state.filters = new_filters
+                                    else:
+                                        # Create a new dictionary with validated values
+                                        new_filters = {}
+
+                                        # Add agency if not "All"
+                                        if selected_agency and selected_agency != "All":
+                                            new_filters['agency'] = str(selected_agency)
+
+                                        # Add category if not "All"
+                                        if selected_category and selected_category != "All":
+                                            new_filters['category'] = str(selected_category)
+
+                                        # Add procurement method if not "All"
+                                        if selected_procurement_method and selected_procurement_method != "All":
+                                            new_filters['procurement_method'] = str(selected_procurement_method)
+
+                                        # Add status if not "All"
+                                        if selected_status and selected_status != "All":
+                                            new_filters['status'] = str(selected_status)
+
+                                        # Add subject if not "All"
+                                        if selected_subject and selected_subject != "All":
+                                            new_filters['subject'] = str(selected_subject)
+
+                                        # Add fiscal year range if available
+                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                        if fiscal_year_start is not None and fiscal_year_end is not None:
+                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
+
+                                        # Add fiscal month range if available
+                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                        if fiscal_month_start is not None and fiscal_month_end is not None:
+                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
+
+                                        # Add vendor if selected
+                                        if st.session_state.selected_vendor:
+                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                        else:
+                                            new_filters['vendor'] = []
+
+                                        # Update session state with validated filters
+                                        st.session_state.filters = new_filters
+
+                                    # Get filtered data
+                                    df = get_filtered_data(st.session_state.filters, table_choice, engine)
+
+                                    if not df.empty:
+                                        # Store the queried data in session state
+                                        st.session_state.queried_data = df
+                                        st.session_state.last_query_time = datetime.now()
+
+                                        # Generate visualizations
+                                        st.session_state.visualizations = generate_all_visualizations(df)
+
+                                        # Display success message
+                                        st.success(f"Query completed successfully! Retrieved {len(df)} records.")
+                                    else:
+                                        st.warning("No data found matching your criteria.")
+                                except Exception as e:
+                                    st.error(f"Error executing query: {str(e)}")
+                                    logger.error(f"Error executing query: {str(e)}", exc_info=True)
+
+                    with col2:
+                        # st.session_state.download_format = st.radio(
+                        #     "Download Format",
+                        #     ["csv", "zip"],
+                        #     horizontal=True,
+                        #     index=0 if st.session_state.download_format == 'csv' else 1
+                        # )
+
+                        if st.button("Download Data"):
+                            if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                                with st.spinner("Preparing download..."):
                                     try:
-                                        # Get database connection
-                                        engine = get_db_connection()
-
-                                        # Update filters with selected values
-                                        if table_choice == "Payment Information":
-                                            # Create a new dictionary with validated values
-                                            new_filters = {}
-
-                                            # Add agency if not "All"
-                                            if selected_agency and selected_agency != "All":
-                                                new_filters['agency'] = str(selected_agency)
-
-                                            # Add appropriation title if not "All"
-                                            if selected_appropriation and selected_appropriation != "All":
-                                                new_filters['appropriation_title'] = str(selected_appropriation)
-
-                                            # Add payment source if not "All"
-                                            if selected_payment_source and selected_payment_source != "All":
-                                                new_filters['payment_source'] = str(selected_payment_source)
-
-                                            # Add appropriation object if not "All"
-                                            if selected_appropriation_object and selected_appropriation_object != "All":
-                                                new_filters['appropriation_object'] = str(selected_appropriation_object)
-
-                                            # Add fiscal year range if available
-                                            fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
-                                            fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
-                                            if fiscal_year_start is not None and fiscal_year_end is not None:
-                                                new_filters['fiscal_year_start'] = int(fiscal_year_start)
-                                                new_filters['fiscal_year_end'] = int(fiscal_year_end)
-
-                                            # Add fiscal month range if available
-                                            fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
-                                            fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
-                                            if fiscal_month_start is not None and fiscal_month_end is not None:
-                                                new_filters['fiscal_month_start'] = int(fiscal_month_start)
-                                                new_filters['fiscal_month_end'] = int(fiscal_month_end)
-
-                                            # Add vendor if selected
-                                            if st.session_state.selected_vendor:
-                                                new_filters['vendor'] = [str(st.session_state.selected_vendor)]
-                                            else:
-                                                new_filters['vendor'] = []
-
-                                            # Update session state with validated filters
-                                            st.session_state.filters = new_filters
-                                        else:
-                                            # Create a new dictionary with validated values
-                                            new_filters = {}
-
-                                            # Add agency if not "All"
-                                            if selected_agency and selected_agency != "All":
-                                                new_filters['agency'] = str(selected_agency)
-
-                                            # Add category if not "All"
-                                            if selected_category and selected_category != "All":
-                                                new_filters['category'] = str(selected_category)
-
-                                            # Add procurement method if not "All"
-                                            if selected_procurement_method and selected_procurement_method != "All":
-                                                new_filters['procurement_method'] = str(selected_procurement_method)
-
-                                            # Add status if not "All"
-                                            if selected_status and selected_status != "All":
-                                                new_filters['status'] = str(selected_status)
-
-                                            # Add subject if not "All"
-                                            if selected_subject and selected_subject != "All":
-                                                new_filters['subject'] = str(selected_subject)
-
-                                            # Add fiscal year range if available
-                                            fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
-                                            fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
-                                            if fiscal_year_start is not None and fiscal_year_end is not None:
-                                                new_filters['fiscal_year_start'] = int(fiscal_year_start)
-                                                new_filters['fiscal_year_end'] = int(fiscal_year_end)
-
-                                            # Add fiscal month range if available
-                                            fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
-                                            fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
-                                            if fiscal_month_start is not None and fiscal_month_end is not None:
-                                                new_filters['fiscal_month_start'] = int(fiscal_month_start)
-                                                new_filters['fiscal_month_end'] = int(fiscal_month_end)
-
-                                            # Add vendor if selected
-                                            if st.session_state.selected_vendor:
-                                                new_filters['vendor'] = [str(st.session_state.selected_vendor)]
-                                            else:
-                                                new_filters['vendor'] = []
-
-                                            # Update session state with validated filters
-                                            st.session_state.filters = new_filters
-
-                                        # Get filtered data
-                                        df = get_filtered_data(st.session_state.filters, table_choice, engine)
-
-                                        if not df.empty:
-                                            # Store the queried data in session state
-                                            st.session_state.queried_data = df
-                                            st.session_state.last_query_time = datetime.now()
-
-                                            # Generate visualizations
-                                            st.session_state.visualizations = generate_all_visualizations(df)
-
-                                            # Display success message
-                                            st.success(f"Query completed successfully! Retrieved {len(df)} records.")
-                                        else:
-                                            st.warning("No data found matching your criteria.")
-                                    except Exception as e:
-                                        st.error(f"Error executing query: {str(e)}")
-                                        logger.error(f"Error executing query: {str(e)}", exc_info=True)
-
-                        with col2:
-                            # st.session_state.download_format = st.radio(
-                            #     "Download Format",
-                            #     ["csv", "zip"],
-                            #     horizontal=True,
-                            #     index=0 if st.session_state.download_format == 'csv' else 1
-                            # )
-
-                            if st.button("Download Data"):
-                                if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-                                    with st.spinner("Preparing download..."):
-                                        try:
-                                            if st.session_state.download_format == "csv":
+                                        if st.session_state.download_format == "csv":
+                                            logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
+                                            csv = st.session_state.queried_data.to_csv(index=False)
+                                            st.download_button(
+                                                label="Click to download CSV",
+                                                data=csv,
+                                                file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                                mime="text/csv",
+                                                key="download_csv"
+                                            )
+                                        else:  # zip format
+                                            # Create a temporary directory
+                                            with tempfile.TemporaryDirectory() as tmpdir:
+                                                # Save CSV
+                                                csv_path = os.path.join(tmpdir, "data.csv")
                                                 logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
-                                                csv = st.session_state.queried_data.to_csv(index=False)
-                                                st.download_button(
-                                                    label="Click to download CSV",
-                                                    data=csv,
-                                                    file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                                    mime="text/csv",
-                                                    key="download_csv"
-                                                )
-                                            else:  # zip format
-                                                # Create a temporary directory
-                                                with tempfile.TemporaryDirectory() as tmpdir:
-                                                    # Save CSV
-                                                    csv_path = os.path.join(tmpdir, "data.csv")
-                                                    logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
-                                                    st.session_state.queried_data.to_csv(csv_path, index=False)
+                                                st.session_state.queried_data.to_csv(csv_path, index=False)
 
-                                                    # Create ZIP file
-                                                    zip_path = os.path.join(tmpdir, "data.zip")
-                                                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                                                        zipf.write(csv_path, "data.csv")
+                                                # Create ZIP file
+                                                zip_path = os.path.join(tmpdir, "data.zip")
+                                                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                                                    zipf.write(csv_path, "data.csv")
 
-                                                    # Read ZIP file and create download button
-                                                    with open(zip_path, 'rb') as f:
-                                                        zip_data = f.read()
-                                                        st.download_button(
-                                                            label="Click to download ZIP",
-                                                            data=zip_data,
-                                                            file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                                                            mime="application/zip",
-                                                            key="download_zip"
-                                                        )
-                                        except Exception as e:
-                                            st.error(f"Error preparing download: {str(e)}")
-                                else:
-                                    st.warning("Please run a query first to download data.")
+                                                # Read ZIP file and create download button
+                                                with open(zip_path, 'rb') as f:
+                                                    zip_data = f.read()
+                                                    st.download_button(
+                                                        label="Click to download ZIP",
+                                                        data=zip_data,
+                                                        file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                                                        mime="application/zip",
+                                                        key="download_zip"
+                                                    )
+                                    except Exception as e:
+                                        st.error(f"Error preparing download: {str(e)}")
+                            else:
+                                st.warning("Please run a query first to download data.")
 
         # Add Visualizations section after query section
         st.markdown("<br><br>", unsafe_allow_html=True)
