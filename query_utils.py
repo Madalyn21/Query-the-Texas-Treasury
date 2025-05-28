@@ -97,7 +97,7 @@ def execute_query(query, params, engine) -> List[Dict]:
             # Execute query with parameters as a list of tuples
             result = connection.execute(text(statement)).mappings()
             return [dict(row) for row in result]
-    except Exception as e:
+    except Exception as e:#
         logger.error(f"Error executing query: {str(e)}")
         logger.error(f"Error type: {type(e)}")
         logger.error(f"Error details: {str(e)}")
