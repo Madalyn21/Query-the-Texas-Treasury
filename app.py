@@ -1433,12 +1433,44 @@ def display_main_content():
         logger.info("Adding logos section")
         display_logos()
 
-        # Display Data
+        rows_per_page = 1000
+
+        # Initialize page number in session state
+        if 'current_page' not in st.session_state:
+            st.session_state.current_page = 1
+
+        # Display the queried data with pagination
         if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
             st.subheader("Query Results")
+
             if st.session_state.last_query_time:
                 st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            st.dataframe(st.session_state.queried_data)
+
+            # Pagination logic
+            total_rows = len(st.session_state.queried_data)
+            total_pages = math.ceil(total_rows / rows_per_page)
+
+            # Ensure current_page is in valid range
+            st.session_state.current_page = max(1, min(st.session_state.current_page, total_pages))
+
+            # Page navigation buttons
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.button("Previous") and st.session_state.current_page > 1:
+                    st.session_state.current_page -= 1
+            with col3:
+                if st.button("Next") and st.session_state.current_page < total_pages:
+                    st.session_state.current_page += 1
+
+            # Display current page
+            st.write(f"Page {st.session_state.current_page} of {total_pages}")
+
+            # Get the data slice for the current page
+            start_idx = (st.session_state.current_page - 1) * rows_per_page
+            end_idx = start_idx + rows_per_page
+
+            # Display the data
+            st.dataframe(st.session_state.queried_data.iloc[start_idx:end_idx])
 
     except Exception as e:
         logger.error(f"Error in main content: {str(e)}")
