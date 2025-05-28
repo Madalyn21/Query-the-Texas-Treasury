@@ -152,35 +152,7 @@ LOG_FILE=application.log
 
 ### Database Setup
 
-Ensure your PostgreSQL database contains the required tables:
-
-```sql
--- Verify tables exist
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-AND table_name IN ('paymentinformation', 'contractinfo');
-
--- Check table structure
-\d paymentinformation
-\d contractinfo
-```
-
-### Security Configuration
-
-#### Database Security
-- Use strong passwords for database connections
-- Enable SSL connections to RDS
-- Restrict database access to specific IP ranges
-- Regular password rotation policy
-
-#### Application Security
-- Keep `.env` file out of version control
-- Use IAM roles instead of hardcoded credentials when possible
-- Enable AWS CloudTrail for audit logging
-- Regular security updates for dependencies
-
-## 🚀 Usage
+Jackson's Part
 
 ### Starting the Application
 
@@ -247,121 +219,17 @@ Procurement Method: "Competitive Sealed Bidding"
 
 ## 📊 Data Structure
 
-### Payment Information Table (`paymentinformation`)
+Jackson's Part
 
-| Column Name | Data Type | Description | Example |
-|-------------|-----------|-------------|---------|
-| fiscal_year | INTEGER | Fiscal year of payment | 2023 |
-| fiscal_month | INTEGER | Fiscal month (1-12) | 6 |
-| agency_title | VARCHAR | Full agency name | "Department of Health Services" |
-| vendor_name | VARCHAR | Vendor/contractor name | "ABC Construction Co." |
-| object_title | VARCHAR | Appropriation object description | "Professional Services" |
-| payment_amount | DECIMAL | Payment amount in USD | 15000.00 |
-| payment_date | DATE | Date of payment | 2023-06-15 |
-
-### Contract Information Table (`contractinfo`)
-
-| Column Name | Data Type | Description | Example |
-|-------------|-----------|-------------|---------|
-| fiscal_year | INTEGER | Contract fiscal year | 2023 |
-| fm | INTEGER | Fiscal month | 6 |
-| agency | VARCHAR | Agency name | "Department of Transportation" |
-| vendor | VARCHAR | Contractor name | "XYZ Engineering LLC" |
-| category | VARCHAR | Contract category | "Construction" |
-| procurement_method | VARCHAR | Method of procurement | "Competitive Sealed Bidding" |
-| status | VARCHAR | Contract status | "Active" |
-| subject | VARCHAR | Contract subject/description | "Highway Maintenance Services" |
-| contract_value | DECIMAL | Total contract value | 500000.00 |
-| start_date | DATE | Contract start date | 2023-01-01 |
-| end_date | DATE | Contract end date | 2023-12-31 |
-
-## 🔧 API Reference
-
-### Database Connection Functions
-
-```python
-def get_database_connection():
-    """
-    Establishes connection to PostgreSQL database
-    Returns: SQLAlchemy engine object
-    """
-
-def execute_query(query, params=None):
-    """
-    Executes SQL query with optional parameters
-    Args:
-        query (str): SQL query string
-        params (dict): Query parameters
-    Returns: pandas.DataFrame
-    """
-
-def get_approximate_count(table_name):
-    """
-    Gets approximate row count for large tables
-    Args:
-        table_name (str): Name of the table
-    Returns: int (approximate count)
-    """
-```
-
-### Filter Functions
-
-```python
-def apply_fiscal_year_filter(query, year_range):
-    """
-    Applies fiscal year filter to query
-    Args:
-        query (str): Base SQL query
-        year_range (tuple): (start_year, end_year)
-    Returns: str (modified query)
-    """
-
-def apply_text_filter(query, column, value):
-    """
-    Applies case-insensitive text filter
-    Args:
-        query (str): Base SQL query
-        column (str): Column name to filter
-        value (str): Filter value
-    Returns: str (modified query)
-    """
-```
-
-## ⚡ Performance Optimizations
 
 ### Database Optimizations
 
-#### Indexing Strategy
-```sql
--- Recommended indexes for optimal performance
-CREATE INDEX idx_payment_fiscal_year ON paymentinformation(fiscal_year);
-CREATE INDEX idx_payment_agency ON paymentinformation(agency_title);
-CREATE INDEX idx_payment_vendor ON paymentinformation(vendor_name);
-CREATE INDEX idx_contract_fiscal_year ON contractinfo(fiscal_year);
-CREATE INDEX idx_contract_agency ON contractinfo(agency);
-CREATE INDEX idx_contract_vendor ON contractinfo(vendor);
-```
+Jackson's Part
 
 #### Query Optimization Techniques
-- **Limit and Offset**: Pagination implemented with `LIMIT` and `OFFSET`
-- **Prepared Statements**: Using parameterized queries to prevent SQL injection
-- **Connection Pooling**: Reusing database connections to reduce overhead
-- **Selective Columns**: Only fetching required columns to reduce data transfer
 
-### Application Optimizations
+Jackson's Part
 
-#### Caching Strategy
-```python
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_filtered_data(table, filters):
-    """Cached function for filtered data retrieval"""
-    pass
-
-@st.cache_resource
-def init_database_connection():
-    """Cached database connection initialization"""
-    pass
-```
 
 #### Memory Management
 - **Chunked Processing**: Large datasets processed in 10,000-record chunks
@@ -383,16 +251,6 @@ def init_database_connection():
 - **CSV Export**: < 60 seconds for datasets up to 100,000 records
 
 ## 🔒 Security
-
-### Authentication & Authorization
-- Currently implements basic access (expand based on requirements)
-- Recommended: Integrate with enterprise SSO systems
-- Role-based access control for different user types
-
-### Data Protection
-- **In Transit**: SSL/TLS encryption for all database connections
-- **At Rest**: RDS encryption enabled
-- **Application**: Environment variables for sensitive configuration
 
 ### Security Best Practices
 - Regular security updates for all dependencies
@@ -450,38 +308,6 @@ df -h
 
 # Monitor network connections
 netstat -an | grep 8501
-```
-
-#### Database Monitoring
-```sql
--- Monitor active connections
-SELECT count(*) FROM pg_stat_activity WHERE state = 'active';
-
--- Monitor slow queries
-SELECT query, mean_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_time DESC 
-LIMIT 10;
-```
-
-### Health Checks
-
-#### Application Health Check
-```bash
-# Create health check script
-curl -f http://localhost:8501 || exit 1
-```
-
-#### Database Health Check
-```python
-def database_health_check():
-    try:
-        with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
-            return True
-    except Exception as e:
-        logger.error(f"Database health check failed: {e}")
-        return False
 ```
 
 ## 🔧 Troubleshooting
@@ -726,47 +552,6 @@ mypy app.py
    - Update CHANGELOG.md
    - Provide clear description of changes
 
-### Code Style Guidelines
-
-#### Python Code Standards
-```python
-# Good example
-def get_filtered_data(table_name: str, filters: Dict[str, Any]) -> pd.DataFrame:
-    """
-    Retrieve filtered data from specified table.
-    
-    Args:
-        table_name: Name of the database table
-        filters: Dictionary of filter criteria
-        
-    Returns:
-        pandas.DataFrame: Filtered data results
-        
-    Raises:
-        DatabaseError: If query execution fails
-    """
-    try:
-        # Implementation here
-        pass
-    except Exception as e:
-        logger.error(f"Query failed: {e}")
-        raise DatabaseError("Failed to retrieve data")
-```
-
-#### SQL Query Standards
-```sql
--- Use clear, readable formatting
-SELECT 
-    fiscal_year,
-    agency_title,
-    vendor_name,
-    SUM(payment_amount) as total_amount
-FROM paymentinformation 
-WHERE fiscal_year BETWEEN %(start_year)s AND %(end_year)s
-    AND agency_title ILIKE %(agency_filter)s
-GROUP BY fiscal_year, agency_title, vendor_name
-ORDER BY total_amount DESC;
-```
 
 ### Bug Reporting
 
@@ -792,15 +577,3 @@ When reporting bugs, please include:
    - Data size and complexity
    - Network conditions
    - Recent changes or updates
-
-
-### Third-Party Licenses
-
-This application uses several open-source libraries:
-
-- **Streamlit**: Apache License 2.0
-- **SQLAlchemy**: MIT License
-- **Pandas**: BSD 3-Clause License
-- **psycopg2**: GNU Lesser General Public License
-- **python-dotenv**: BSD 3-Clause License
-
