@@ -1458,8 +1458,8 @@ def display_main_content():
 
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
-                    if 'amount_payed' in dataframe2.columns:
-                        dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                    #if 'amount_payed' in dataframe2.columns:
+                    #    dataframe2['amount_payed'] = dataframe2['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                     markdown_table = dataframe2.to_markdown(index=False)
                     logger.info("test4 Successfull")
                     prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
@@ -1467,7 +1467,7 @@ def display_main_content():
                     Write a brief paragraph (2–3 sentences) that:
                     - Identifies trends (e.g., increasing, decreasing, stable payments)
                     - Notes any outliers or unusually high/low values
-                    - Highlights anything notable about vendors, programs, or agencies
+                    - Mentions anything notable about vendors, programs, or agencies
                     """
                     logger.info("test5 Successfull")
                     try:
