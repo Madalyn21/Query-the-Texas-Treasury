@@ -2,23 +2,6 @@
 
 A robust Streamlit-based web application for querying and analyzing Texas Treasury payment and contract information, deployed on AWS infrastructure with PostgreSQL database backend.
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Data Structure](#data-structure)
-- [API Reference](#api-reference)
-- [Performance Optimizations](#performance-optimizations)
-- [Security](#security)
-- [Monitoring & Logging](#monitoring--logging)
-- [Troubleshooting](#troubleshooting)
-- [Deployment](#deployment)
-
 ## 🎯 Overview
 
 This application provides an interactive interface to query and analyze data from Texas Treasury operations. It connects to a PostgreSQL database hosted on AWS RDS and provides real-time querying capabilities for payment and contract information with advanced filtering and export functionality.
@@ -169,10 +152,10 @@ nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > app.log
 ### Basic Usage Workflow
 
 1. **Access the Application**
-   - Open web browser and navigate to `http://your-server-ip:8501`
+   - Open web browser and navigate to `http://your-server-ip:8501` or assigned domain (texasdoge.ai)
    - The application loads with default settings
 
-2. **Select Data Source**
+2. **Select Data Source or Skip step 2-3 and use the Natural Language Processor** 
    - Choose between "Payment Information" or "Contract Information" from the dropdown
 
 3. **Apply Filters**
@@ -244,12 +227,6 @@ Jackson's Part
 - **Database Connections**: Active connection count
 - **Error Rates**: Failed queries and connection errors
 
-#### Performance Benchmarks
-- **Small Queries** (< 1,000 records): < 2 seconds
-- **Medium Queries** (1,000-10,000 records): < 10 seconds
-- **Large Queries** (> 10,000 records): < 30 seconds
-- **CSV Export**: < 60 seconds for datasets up to 100,000 records
-
 ## 🔒 Security
 
 ### Security Best Practices
@@ -268,24 +245,6 @@ Jackson's Part
 
 ### Application Logging
 
-#### Log Levels and Categories
-```python
-import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('application.log'),
-        logging.StreamHandler()
-    ]
-)
-
-# Usage examples
-logger.info("Query executed successfully")
-logger.warning("Large dataset detected, using chunked processing")
-logger.error("Database connection failed")
 ```
 
 #### Key Logging Events
@@ -339,7 +298,7 @@ psql -h your-rds-endpoint.amazonaws.com -U username -d database_name
 1. Check database indexes are properly created
 2. Analyze slow query logs
 3. Reduce query scope with more specific filters
-4. Monitor system resources (CPU, memory)
+4. Monitor system resources (EC2 Instance Health)
 
 **Problem**: Application crashes with large datasets
 **Solutions**:
@@ -468,43 +427,6 @@ sudo systemctl start treasury-app
 sudo systemctl status treasury-app
 ```
 
-### Load Balancing and Scaling
-
-For high-traffic deployments:
-
-1. **Application Load Balancer (ALB)**
-   - Configure ALB to distribute traffic across multiple EC2 instances
-   - Health checks on `/` endpoint
-   - SSL termination at load balancer
-
-2. **Auto Scaling Group**
-   - Configure ASG for automatic scaling based on CPU/memory usage
-   - Launch template with application pre-installed
-   - CloudWatch alarms for scaling triggers
-
-3. **Database Scaling**
-   - Read replicas for improved query performance
-   - Connection pooling with PgBouncer
-   - Monitoring and alerting for database performance
-
-### Backup and Recovery
-
-#### Database Backups
-```bash
-# Automated RDS snapshots (configured in AWS console)
-# Manual backup command
-pg_dump -h your-rds-endpoint.amazonaws.com -U username database_name > backup.sql
-```
-
-#### Application Backups
-```bash
-# Backup application files and configuration
-tar -czf treasury-app-backup-$(date +%Y%m%d).tar.gz \
-  /home/streamlit-app/texas-treasury-query-app \
-  --exclude=venv \
-  --exclude=__pycache__ \
-  --exclude=*.log
-```
 
 ## 🤝 Contributing
 
@@ -529,25 +451,7 @@ pip install -r requirements-dev.txt  # Development dependencies
 git checkout -b feature/your-feature-name
 ```
 
-4. **Development Standards**
-   - Follow PEP 8 style guidelines
-   - Add docstrings to all functions
-   - Include unit tests for new functionality
-   - Update documentation as needed
-
-5. **Testing**
-```bash
-# Run unit tests
-python -m pytest tests/
-
-# Run linting
-flake8 app.py
-
-# Run type checking
-mypy app.py
-```
-
-6. **Submit Pull Request**
+4. **Submit Pull Request**
    - Ensure all tests pass
    - Update CHANGELOG.md
    - Provide clear description of changes
