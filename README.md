@@ -135,8 +135,6 @@ LOG_FILE=application.log
 
 ### Database Setup
 
-Jackson's Part
-
 Most of the database stuff is pretty simple, in theory there won't be any issues which crop up due to it.
 Here's the thing I can think of.
 For anything using a SQL query, I'd recommend loading up pgAdmin4, connecting to the server with the Query Tool tab and running your queries there.
