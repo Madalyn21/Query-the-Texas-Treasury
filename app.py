@@ -1003,7 +1003,7 @@ def display_main_content():
                                 st.error(f"Failed to generate or run query: {str(e)}")
 
             # Create columns for the filter interface with adjusted widths
-            with st.expander("Ask Your Question in Filters"):
+            with st.expander("Search data with Filters"):
                 col1, col2 = st.columns([2, 1])
                 with col1:
 
@@ -1576,18 +1576,18 @@ def main():
             logger.error(f"Error in memory management: {str(e)}")
 
         # Display version in sidebar
-        logger.info("Setting up sidebar")
-        st.sidebar.title("Database Status")
-        st.sidebar.info(f"App Version: {APP_VERSION}")
-        
+        #logger.info("Setting up sidebar")
+        #st.sidebar.title("Database Status")
+        #st.sidebar.info(f"App Version: {APP_VERSION}")
+
         # Add a button to clear session state
-        if st.sidebar.button("Clear Session Data"):
-            st.session_state.clear()
-            st.rerun()
-        
-        if st.sidebar.button("Test Database Connection"):
-            test_database_connection()
-        
+        #if st.sidebar.button("Clear Session Data"):
+        #    st.session_state.clear()
+        #    st.rerun()
+
+        #if st.sidebar.button("Test Database Connection"):
+        #    test_database_connection()
+
         logger.info("Starting application main content")
         
         # Health check endpoint
