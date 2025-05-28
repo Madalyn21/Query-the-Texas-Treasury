@@ -1398,9 +1398,9 @@ def display_main_content():
                     col3, col4 = st.columns(2)
                     with col3:
                         st.altair_chart(st.session_state.visualizations['trend_analysis'], use_container_width=True)
-                    with col4:
-                        if('category' in df.columns):
-                            st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
+                    #with col4:
+                    #    if('category' in df.columns):
+                    #        st.altair_chart(st.session_state.visualizations['category_analysis'], use_container_width=True)
             else:
                 # Show placeholder when no query has been submitted
                 st.info("Submit a Query to see Visualizations")
@@ -1441,8 +1441,7 @@ def display_main_content():
                     openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
                     logger.info("test2 Successfull")
-                    dataframe1 = get_filtered_data(st.session_state.queried_data, table_choice, engine)
-                    dataframe2=dataframe1.head(5)
+                    dataframe2 = st.session_state.queried_data.head(5)
 
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
