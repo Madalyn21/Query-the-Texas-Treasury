@@ -982,8 +982,8 @@ def display_main_content():
                                         st.warning("No data found.")
                                     else:
                                         df = pd.DataFrame(rows)
-                                        #if 'dollar_value' in df.columns:
-                                        #    df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
+                                        if 'dollar_value' in df.columns:
+                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
 
                                         #st.subheader("Query Results")
                                         st.session_state.queried_data = df
