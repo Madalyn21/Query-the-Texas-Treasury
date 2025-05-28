@@ -1000,7 +1000,7 @@ def display_main_content():
 
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
-                                st.error(f"Failed to generate or run query: {str(e)}")
+                                #st.error(f"Failed to generate or run query: {str(e)}")
 
             # Create columns for the filter interface with adjusted widths
             with st.expander("Search data with Filters"):
