@@ -960,7 +960,7 @@ def display_main_content():
         # Create a container for the main content
         main_container = st.container()
         
-        with main_container:
+        with main_container:#comment
             # Create columns for the filter interface with adjusted widths
             with st.expander("Ask Your Question in Natural Language"):
                 user_question = st.text_input("Enter your question about the data:", key="nl_question")
