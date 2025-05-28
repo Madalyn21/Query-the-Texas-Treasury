@@ -992,7 +992,7 @@ def display_main_content():
                                         if 'amount_payed' in df.columns:
                                             df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                                         st.session_state.visualizations = generate_all_visualizations(df)
-                                        st.success(f"Retrieved {len(df)} rows using natural language query.")
+                                        st.success(f"Retrieved {len(df)} rows using natural language query. Please scroll down to see visualizations & AI Analysis")
 
 
 
@@ -1322,7 +1322,7 @@ def display_main_content():
                                         st.session_state.visualizations = generate_all_visualizations(df)
 
                                         # Display success message
-                                        st.success(f"Query completed successfully! Retrieved {len(df)} records.")
+                                        st.success(f"Query completed successfully! Retrieved {len(df)} records. Please scroll down to see results, visualizations, AI analysis")
                                     else:
                                         st.warning("No data found matching your criteria.")
                                 except Exception as e:
@@ -1378,6 +1378,11 @@ def display_main_content():
                                         st.error(f"Error preparing download: {str(e)}")
                             else:
                                 st.warning("Please run a query first to download data.")
+        if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+            st.subheader("Query Results")
+            if st.session_state.last_query_time:
+                st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.dataframe(st.session_state.queried_data)
 
         # Add Visualizations section after query section
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -1488,11 +1493,7 @@ def display_main_content():
         display_logos()
 
         # Display Data
-        if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-            st.subheader("Query Results")
-            if st.session_state.last_query_time:
-                st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            st.dataframe(st.session_state.queried_data)
+
 
     except Exception as e:
         logger.error(f"Error in main content: {str(e)}")
