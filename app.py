@@ -1001,9 +1001,9 @@ def display_main_content():
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
-        with main_container:
+
             # Create columns for the filter interface with adjusted widths
-            with st.expander("Ask Your Question in Natural Language"):
+            with st.expander("Ask Your Question in Filters"):
                 col1, col2 = st.columns([2, 1])
                 with col1:
 
