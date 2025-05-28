@@ -1448,7 +1448,7 @@ def display_main_content():
                     openai.api_key = os.getenv('API_KEY')  # Replace with your actual API key
                     # Simulated function to get a pandas DataFrame from elsewhere in your code
                     logger.info("test2 Successfull")
-                    dataframe2 = st.session_state.queried_data.head(5)
+                    dataframe2 = st.session_state.queried_data.head(1000)
 
                     # Clean amount column for analysis (remove dollar signs, convert to float)
                     logger.info("test3 Successfull")
@@ -1458,7 +1458,7 @@ def display_main_content():
                     logger.info("test4 Successfull")
                     prompt = f"""You are a data analyst. Analyze the following dataset given in markdown table format:
                     {markdown_table}
-                    Write a brief paragraph (1–2 sentences) that:
+                    Write a brief paragraph (2–3 sentences) that:
                     - Identifies trends (e.g., increasing, decreasing, stable payments)
                     - Notes any outliers or unusually high/low values
                     - Highlights anything notable about vendors, programs, or agencies
