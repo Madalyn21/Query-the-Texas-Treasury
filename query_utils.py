@@ -91,7 +91,7 @@ def execute_query(query, params, engine) -> List[Dict]:
         
         # Convert parameters to a list of tuples for SQLAlchemy
         #statement = select(text(query[1]).label(query[0])).where(text(params))
-        statement = "select " + query[2] + " FROM " + query[1] + " as " + query[0] + "\n" + params
+        statement = "select " + query[2] + " FROM " + query[1] + " as " + query[0] + "\n" + params + " LIMIT 1000000"
         logger.info(statement)
         with engine.connect() as connection:
             # Execute query with parameters as a list of tuples
