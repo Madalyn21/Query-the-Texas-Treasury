@@ -1001,383 +1001,383 @@ def display_main_content():
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
                                 st.error(f"Failed to generate or run query: {str(e)}")
+            with main_container:
+            # Create columns for the filter interface with adjusted widths
+            with st.expander("Ask Your Question in Natural Language"):
+                col1, col2 = st.columns([2, 1])
+                with col1:
 
+                    logger.info("Setting up filter criteria")
+                    st.subheader("Filter Criteria")
 
-            col1, col2 = st.columns([2, 1])
-        with st.expander("Ask Your Question in Natural Language"):
-            with col1:
-
-                logger.info("Setting up filter criteria")
-                st.subheader("Filter Criteria")
-                
-                # Add table selection
-                table_choice = st.radio(
-                    "Select Data Source",
-                    ["Payment Information", "Contract Information"],
-                    help="Choose which table to query data from"
-                )
-                logger.info(f"Table choice selected: {table_choice}")
-                
-                # Add fiscal year and month sliders
-                st.subheader("Fiscal Year and Month")
-                
-                # Load fiscal years
-                try:
-                    fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
-                    logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
-                    if 'fiscal_year' not in fiscal_years_df.columns:
-                        raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
-                    fiscal_years = fiscal_years_df['fiscal_year'].tolist()
-                    fiscal_years.sort()
-                    logger.info(f"Found fiscal years: {fiscal_years}")
-                    logger.info(f"Setting fiscal year range from {fiscal_years[0]} to {fiscal_years[-1]}")
-                except Exception as e:
-                    logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
-                    fiscal_years = []
-                
-                # Fiscal Year Slider
-                if fiscal_years:
-                    selected_fiscal_year = st.select_slider(
-                        "Fiscal Year",
-                        options=fiscal_years,
-                        value=(fiscal_years[0], fiscal_years[-1]),
-                        help="Select a range of fiscal years"
+                    # Add table selection
+                    table_choice = st.radio(
+                        "Select Data Source",
+                        ["Payment Information", "Contract Information"],
+                        help="Choose which table to query data from"
                     )
-                    
-                    # Store the selected fiscal year range
-                    st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
-                    st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
-                
-                # Fiscal Month Slider with month names
-                month_names = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
-                ]
-                
-                selected_fiscal_month = st.select_slider(
-                    "Fiscal Month",
-                    options=month_names,
-                    value=("January", "December"),
-                    help="Select a range of fiscal months"
-                )
-                
-                # Convert month names to numbers for storage
-                month_to_number = {name: i+1 for i, name in enumerate(month_names)}
-                st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
-                st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
-                
-                # Add a separator
-                st.markdown("---")
-                
-                # Load filter options
-                filter_options = load_filter_options(table_choice)
-                if filter_options is None:
-                    return
+                    logger.info(f"Table choice selected: {table_choice}")
 
-                # Display dropdowns based on table choice
-                if table_choice == "Payment Information":
-                    # Display Payment Information dropdowns
-                    agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-                    selected_agency = st.selectbox("Agency", agency_options)
-                    
-                    appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
-                    selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
-                    
-                    payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
-                    selected_payment_source = st.selectbox("Fund Title", payment_source_options)
-                    
-                    appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
-                    selected_appropriation_object = st.selectbox("Objective Title", appropriation_object_options)
-                    
-                    # Add vendor file path for payment information
-                    vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
-                else:
-                    # Display Contract Information dropdowns
-                    agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
-                    selected_agency = st.selectbox("Agency", agency_options)
-                    
-                    category_options = ["All"] + [category[0] for category in filter_options['categories']]
-                    selected_category = st.selectbox("Category", category_options)
-                    
-                    procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
-                    selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
-                    
-                    status_options = ["All"] + [status[0] for status in filter_options['statuses']]
-                    selected_status = st.selectbox("Status", status_options)
-                    
-                    subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
-                    selected_subject = st.selectbox("Subject", subject_options)
-                    
-                    # Add vendor file path for contract information
-                    vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
-                
-                # Add a searchable vendor selection
-                # Initialize debounce state
-                if 'last_search_time' not in st.session_state:
-                    st.session_state.last_search_time = time.time()
-                if 'search_term' not in st.session_state:
-                    st.session_state.search_term = ""
-                
-                # Get the current search input
-                current_search = st.text_input(
-                    "Search Vendors",
-                    help="Type at least 2 characters to search for vendors",
-                    placeholder="Type at least 2 characters to search",
-                    key="vendor_search"
-                )
-                
-                # Check if we should update the search
-                current_time = time.time()
-                if (current_search != st.session_state.search_term and 
-                    len(current_search) >= 2 and 
-                    current_time - st.session_state.last_search_time > 0.3):  # 300ms debounce
-                    st.session_state.search_term = current_search
-                    st.session_state.last_search_time = current_time
-                    st.rerun()
-                
-                # Initialize vendor state
-                if 'selected_vendor' not in st.session_state:
-                    st.session_state.selected_vendor = None
-                if 'vendor_limit' not in st.session_state:
-                    st.session_state.vendor_limit = 50
-                
-                # Get matching vendors based on search input
-                matching_vendors = search_vendors(
-                    st.session_state.search_term, 
-                    vendor_file_path, 
-                    limit=st.session_state.vendor_limit
-                )
-                
-                # Display matching vendors in a selectbox if there are results
-                if matching_vendors:
-                    # Create a container for the vendor selection
-                    vendor_container = st.container()
-                    
-                    with vendor_container:
-                        # Create the selectbox with current vendors
-                        selected_vendor = st.selectbox(
-                            "Select Vendor",
-                            options=[""] + matching_vendors,  # Add empty option at start
-                            index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
-                            key="vendor_select",
-                            help="Select a vendor from the search results"
+                    # Add fiscal year and month sliders
+                    st.subheader("Fiscal Year and Month")
+
+                    # Load fiscal years
+                    try:
+                        fiscal_years_df = pd.read_csv('Dropdown_Menu/fiscal_years_both.csv')
+                        logger.info(f"Found columns in fiscal_years_both.csv: {fiscal_years_df.columns.tolist()}")
+                        if 'fiscal_year' not in fiscal_years_df.columns:
+                            raise Exception(f"Column 'fiscal_year' not found. Available columns: {fiscal_years_df.columns.tolist()}")
+                        fiscal_years = fiscal_years_df['fiscal_year'].tolist()
+                        fiscal_years.sort()
+                        logger.info(f"Found fiscal years: {fiscal_years}")
+                        logger.info(f"Setting fiscal year range from {fiscal_years[0]} to {fiscal_years[-1]}")
+                    except Exception as e:
+                        logger.error(f"Error loading fiscal years: {str(e)}", exc_info=True)
+                        fiscal_years = []
+
+                    # Fiscal Year Slider
+                    if fiscal_years:
+                        selected_fiscal_year = st.select_slider(
+                            "Fiscal Year",
+                            options=fiscal_years,
+                            value=(fiscal_years[0], fiscal_years[-1]),
+                            help="Select a range of fiscal years"
                         )
-                        
-                        # Add "Load More" button if there are enough results
-                        if len(matching_vendors) >= st.session_state.vendor_limit:
-                            if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
-                                # Store current selection before loading more
-                                st.session_state.selected_vendor = selected_vendor
-                                # Increase the limit
-                                st.session_state.vendor_limit += 50
-                                # Force a rerun to update the UI with more vendors
-                                st.rerun()
-                        
-                        # Update session state with selected vendor
-                        if selected_vendor != st.session_state.selected_vendor:
-                            st.session_state.selected_vendor = selected_vendor
-                    
-                # Store the selected vendor in the filters
-                st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
 
-            with col2:
-                # Create a fixed position container for query actions
-                st.markdown("""
-                    <style>
-                    .fixed-query-container {
-                        position: sticky;
-                        top: 2rem;
-                        padding: 1rem;
-                        border-radius: 0.5rem;
-                        z-index: 100;
-                    }
-                    .query-content {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 1rem;
-                    }
-                    div[data-testid="stButton"] {
-                        display: flex;
-                        justify-content: center;
-                        margin: 0.5rem 0;
-                    }
-                    </style>
-                    <div class="fixed-query-container">
-                        <div class="query-content">
-                """, unsafe_allow_html=True)
-                
-                logger.info("Setting up query actions")
-                st.subheader("Query Actions")
-                
-                # Query Actions
-                with st.expander("Query Actions", expanded=True):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        if st.button("Run Query", type="primary"):
-                            with st.spinner("Executing query... This may take a few moments."):
-                                try:
-                                    # Get database connection
-                                    engine = get_db_connection()
-                                    
-                                    # Update filters with selected values
-                                    if table_choice == "Payment Information":
-                                        # Create a new dictionary with validated values
-                                        new_filters = {}
-                                        
-                                        # Add agency if not "All"
-                                        if selected_agency and selected_agency != "All":
-                                            new_filters['agency'] = str(selected_agency)
-                                        
-                                        # Add appropriation title if not "All"
-                                        if selected_appropriation and selected_appropriation != "All":
-                                            new_filters['appropriation_title'] = str(selected_appropriation)
-                                        
-                                        # Add payment source if not "All"
-                                        if selected_payment_source and selected_payment_source != "All":
-                                            new_filters['payment_source'] = str(selected_payment_source)
-                                        
-                                        # Add appropriation object if not "All"
-                                        if selected_appropriation_object and selected_appropriation_object != "All":
-                                            new_filters['appropriation_object'] = str(selected_appropriation_object)
-                                        
-                                        # Add fiscal year range if available
-                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
-                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
-                                        if fiscal_year_start is not None and fiscal_year_end is not None:
-                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
-                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
-                                        
-                                        # Add fiscal month range if available
-                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
-                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
-                                        if fiscal_month_start is not None and fiscal_month_end is not None:
-                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
-                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
-                                        
-                                        # Add vendor if selected
-                                        if st.session_state.selected_vendor:
-                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
-                                        else:
-                                            new_filters['vendor'] = []
-                                        
-                                        # Update session state with validated filters
-                                        st.session_state.filters = new_filters
-                                    else:
-                                        # Create a new dictionary with validated values
-                                        new_filters = {}
-                                        
-                                        # Add agency if not "All"
-                                        if selected_agency and selected_agency != "All":
-                                            new_filters['agency'] = str(selected_agency)
-                                        
-                                        # Add category if not "All"
-                                        if selected_category and selected_category != "All":
-                                            new_filters['category'] = str(selected_category)
-                                        
-                                        # Add procurement method if not "All"
-                                        if selected_procurement_method and selected_procurement_method != "All":
-                                            new_filters['procurement_method'] = str(selected_procurement_method)
-                                        
-                                        # Add status if not "All"
-                                        if selected_status and selected_status != "All":
-                                            new_filters['status'] = str(selected_status)
-                                        
-                                        # Add subject if not "All"
-                                        if selected_subject and selected_subject != "All":
-                                            new_filters['subject'] = str(selected_subject)
-                                        
-                                        # Add fiscal year range if available
-                                        fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
-                                        fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
-                                        if fiscal_year_start is not None and fiscal_year_end is not None:
-                                            new_filters['fiscal_year_start'] = int(fiscal_year_start)
-                                            new_filters['fiscal_year_end'] = int(fiscal_year_end)
-                                        
-                                        # Add fiscal month range if available
-                                        fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
-                                        fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
-                                        if fiscal_month_start is not None and fiscal_month_end is not None:
-                                            new_filters['fiscal_month_start'] = int(fiscal_month_start)
-                                            new_filters['fiscal_month_end'] = int(fiscal_month_end)
-                                        
-                                        # Add vendor if selected
-                                        if st.session_state.selected_vendor:
-                                            new_filters['vendor'] = [str(st.session_state.selected_vendor)]
-                                        else:
-                                            new_filters['vendor'] = []
-                                        
-                                        # Update session state with validated filters
-                                        st.session_state.filters = new_filters
-                                    
-                                    # Get filtered data
-                                    df = get_filtered_data(st.session_state.filters, table_choice, engine)
-                                    
-                                    if not df.empty:
-                                        # Store the queried data in session state
-                                        st.session_state.queried_data = df
-                                        st.session_state.last_query_time = datetime.now()
-                                        
-                                        # Generate visualizations
-                                        st.session_state.visualizations = generate_all_visualizations(df)
-                                        
-                                        # Display success message
-                                        st.success(f"Query completed successfully! Retrieved {len(df)} records.")
-                                    else:
-                                        st.warning("No data found matching your criteria.")
-                                except Exception as e:
-                                    st.error(f"Error executing query: {str(e)}")
-                                    logger.error(f"Error executing query: {str(e)}", exc_info=True)
-                    
-                    with col2:
-                        # st.session_state.download_format = st.radio(
-                        #     "Download Format",
-                        #     ["csv", "zip"],
-                        #     horizontal=True,
-                        #     index=0 if st.session_state.download_format == 'csv' else 1
-                        # )
-                        
-                        if st.button("Download Data"):
-                            if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
-                                with st.spinner("Preparing download..."):
+                        # Store the selected fiscal year range
+                        st.session_state.filters['fiscal_year_start'] = selected_fiscal_year[0]
+                        st.session_state.filters['fiscal_year_end'] = selected_fiscal_year[1]
+
+                    # Fiscal Month Slider with month names
+                    month_names = [
+                        "January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                    ]
+
+                    selected_fiscal_month = st.select_slider(
+                        "Fiscal Month",
+                        options=month_names,
+                        value=("January", "December"),
+                        help="Select a range of fiscal months"
+                    )
+
+                    # Convert month names to numbers for storage
+                    month_to_number = {name: i+1 for i, name in enumerate(month_names)}
+                    st.session_state.filters['fiscal_month_start'] = month_to_number[selected_fiscal_month[0]]
+                    st.session_state.filters['fiscal_month_end'] = month_to_number[selected_fiscal_month[1]]
+
+                    # Add a separator
+                    st.markdown("---")
+
+                    # Load filter options
+                    filter_options = load_filter_options(table_choice)
+                    if filter_options is None:
+                        return
+
+                    # Display dropdowns based on table choice
+                    if table_choice == "Payment Information":
+                        # Display Payment Information dropdowns
+                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                        selected_agency = st.selectbox("Agency", agency_options)
+
+                        appropriation_options = ["All"] + [title[0] for title in filter_options['appropriation_titles']]
+                        selected_appropriation = st.selectbox("Appropriation Title", appropriation_options)
+
+                        payment_source_options = ["All"] + [source[0] for source in filter_options['payment_sources']]
+                        selected_payment_source = st.selectbox("Fund Title", payment_source_options)
+
+                        appropriation_object_options = ["All"] + [obj[0] for obj in filter_options['appropriation_objects']]
+                        selected_appropriation_object = st.selectbox("Objective Title", appropriation_object_options)
+
+                        # Add vendor file path for payment information
+                        vendor_file_path = 'Dropdown_Menu/payments_ven_namelist.csv'
+                    else:
+                        # Display Contract Information dropdowns
+                        agency_options = ["All"] + [agency[0] for agency in filter_options['agencies']]
+                        selected_agency = st.selectbox("Agency", agency_options)
+
+                        category_options = ["All"] + [category[0] for category in filter_options['categories']]
+                        selected_category = st.selectbox("Category", category_options)
+
+                        procurement_method_options = ["All"] + [method[0] for method in filter_options['procurement_methods']]
+                        selected_procurement_method = st.selectbox("Procurement Method", procurement_method_options)
+
+                        status_options = ["All"] + [status[0] for status in filter_options['statuses']]
+                        selected_status = st.selectbox("Status", status_options)
+
+                        subject_options = ["All"] + [subject[0] for subject in filter_options['subjects']]
+                        selected_subject = st.selectbox("Subject", subject_options)
+
+                        # Add vendor file path for contract information
+                        vendor_file_path = 'Dropdown_Menu/contract_vendor_list.csv'
+
+                    # Add a searchable vendor selection
+                    # Initialize debounce state
+                    if 'last_search_time' not in st.session_state:
+                        st.session_state.last_search_time = time.time()
+                    if 'search_term' not in st.session_state:
+                        st.session_state.search_term = ""
+
+                    # Get the current search input
+                    current_search = st.text_input(
+                        "Search Vendors",
+                        help="Type at least 2 characters to search for vendors",
+                        placeholder="Type at least 2 characters to search",
+                        key="vendor_search"
+                    )
+
+                    # Check if we should update the search
+                    current_time = time.time()
+                    if (current_search != st.session_state.search_term and
+                        len(current_search) >= 2 and
+                        current_time - st.session_state.last_search_time > 0.3):  # 300ms debounce
+                        st.session_state.search_term = current_search
+                        st.session_state.last_search_time = current_time
+                        st.rerun()
+
+                    # Initialize vendor state
+                    if 'selected_vendor' not in st.session_state:
+                        st.session_state.selected_vendor = None
+                    if 'vendor_limit' not in st.session_state:
+                        st.session_state.vendor_limit = 50
+
+                    # Get matching vendors based on search input
+                    matching_vendors = search_vendors(
+                        st.session_state.search_term,
+                        vendor_file_path,
+                        limit=st.session_state.vendor_limit
+                    )
+
+                    # Display matching vendors in a selectbox if there are results
+                    if matching_vendors:
+                        # Create a container for the vendor selection
+                        vendor_container = st.container()
+
+                        with vendor_container:
+                            # Create the selectbox with current vendors
+                            selected_vendor = st.selectbox(
+                                "Select Vendor",
+                                options=[""] + matching_vendors,  # Add empty option at start
+                                index=0 if st.session_state.selected_vendor not in matching_vendors else matching_vendors.index(st.session_state.selected_vendor) + 1,
+                                key="vendor_select",
+                                help="Select a vendor from the search results"
+                            )
+
+                            # Add "Load More" button if there are enough results
+                            if len(matching_vendors) >= st.session_state.vendor_limit:
+                                if st.button("Load 50 More to the Search List", key="load_more_vendors", help="Load 50 more vendors to the search results"):
+                                    # Store current selection before loading more
+                                    st.session_state.selected_vendor = selected_vendor
+                                    # Increase the limit
+                                    st.session_state.vendor_limit += 50
+                                    # Force a rerun to update the UI with more vendors
+                                    st.rerun()
+
+                            # Update session state with selected vendor
+                            if selected_vendor != st.session_state.selected_vendor:
+                                st.session_state.selected_vendor = selected_vendor
+
+                    # Store the selected vendor in the filters
+                    st.session_state.filters['vendor'] = [st.session_state.selected_vendor] if st.session_state.selected_vendor else []
+
+                with col2:
+                    # Create a fixed position container for query actions
+                    st.markdown("""
+                        <style>
+                        .fixed-query-container {
+                            position: sticky;
+                            top: 2rem;
+                            padding: 1rem;
+                            border-radius: 0.5rem;
+                            z-index: 100;
+                        }
+                        .query-content {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 1rem;
+                        }
+                        div[data-testid="stButton"] {
+                            display: flex;
+                            justify-content: center;
+                            margin: 0.5rem 0;
+                        }
+                        </style>
+                        <div class="fixed-query-container">
+                            <div class="query-content">
+                    """, unsafe_allow_html=True)
+
+                    logger.info("Setting up query actions")
+                    st.subheader("Query Actions")
+
+                    # Query Actions
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            if st.button("Run Query", type="primary"):
+                                with st.spinner("Executing query... This may take a few moments."):
                                     try:
-                                        if st.session_state.download_format == "csv":
-                                            logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
-                                            csv = st.session_state.queried_data.to_csv(index=False)
-                                            st.download_button(
-                                                label="Click to download CSV",
-                                                data=csv,
-                                                file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                                mime="text/csv",
-                                                key="download_csv"
-                                            )
-                                        else:  # zip format
-                                            # Create a temporary directory
-                                            with tempfile.TemporaryDirectory() as tmpdir:
-                                                # Save CSV
-                                                csv_path = os.path.join(tmpdir, "data.csv")
-                                                logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
-                                                st.session_state.queried_data.to_csv(csv_path, index=False)
-                                                
-                                                # Create ZIP file
-                                                zip_path = os.path.join(tmpdir, "data.zip")
-                                                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                                                    zipf.write(csv_path, "data.csv")
-                                                
-                                                # Read ZIP file and create download button
-                                                with open(zip_path, 'rb') as f:
-                                                    zip_data = f.read()
-                                                    st.download_button(
-                                                        label="Click to download ZIP",
-                                                        data=zip_data,
-                                                        file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                                                        mime="application/zip",
-                                                        key="download_zip"
-                                                    )
+                                        # Get database connection
+                                        engine = get_db_connection()
+
+                                        # Update filters with selected values
+                                        if table_choice == "Payment Information":
+                                            # Create a new dictionary with validated values
+                                            new_filters = {}
+
+                                            # Add agency if not "All"
+                                            if selected_agency and selected_agency != "All":
+                                                new_filters['agency'] = str(selected_agency)
+
+                                            # Add appropriation title if not "All"
+                                            if selected_appropriation and selected_appropriation != "All":
+                                                new_filters['appropriation_title'] = str(selected_appropriation)
+
+                                            # Add payment source if not "All"
+                                            if selected_payment_source and selected_payment_source != "All":
+                                                new_filters['payment_source'] = str(selected_payment_source)
+
+                                            # Add appropriation object if not "All"
+                                            if selected_appropriation_object and selected_appropriation_object != "All":
+                                                new_filters['appropriation_object'] = str(selected_appropriation_object)
+
+                                            # Add fiscal year range if available
+                                            fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                            fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                            if fiscal_year_start is not None and fiscal_year_end is not None:
+                                                new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                                new_filters['fiscal_year_end'] = int(fiscal_year_end)
+
+                                            # Add fiscal month range if available
+                                            fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                            fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                            if fiscal_month_start is not None and fiscal_month_end is not None:
+                                                new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                                new_filters['fiscal_month_end'] = int(fiscal_month_end)
+
+                                            # Add vendor if selected
+                                            if st.session_state.selected_vendor:
+                                                new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                            else:
+                                                new_filters['vendor'] = []
+
+                                            # Update session state with validated filters
+                                            st.session_state.filters = new_filters
+                                        else:
+                                            # Create a new dictionary with validated values
+                                            new_filters = {}
+
+                                            # Add agency if not "All"
+                                            if selected_agency and selected_agency != "All":
+                                                new_filters['agency'] = str(selected_agency)
+
+                                            # Add category if not "All"
+                                            if selected_category and selected_category != "All":
+                                                new_filters['category'] = str(selected_category)
+
+                                            # Add procurement method if not "All"
+                                            if selected_procurement_method and selected_procurement_method != "All":
+                                                new_filters['procurement_method'] = str(selected_procurement_method)
+
+                                            # Add status if not "All"
+                                            if selected_status and selected_status != "All":
+                                                new_filters['status'] = str(selected_status)
+
+                                            # Add subject if not "All"
+                                            if selected_subject and selected_subject != "All":
+                                                new_filters['subject'] = str(selected_subject)
+
+                                            # Add fiscal year range if available
+                                            fiscal_year_start = st.session_state.filters.get('fiscal_year_start')
+                                            fiscal_year_end = st.session_state.filters.get('fiscal_year_end')
+                                            if fiscal_year_start is not None and fiscal_year_end is not None:
+                                                new_filters['fiscal_year_start'] = int(fiscal_year_start)
+                                                new_filters['fiscal_year_end'] = int(fiscal_year_end)
+
+                                            # Add fiscal month range if available
+                                            fiscal_month_start = st.session_state.filters.get('fiscal_month_start')
+                                            fiscal_month_end = st.session_state.filters.get('fiscal_month_end')
+                                            if fiscal_month_start is not None and fiscal_month_end is not None:
+                                                new_filters['fiscal_month_start'] = int(fiscal_month_start)
+                                                new_filters['fiscal_month_end'] = int(fiscal_month_end)
+
+                                            # Add vendor if selected
+                                            if st.session_state.selected_vendor:
+                                                new_filters['vendor'] = [str(st.session_state.selected_vendor)]
+                                            else:
+                                                new_filters['vendor'] = []
+
+                                            # Update session state with validated filters
+                                            st.session_state.filters = new_filters
+
+                                        # Get filtered data
+                                        df = get_filtered_data(st.session_state.filters, table_choice, engine)
+
+                                        if not df.empty:
+                                            # Store the queried data in session state
+                                            st.session_state.queried_data = df
+                                            st.session_state.last_query_time = datetime.now()
+
+                                            # Generate visualizations
+                                            st.session_state.visualizations = generate_all_visualizations(df)
+
+                                            # Display success message
+                                            st.success(f"Query completed successfully! Retrieved {len(df)} records.")
+                                        else:
+                                            st.warning("No data found matching your criteria.")
                                     except Exception as e:
-                                        st.error(f"Error preparing download: {str(e)}")
-                            else:
-                                st.warning("Please run a query first to download data.")
+                                        st.error(f"Error executing query: {str(e)}")
+                                        logger.error(f"Error executing query: {str(e)}", exc_info=True)
+
+                        with col2:
+                            # st.session_state.download_format = st.radio(
+                            #     "Download Format",
+                            #     ["csv", "zip"],
+                            #     horizontal=True,
+                            #     index=0 if st.session_state.download_format == 'csv' else 1
+                            # )
+
+                            if st.button("Download Data"):
+                                if st.session_state.queried_data is not None and not st.session_state.queried_data.empty:
+                                    with st.spinner("Preparing download..."):
+                                        try:
+                                            if st.session_state.download_format == "csv":
+                                                logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
+                                                csv = st.session_state.queried_data.to_csv(index=False)
+                                                st.download_button(
+                                                    label="Click to download CSV",
+                                                    data=csv,
+                                                    file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                                    mime="text/csv",
+                                                    key="download_csv"
+                                                )
+                                            else:  # zip format
+                                                # Create a temporary directory
+                                                with tempfile.TemporaryDirectory() as tmpdir:
+                                                    # Save CSV
+                                                    csv_path = os.path.join(tmpdir, "data.csv")
+                                                    logger.debug(f"queried_data is type {type(st.session_state.queried_data)}, empty={st.session_state.queried_data.empty}")
+                                                    st.session_state.queried_data.to_csv(csv_path, index=False)
+
+                                                    # Create ZIP file
+                                                    zip_path = os.path.join(tmpdir, "data.zip")
+                                                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                                                        zipf.write(csv_path, "data.csv")
+
+                                                    # Read ZIP file and create download button
+                                                    with open(zip_path, 'rb') as f:
+                                                        zip_data = f.read()
+                                                        st.download_button(
+                                                            label="Click to download ZIP",
+                                                            data=zip_data,
+                                                            file_name=f"texas_treasury_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                                                            mime="application/zip",
+                                                            key="download_zip"
+                                                        )
+                                        except Exception as e:
+                                            st.error(f"Error preparing download: {str(e)}")
+                                else:
+                                    st.warning("Please run a query first to download data.")
 
         # Add Visualizations section after query section
         st.markdown("<br><br>", unsafe_allow_html=True)
