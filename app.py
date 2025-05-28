@@ -999,7 +999,7 @@ def display_main_content():
 
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
-                                st.error(f"Failed to generate or run query: {str(e)}")
+                                st.error(f"Failed to generate or run query: Information not found within dataset. To optimize search results it’s best to include some key terms such as start and end dates, agency, appropriation title, fund title, objective title, vendor, category, procurement method, status, and subject.")
 
 
             col1, col2 = st.columns([2, 1])
