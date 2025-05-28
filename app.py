@@ -962,45 +962,7 @@ def display_main_content():
         
         with main_container:#comment
             # Create columns for the filter interface with adjusted widths
-            with st.expander("Ask Your Question in Natural Language"):
-                user_question = st.text_input("Enter your question about the data:", key="nl_question")
-                if user_question:
-                    if st.button("Generate SQL and Query", key="run_nl_query"):
 
-                        with st.spinner("Generating SQL and executing query..."):
-                            try:
-                                engine = get_db_connection()
-                                with engine.connect() as connection:
-
-                                    logger.info("Database connection established with NL")
-                                    sql_query = generate_sql_from_nl(user_question)
-                                    logger.info(f"Here is the NLP SQL Query: {sql_query}")
-                                    # First, let's check if we can access the table
-                                    SQL = connection.execute(text(sql_query)).mappings()
-                                    rows = list(SQL)
-                                    if not rows:
-                                        st.warning("No data found.")
-                                    else:
-                                        df = pd.DataFrame(rows)
-                                        if 'dollar_value' in df.columns:
-                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
-
-                                        #st.subheader("Query Results")
-                                        st.session_state.queried_data = df
-                                        #st.dataframe(df, use_container_width=True)
-
-                                        #if 'amount_payed' in df.columns:
-                                        #    df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
-                                        st.session_state.visualizations = generate_all_visualizations(df)
-                                        st.success(f"Retrieved {len(df)} rows using natural language query. Please scroll down to see visualizations & AI Analysis")
-
-
-
-
-
-                            except Exception as e:
-                                logger.info("FUCKKKKKKKKKKKKKKKK")
-                                #st.error(f"Failed to generate or run query: {str(e)}")
 
             # Create columns for the filter interface with adjusted widths
             with st.expander("Search data with Filters"):
@@ -1383,6 +1345,47 @@ def display_main_content():
             if st.session_state.last_query_time:
                 st.caption(f"Last queried: {st.session_state.last_query_time.strftime('%Y-%m-%d %H:%M:%S')}")
             st.dataframe(st.session_state.queried_data)
+
+
+            with st.expander("Ask Your Question in Natural Language"):
+                user_question = st.text_input("Enter your question about the data:", key="nl_question")
+                if user_question:
+                    if st.button("Generate SQL and Query", key="run_nl_query"):
+
+                        with st.spinner("Generating SQL and executing query..."):
+                            try:
+                                engine = get_db_connection()
+                                with engine.connect() as connection:
+
+                                    logger.info("Database connection established with NL")
+                                    sql_query = generate_sql_from_nl(user_question)
+                                    logger.info(f"Here is the NLP SQL Query: {sql_query}")
+                                    # First, let's check if we can access the table
+                                    SQL = connection.execute(text(sql_query)).mappings()
+                                    rows = list(SQL)
+                                    if not rows:
+                                        st.warning("No data found.")
+                                    else:
+                                        df = pd.DataFrame(rows)
+                                        if 'dollar_value' in df.columns:
+                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
+
+                                        #st.subheader("Query Results")
+                                        st.session_state.queried_data = df
+                                        #st.dataframe(df, use_container_width=True)
+
+                                        #if 'amount_payed' in df.columns:
+                                        #    df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+                                        st.session_state.visualizations = generate_all_visualizations(df)
+                                        st.success(f"Retrieved {len(df)} rows using natural language query. Please scroll down to see visualizations & AI Analysis")
+
+
+
+
+
+                            except Exception as e:
+                                logger.info("FUCKKKKKKKKKKKKKKKK")
+                                #st.error(f"Failed to generate or run query: {str(e)}")
 
         # Add Visualizations section after query section
         st.markdown("<br><br>", unsafe_allow_html=True)
