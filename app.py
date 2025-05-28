@@ -982,13 +982,13 @@ def display_main_content():
                                         st.warning("No data found.")
                                     else:
                                         df = pd.DataFrame(rows)
-
+                                        if 'dollar_value' in df.columns:
+                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
 
                                         #st.subheader("Query Results")
                                         st.session_state.queried_data = df
                                         #st.dataframe(df, use_container_width=True)
-                                        if 'dollar_value' in df.columns:
-                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
+
                                         if 'amount_payed' in df.columns:
                                             df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                                         st.session_state.visualizations = generate_all_visualizations(df)
