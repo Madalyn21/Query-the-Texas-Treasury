@@ -982,14 +982,15 @@ def display_main_content():
                                         st.warning("No data found.")
                                     else:
                                         df = pd.DataFrame(rows)
-                                        if 'dollar_value' in df.columns:
-                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
-                                        if 'amount_payed' in df.columns:
-                                            df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
+
 
                                         st.subheader("Query Results")
                                         st.session_state.queried_data = df
                                         st.dataframe(df, use_container_width=True)
+                                        if 'dollar_value' in df.columns:
+                                            df['dollar_value'] = df['dollar_value'].replace('[\$,]', '', regex=True).astype(float)
+                                        if 'amount_payed' in df.columns:
+                                            df['amount_payed'] = df['amount_payed'].replace('[\$,]', '', regex=True).astype(float)
                                         st.session_state.visualizations = generate_all_visualizations(df)
                                         st.success(f"Retrieved {len(df)} rows using natural language query.")
 
@@ -1003,8 +1004,9 @@ def display_main_content():
 
 
             col1, col2 = st.columns([2, 1])
-        
+        with st.expander("Ask Your Question in Natural Language"):
             with col1:
+
                 logger.info("Setting up filter criteria")
                 st.subheader("Filter Criteria")
                 
@@ -1475,7 +1477,7 @@ def display_main_content():
                     except Exception as e:
                         st.error(f"AI Analysis failed: {e}")
                 else:
-                    st.info("button fail :(")
+                    st.info("")
             else:
                 st.info("Load Query for AI Analysis!")
 
