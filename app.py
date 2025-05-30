@@ -38,6 +38,7 @@ import altair as alt
 import streamlit.components.v1 as components
 import base64
 import openai
+import os
 
 # Configure pandas options
 pd.options.mode.chained_assignment = None  # default='warn'
