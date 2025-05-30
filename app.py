@@ -40,7 +40,7 @@ import base64
 import openai
 import os
 
-# Configure pandas options
+# Configure pandas options@
 pd.options.mode.chained_assignment = None  # default='warn'
 pd.options.display.max_rows = 100
 pd.options.display.max_columns = 100
