@@ -133,6 +133,70 @@ LOG_LEVEL=INFO
 LOG_FILE=application.log
 ```
 
+## 🚀 How to Connect and Run the Streamlit App on EC2
+
+### 🔗 Connect to EC2
+
+1. Go to your **EC2 dashboard** and click **Connect** on the `m5a.xlarge` instance.
+2. Follow the on-screen instructions to open an SSH session.
+
+---
+
+### 🖥️ Accessing the Terminal Multiplexer (`tmux`)
+
+To attach to the already running `tmux` session (which keeps the app running in the background):
+
+```bash
+tmux attach
+```
+
+To create a new `tmux` session:
+
+```bash
+tmux new -s streamlit_app
+```
+
+---
+
+### 📂 Inside the `tmux` Session
+
+1. Navigate to the project directory:
+
+   ```bash
+   cd Query-the-Texas-Treasury/
+   ```
+
+2. Activate the virtual environment:
+
+   ```bash
+   source venvbean/bin/activate
+   ```
+
+3. Pull the latest changes from your branch:
+
+   ```bash
+   git pull origin AI_Fart_Branch
+   ```
+
+4. Run the Streamlit app on port 80:
+
+   ```bash
+   sudo $(which streamlit) run app.py --server.port=80
+   ```
+
+---
+
+### 🛑 Stopping & Exiting
+
+* Press `Ctrl + C` to stop the Streamlit server.
+* To **detach** from the `tmux` session while leaving it running:
+
+  ```bash
+  Ctrl + B, then press D
+  ```
+
+This keeps your app running in the background while you safely exit the terminal.
+
 ### Database Setup
 
 Most of the database stuff is pretty simple, in theory there won't be any issues which crop up due to it.
