@@ -1381,7 +1381,7 @@ def display_main_content():
 
                             except Exception as e:
                                 logger.info("FUCKKKKKKKKKKKKKKKK")
-                                #st.error(f"Failed to generate or run query: {str(e)}")
+                                st.error(f"Failed to generate or run query: {str(e)}")
 
         rows_per_page = 1000
 
